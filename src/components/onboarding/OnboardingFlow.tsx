@@ -134,12 +134,30 @@ function LoginStep({
   onNext: () => void
   onRefresh: () => Promise<void>
 }) {
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await onRefresh()
-    setIsRefreshing(false)
+  const handleLogin = async () => {
+    setIsLoggingIn(true)
+    try {
+      await serverApi.startLogin('browser')
+      // Poll for login completion
+      const checkLogin = setInterval(async () => {
+        const info = await serverApi.getAccountInfo()
+        if (info.loggedIn) {
+          clearInterval(checkLogin)
+          await onRefresh()
+          setIsLoggingIn(false)
+        }
+      }, 2000)
+      // Stop polling after 60 seconds
+      setTimeout(() => {
+        clearInterval(checkLogin)
+        setIsLoggingIn(false)
+      }, 60000)
+    } catch (error) {
+      console.error('Login failed:', error)
+      setIsLoggingIn(false)
+    }
   }
 
   if (accountInfo?.loggedIn) {
@@ -168,31 +186,28 @@ function LoginStep({
   return (
     <div className="text-center">
       <div className="mb-6 text-6xl">🔐</div>
-      <h2 className="mb-4 text-2xl font-bold">Login Required</h2>
-      <p className="mb-6 text-muted-foreground">
-        Please log in to Codex CLI in your terminal first:
+      <h2 className="mb-4 text-2xl font-bold">Log In to Codex</h2>
+      <p className="mb-8 text-muted-foreground">
+        Sign in with your browser to use Codex Desktop.
       </p>
-      <div className="mb-6 rounded-lg bg-secondary p-4">
-        <code className="text-sm">codex login</code>
-      </div>
-      <p className="mb-8 text-sm text-muted-foreground">
-        After logging in, click the button below to refresh.
-      </p>
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3">
         <button
-          className="flex-1 rounded-lg bg-secondary px-6 py-3 font-medium text-secondary-foreground hover:bg-secondary/80"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
+          className="w-full rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          onClick={handleLogin}
+          disabled={isLoggingIn}
         >
-          {isRefreshing ? 'Checking...' : 'Refresh Status'}
+          {isLoggingIn ? 'Waiting for login...' : 'Log In with Browser'}
         </button>
         <button
-          className="flex-1 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:bg-primary/90"
+          className="w-full rounded-lg bg-secondary px-6 py-3 font-medium text-secondary-foreground hover:bg-secondary/80"
           onClick={onNext}
         >
           Skip for Now
         </button>
       </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Or use terminal: <code className="rounded bg-secondary px-1.5 py-0.5">codex login</code>
+      </p>
     </div>
   )
 }

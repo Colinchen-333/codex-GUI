@@ -138,18 +138,14 @@ impl Snapshot {
         }
     }
 
-    /// Create a new file backup snapshot
-    pub fn new_file_backup(session_id: &str, backup_path: &str) -> Self {
-        let metadata = serde_json::json!({
-            "backup_path": backup_path,
-        });
-
+    /// Create a new file backup snapshot with full metadata
+    pub fn new_file_backup(session_id: &str, metadata_json: &str) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             session_id: session_id.to_string(),
             created_at: chrono::Utc::now().timestamp(),
             snapshot_type: "file_backup".to_string(),
-            metadata_json: Some(metadata.to_string()),
+            metadata_json: Some(metadata_json.to_string()),
         }
     }
 }

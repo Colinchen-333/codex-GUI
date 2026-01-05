@@ -6,6 +6,12 @@ interface AppState {
   // Dialog states
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
+  snapshotsOpen: boolean
+  setSnapshotsOpen: (open: boolean) => void
+  aboutOpen: boolean
+  setAboutOpen: (open: boolean) => void
+  helpOpen: boolean
+  setHelpOpen: (open: boolean) => void
 
   // Sidebar state
   sidebarTab: SidebarTab
@@ -21,6 +27,12 @@ export const useAppStore = create<AppState>((set) => ({
   // Dialog states
   settingsOpen: false,
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  snapshotsOpen: false,
+  setSnapshotsOpen: (open) => set({ snapshotsOpen: open }),
+  aboutOpen: false,
+  setAboutOpen: (open) => set({ aboutOpen: open }),
+  helpOpen: false,
+  setHelpOpen: (open) => set({ helpOpen: open }),
 
   // Sidebar state
   sidebarTab: 'projects',

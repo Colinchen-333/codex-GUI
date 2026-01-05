@@ -79,7 +79,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               <SafetySettings settings={settings} updateSetting={updateSetting} />
             )}
             {activeTab === 'account' && (
-              <AccountSettings accountInfo={accountInfo} />
+              <AccountSettings
+                accountInfo={accountInfo}
+                onRefresh={async () => {
+                  const info = await serverApi.getAccountInfo()
+                  setAccountInfo(info)
+                }}
+              />
             )}
           </div>
         </div>
@@ -259,34 +265,87 @@ function SafetySettings({
 }
 
 // Account Settings
-function AccountSettings({ accountInfo }: { accountInfo: AccountInfo | null }) {
+function AccountSettings({
+  accountInfo,
+  onRefresh,
+}: {
+  accountInfo: AccountInfo | null
+  onRefresh: () => Promise<void>
+}) {
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogin = async () => {
+    setIsLoggingIn(true)
+    try {
+      await serverApi.startLogin('browser')
+      // Wait a moment then refresh account info
+      setTimeout(async () => {
+        await onRefresh()
+        setIsLoggingIn(false)
+      }, 2000)
+    } catch (error) {
+      console.error('Login failed:', error)
+      setIsLoggingIn(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await serverApi.logout()
+      await onRefresh()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Account</h3>
 
       {accountInfo?.loggedIn ? (
         <div className="rounded-lg border border-border p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg text-primary-foreground">
-              {accountInfo.email?.charAt(0).toUpperCase() || '?'}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg text-primary-foreground">
+                {accountInfo.email?.charAt(0).toUpperCase() || '?'}
+              </div>
+              <div>
+                <div className="font-medium">{accountInfo.email}</div>
+                {accountInfo.planType && (
+                  <div className="text-sm text-muted-foreground">
+                    Plan: {accountInfo.planType}
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <div className="font-medium">{accountInfo.email}</div>
-              {accountInfo.planType && (
-                <div className="text-sm text-muted-foreground">
-                  Plan: {accountInfo.planType}
-                </div>
-              )}
-            </div>
+            <button
+              className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? 'Logging out...' : 'Log Out'}
+            </button>
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-yellow-500 bg-yellow-50 p-4 dark:bg-yellow-950/20">
-          <p className="mb-3 font-medium">Not Logged In</p>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Log in to Codex CLI to use all features:
+        <div className="rounded-lg border border-border p-4">
+          <p className="mb-4 text-muted-foreground">
+            Log in to use Codex with your account.
           </p>
-          <code className="rounded bg-secondary px-2 py-1 text-sm">codex login</code>
+          <button
+            className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            onClick={handleLogin}
+            disabled={isLoggingIn}
+          >
+            {isLoggingIn ? 'Opening browser...' : 'Log In with Browser'}
+          </button>
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Or use terminal: <code className="rounded bg-secondary px-1.5 py-0.5">codex login</code>
+          </p>
         </div>
       )}
 

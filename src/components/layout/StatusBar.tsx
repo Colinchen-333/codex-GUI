@@ -2,12 +2,26 @@ import { useEffect, useState } from 'react'
 import { cn } from '../../lib/utils'
 import { serverApi, type ServerStatus, type AccountInfo } from '../../lib/api'
 import { SettingsDialog } from '../settings/SettingsDialog'
+import { SnapshotListDialog } from '../dialogs/SnapshotListDialog'
+import { AboutDialog } from '../dialogs/AboutDialog'
+import { HelpDialog } from '../dialogs/HelpDialog'
 import { useAppStore } from '../../stores/app'
+import { useThreadStore } from '../../stores/thread'
 
 export function StatusBar() {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null)
-  const { settingsOpen, setSettingsOpen } = useAppStore()
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    snapshotsOpen,
+    setSnapshotsOpen,
+    aboutOpen,
+    setAboutOpen,
+    helpOpen,
+    setHelpOpen,
+  } = useAppStore()
+  const activeThread = useThreadStore((state) => state.activeThread)
 
   useEffect(() => {
     // Fetch status on mount
@@ -74,8 +88,8 @@ export function StatusBar() {
           )}
         </div>
 
-        {/* Right side - Account info & Settings */}
-        <div className="flex items-center gap-4">
+        {/* Right side - Account info & Actions */}
+        <div className="flex items-center gap-3">
           {accountInfo?.loggedIn ? (
             <span className="text-muted-foreground">
               {accountInfo.email || 'Logged in'}
@@ -85,17 +99,45 @@ export function StatusBar() {
             <span className="text-yellow-500">Not logged in</span>
           )}
 
-          <button
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setSettingsOpen(true)}
-            title="Settings (⌘,)"
-          >
-            ⚙️
-          </button>
+          <div className="flex items-center gap-1 border-l border-border pl-3">
+            {activeThread && (
+              <button
+                className="text-muted-foreground hover:text-foreground px-1"
+                onClick={() => setSnapshotsOpen(true)}
+                title="Snapshots"
+              >
+                📸
+              </button>
+            )}
+            <button
+              className="text-muted-foreground hover:text-foreground px-1"
+              onClick={() => setHelpOpen(true)}
+              title="Help"
+            >
+              ❓
+            </button>
+            <button
+              className="text-muted-foreground hover:text-foreground px-1"
+              onClick={() => setAboutOpen(true)}
+              title="About"
+            >
+              ℹ️
+            </button>
+            <button
+              className="text-muted-foreground hover:text-foreground px-1"
+              onClick={() => setSettingsOpen(true)}
+              title="Settings (⌘,)"
+            >
+              ⚙️
+            </button>
+          </div>
         </div>
       </div>
 
       <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SnapshotListDialog isOpen={snapshotsOpen} onClose={() => setSnapshotsOpen(false)} />
+      <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <HelpDialog isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </>
   )
 }

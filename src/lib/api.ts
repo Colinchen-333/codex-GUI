@@ -166,4 +166,9 @@ export const serverApi = {
   restart: () => invoke<void>('restart_server'),
 
   getAccountInfo: () => invoke<AccountInfo>('get_account_info'),
+
+  startLogin: (method: 'browser' | 'cli' = 'browser') =>
+    invoke<void>('start_login', { method }),
+
+  logout: () => invoke<void>('logout'),
 }

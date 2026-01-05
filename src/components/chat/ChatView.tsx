@@ -389,10 +389,9 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
     setIsApplying(true)
     try {
       // Create snapshot before applying changes
-      const snapshot = await createSnapshot(project.path)
+      await createSnapshot(project.path)
 
-      // Update item with snapshot ID (this happens in the store)
-      // Then approve the changes
+      // Approve the changes (snapshot is stored in thread store)
       respondToApproval(item.id, 'accept')
     } catch (error) {
       console.error('Failed to apply changes:', error)

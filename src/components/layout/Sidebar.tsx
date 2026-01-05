@@ -50,6 +50,16 @@ export function Sidebar() {
     name: string
   } | null>(null)
 
+  // Session rename dialog state
+  const [sessionRenameDialogOpen, setSessionRenameDialogOpen] = useState(false)
+  const [sessionToRename, setSessionToRename] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+
   const handleAddProject = async () => {
     try {
       const selected = await open({
@@ -94,6 +104,25 @@ export function Sidebar() {
       console.error('Failed to remove project:', error)
       showToast('Failed to remove project', 'error')
     }
+  }
+
+  const handleRenameSession = (id: string, currentName: string) => {
+    setSessionToRename({ id, name: currentName })
+    setSessionRenameDialogOpen(true)
+  }
+
+  const handleConfirmSessionRename = async (newName: string) => {
+    if (sessionToRename) {
+      try {
+        await updateSession(sessionToRename.id, { title: newName })
+        showToast('Session renamed', 'success')
+      } catch (error) {
+        console.error('Failed to rename session:', error)
+        showToast('Failed to rename session', 'error')
+      }
+    }
+    setSessionRenameDialogOpen(false)
+    setSessionToRename(null)
   }
 
   const handleNewSession = async () => {
@@ -153,6 +182,19 @@ export function Sidebar() {
         </button>
       </div>
 
+      {/* Search Input */}
+      {activeTab === 'sessions' && sessions.length > 0 && (
+        <div className="mb-3">
+          <input
+            type="text"
+            placeholder="Search sessions..."
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto -mx-2 px-2">
         {activeTab === 'projects' ? (
@@ -165,7 +207,13 @@ export function Sidebar() {
           />
         ) : (
           <SessionList
-            sessions={sessions}
+            sessions={sessions.filter((session) => {
+              if (!searchQuery.trim()) return true
+              const query = searchQuery.toLowerCase()
+              const title = (session.title || `Session ${session.sessionId.slice(0, 8)}`).toLowerCase()
+              const tags = session.tags ? JSON.parse(session.tags).join(' ').toLowerCase() : ''
+              return title.includes(query) || tags.includes(query)
+            })}
             selectedId={selectedSessionId}
             onSelect={selectSession}
             onToggleFavorite={async (sessionId, isFavorite) => {
@@ -175,6 +223,7 @@ export function Sidebar() {
                 showToast('Failed to update session', 'error')
               }
             }}
+            onRename={handleRenameSession}
             onDelete={async (sessionId) => {
               try {
                 await deleteSession(sessionId)
@@ -200,7 +249,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Rename Dialog */}
+      {/* Rename Project Dialog */}
       <RenameDialog
         isOpen={renameDialogOpen}
         title="Rename Project"
@@ -209,6 +258,18 @@ export function Sidebar() {
         onCancel={() => {
           setRenameDialogOpen(false)
           setProjectToRename(null)
+        }}
+      />
+
+      {/* Rename Session Dialog */}
+      <RenameDialog
+        isOpen={sessionRenameDialogOpen}
+        title="Rename Session"
+        currentName={sessionToRename?.name || ''}
+        onConfirm={handleConfirmSessionRename}
+        onCancel={() => {
+          setSessionRenameDialogOpen(false)
+          setSessionToRename(null)
         }}
       />
     </div>
@@ -303,6 +364,7 @@ interface SessionListProps {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onToggleFavorite: (sessionId: string, isFavorite: boolean) => void
+  onRename: (sessionId: string, currentTitle: string) => void
   onDelete: (sessionId: string) => void
   isLoading: boolean
   hasProject: boolean
@@ -313,6 +375,7 @@ function SessionList({
   selectedId,
   onSelect,
   onToggleFavorite,
+  onRename,
   onDelete,
   isLoading,
   hasProject,
@@ -359,6 +422,11 @@ function SessionList({
         const timeAgo = formatRelativeTime(session.lastAccessedAt || session.createdAt)
 
         const contextMenuItems: ContextMenuItem[] = [
+          {
+            label: 'Rename',
+            icon: '✏️',
+            onClick: () => onRename(session.sessionId, session.title || `Session ${session.sessionId.slice(0, 8)}`),
+          },
           {
             label: session.isFavorite ? 'Remove from favorites' : 'Add to favorites',
             icon: session.isFavorite ? '☆' : '★',

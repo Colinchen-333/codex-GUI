@@ -4,11 +4,25 @@
 //! - Git ghost commits for git repositories
 //! - File backups for non-git directories
 
+use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use serde::{Deserialize, Serialize};
+
 use crate::database::{Database, Snapshot};
 use crate::{Error, Result};
+
+/// Metadata for file backup snapshots
+#[derive(Debug, Serialize, Deserialize)]
+struct FileBackupMetadata {
+    /// Map of relative path -> base64-encoded file contents
+    files: HashMap<String, String>,
+    /// Description of what was backed up
+    description: String,
+}
 
 /// Check if a path is a git repository
 pub fn is_git_repo(path: &Path) -> bool {
@@ -20,12 +34,96 @@ pub fn create_snapshot(db: &Database, session_id: &str, project_path: &Path) -> 
     if is_git_repo(project_path) {
         create_git_snapshot(db, session_id, project_path)
     } else {
-        // For now, just create a placeholder for non-git repos
-        // Full file backup implementation can be added later
-        let snapshot = Snapshot::new_file_backup(session_id, "not_implemented");
-        db.insert_snapshot(&snapshot)?;
-        Ok(snapshot)
+        create_file_backup_snapshot(db, session_id, project_path)
     }
+}
+
+/// Collect all files in a directory (excluding hidden files and common ignore patterns)
+fn collect_project_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>> {
+    let mut files = Vec::new();
+
+    fn visit_dir(dir: &Path, files: &mut Vec<std::path::PathBuf>) -> Result<()> {
+        if !dir.is_dir() {
+            return Ok(());
+        }
+
+        let entries = fs::read_dir(dir).map_err(|e| Error::Other(format!("Failed to read dir: {}", e)))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| Error::Other(format!("Failed to read entry: {}", e)))?;
+            let path = entry.path();
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+
+            // Skip hidden files, node_modules, target, etc.
+            if name.starts_with('.')
+                || name == "node_modules"
+                || name == "target"
+                || name == "dist"
+                || name == "build"
+                || name == "__pycache__"
+                || name == ".git"
+            {
+                continue;
+            }
+
+            if path.is_dir() {
+                visit_dir(&path, files)?;
+            } else if path.is_file() {
+                files.push(path);
+            }
+        }
+        Ok(())
+    }
+
+    visit_dir(project_path, &mut files)?;
+    Ok(files)
+}
+
+/// Create a file backup snapshot for non-git directories
+fn create_file_backup_snapshot(db: &Database, session_id: &str, project_path: &Path) -> Result<Snapshot> {
+    let files = collect_project_files(project_path)?;
+
+    let mut backup_files: HashMap<String, String> = HashMap::new();
+
+    for file_path in &files {
+        // Only backup small files (< 1MB)
+        if let Ok(metadata) = fs::metadata(file_path) {
+            if metadata.len() > 1_000_000 {
+                continue;
+            }
+        }
+
+        if let Ok(contents) = fs::read(file_path) {
+            let relative_path = file_path
+                .strip_prefix(project_path)
+                .map_err(|e| Error::Other(format!("Failed to get relative path: {}", e)))?;
+
+            backup_files.insert(
+                relative_path.to_string_lossy().to_string(),
+                BASE64.encode(&contents),
+            );
+        }
+    }
+
+    let metadata = FileBackupMetadata {
+        files: backup_files.clone(),
+        description: format!("Backup of {} files", backup_files.len()),
+    };
+
+    let metadata_json = serde_json::to_string(&metadata)
+        .map_err(|e| Error::Other(format!("Failed to serialize metadata: {}", e)))?;
+
+    let snapshot = Snapshot::new_file_backup(session_id, &metadata_json);
+    db.insert_snapshot(&snapshot)?;
+
+    tracing::info!(
+        "Created file backup snapshot: {} ({} files)",
+        snapshot.id,
+        backup_files.len()
+    );
+
+    Ok(snapshot)
 }
 
 /// Create a git ghost commit snapshot
@@ -90,15 +188,54 @@ pub fn revert_to_snapshot(db: &Database, snapshot_id: &str, project_path: &Path)
 
     match snapshot.snapshot_type.as_str() {
         "git_ghost" => revert_git_snapshot(&snapshot, project_path),
-        "file_backup" => {
-            // Not implemented yet
-            Err(Error::Other("File backup revert not implemented".to_string()))
-        }
+        "file_backup" => revert_file_backup_snapshot(&snapshot, project_path),
         _ => Err(Error::Other(format!(
             "Unknown snapshot type: {}",
             snapshot.snapshot_type
         ))),
     }
+}
+
+/// Revert to a file backup snapshot
+fn revert_file_backup_snapshot(snapshot: &Snapshot, project_path: &Path) -> Result<()> {
+    let metadata_str = snapshot
+        .metadata_json
+        .as_ref()
+        .ok_or_else(|| Error::Other("Missing metadata in file backup snapshot".to_string()))?;
+
+    let metadata: FileBackupMetadata = serde_json::from_str(metadata_str)
+        .map_err(|e| Error::Other(format!("Failed to parse file backup metadata: {}", e)))?;
+
+    let mut restored_count = 0;
+
+    for (relative_path, base64_content) in &metadata.files {
+        let file_path = project_path.join(relative_path);
+
+        // Decode the base64 content
+        let contents = BASE64
+            .decode(base64_content)
+            .map_err(|e| Error::Other(format!("Failed to decode file content: {}", e)))?;
+
+        // Ensure parent directory exists
+        if let Some(parent) = file_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| Error::Other(format!("Failed to create directory: {}", e)))?;
+        }
+
+        // Write the file
+        fs::write(&file_path, &contents)
+            .map_err(|e| Error::Other(format!("Failed to write file {}: {}", relative_path, e)))?;
+
+        restored_count += 1;
+    }
+
+    tracing::info!(
+        "Reverted file backup snapshot: {} ({} files restored)",
+        snapshot.id,
+        restored_count
+    );
+
+    Ok(())
 }
 
 /// Revert to a git snapshot

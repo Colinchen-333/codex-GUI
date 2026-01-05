@@ -53,10 +53,41 @@ export interface ServerStatus {
   version: string | null
 }
 
-export interface AccountInfo {
-  loggedIn: boolean
+export interface AccountDetails {
+  type: string
   email: string | null
   planType: string | null
+}
+
+export interface AccountInfo {
+  account: AccountDetails | null
+  requiresOpenaiAuth: boolean
+}
+
+export interface LoginResponse {
+  loginType: string
+  loginId: string | null
+  authUrl: string | null
+}
+
+export interface ReasoningEffortOption {
+  reasoningEffort: string
+  description: string
+}
+
+export interface Model {
+  id: string
+  model: string
+  displayName: string
+  description: string
+  supportedReasoningEfforts: ReasoningEffortOption[]
+  defaultReasoningEffort: string
+  isDefault: boolean
+}
+
+export interface ModelListResponse {
+  data: Model[]
+  nextCursor: string | null
 }
 
 export interface Snapshot {
@@ -167,8 +198,10 @@ export const serverApi = {
 
   getAccountInfo: () => invoke<AccountInfo>('get_account_info'),
 
-  startLogin: (method: 'browser' | 'cli' = 'browser') =>
-    invoke<void>('start_login', { method }),
+  startLogin: (loginType: 'chatgpt' | 'apiKey' = 'chatgpt') =>
+    invoke<LoginResponse>('start_login', { loginType }),
 
   logout: () => invoke<void>('logout'),
+
+  getModels: () => invoke<ModelListResponse>('get_models'),
 }

@@ -278,12 +278,26 @@ function AccountSettings({
   const handleLogin = async () => {
     setIsLoggingIn(true)
     try {
-      await serverApi.startLogin('browser')
-      // Wait a moment then refresh account info
-      setTimeout(async () => {
-        await onRefresh()
-        setIsLoggingIn(false)
+      const response = await serverApi.startLogin('chatgpt')
+      // Open auth URL in browser if provided
+      if (response.authUrl) {
+        const { open } = await import('@tauri-apps/plugin-shell')
+        await open(response.authUrl)
+      }
+      // Poll for login completion
+      const checkLogin = setInterval(async () => {
+        const info = await serverApi.getAccountInfo()
+        if (info.account) {
+          clearInterval(checkLogin)
+          await onRefresh()
+          setIsLoggingIn(false)
+        }
       }, 2000)
+      // Stop polling after 60 seconds
+      setTimeout(() => {
+        clearInterval(checkLogin)
+        setIsLoggingIn(false)
+      }, 60000)
     } catch (error) {
       console.error('Login failed:', error)
       setIsLoggingIn(false)
@@ -306,18 +320,18 @@ function AccountSettings({
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Account</h3>
 
-      {accountInfo?.loggedIn ? (
+      {accountInfo?.account ? (
         <div className="rounded-lg border border-border p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg text-primary-foreground">
-                {accountInfo.email?.charAt(0).toUpperCase() || '?'}
+                {accountInfo.account.email?.charAt(0).toUpperCase() || '?'}
               </div>
               <div>
-                <div className="font-medium">{accountInfo.email}</div>
-                {accountInfo.planType && (
+                <div className="font-medium">{accountInfo.account.email}</div>
+                {accountInfo.account.planType && (
                   <div className="text-sm text-muted-foreground">
-                    Plan: {accountInfo.planType}
+                    Plan: {accountInfo.account.planType}
                   </div>
                 )}
               </div>

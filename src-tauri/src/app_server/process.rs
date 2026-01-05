@@ -17,20 +17,17 @@ use tokio::sync::{mpsc, oneshot, Mutex};
 
 use crate::{Error, Result};
 
-/// JSON-RPC request structure
+/// JSON-RPC request structure (without jsonrpc header as per app-server protocol)
 #[derive(Debug, Serialize)]
 struct JsonRpcRequest<T> {
-    jsonrpc: &'static str,
     id: u64,
     method: String,
     params: T,
 }
 
-/// JSON-RPC response structure
+/// JSON-RPC response structure (jsonrpc header is omitted in app-server protocol)
 #[derive(Debug, serde::Deserialize)]
 struct JsonRpcResponse {
-    #[allow(dead_code)]
-    jsonrpc: String,
     id: Option<u64>,
     result: Option<JsonValue>,
     error: Option<JsonRpcError>,
@@ -132,13 +129,52 @@ impl AppServerProcess {
             }
         });
 
-        Ok(Self {
+        let mut process = Self {
             child,
             stdin,
             request_counter: AtomicU64::new(1),
             pending_requests,
             shutdown_tx: Some(shutdown_tx),
-        })
+        };
+
+        // Initialize the app-server (required before any other requests)
+        process.initialize().await?;
+
+        Ok(process)
+    }
+
+    /// Initialize the app-server with client info
+    async fn initialize(&mut self) -> Result<()> {
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct ClientInfo {
+            name: String,
+            title: String,
+            version: String,
+        }
+
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct InitializeParams {
+            client_info: ClientInfo,
+        }
+
+        let params = InitializeParams {
+            client_info: ClientInfo {
+                name: "codex-desktop".to_string(),
+                title: "Codex Desktop".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+        };
+
+        // Send initialize request
+        let _response: JsonValue = self.send_request("initialize", params).await?;
+
+        // Send initialized notification
+        self.send_notification("initialized", serde_json::json!({})).await?;
+
+        tracing::info!("App server initialized");
+        Ok(())
     }
 
     /// Find the codex binary in PATH or common locations
@@ -220,7 +256,6 @@ impl AppServerProcess {
         let id = self.request_counter.fetch_add(1, Ordering::SeqCst);
 
         let request = JsonRpcRequest {
-            jsonrpc: "2.0",
             id,
             method: method.to_string(),
             params,
@@ -260,13 +295,11 @@ impl AppServerProcess {
     pub async fn send_notification<T: Serialize>(&mut self, method: &str, params: T) -> Result<()> {
         #[derive(Serialize)]
         struct JsonRpcNotification<T> {
-            jsonrpc: &'static str,
             method: String,
             params: T,
         }
 
         let notification = JsonRpcNotification {
-            jsonrpc: "2.0",
             method: method.to_string(),
             params,
         };

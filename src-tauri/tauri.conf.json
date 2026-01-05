@@ -31,21 +31,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": []
+    "icon": [
+      "icons/icon.png"
+    ]
   },
-  "plugins": {
-    "shell": {
-      "open": true,
-      "scope": [
-        {
-          "name": "codex",
-          "cmd": "codex",
-          "args": true
-        }
-      ]
-    },
-    "dialog": {
-      "all": true
-    }
-  }
+  "plugins": {}
 }

@@ -144,15 +144,24 @@ pub struct ApprovalResponseParams {
     pub decision: ApprovalDecision,
 }
 
-/// Account info response
-#[derive(Debug, Serialize, Deserialize)]
+/// Account details when logged in
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AccountInfo {
-    pub logged_in: bool,
+pub struct AccountDetails {
+    #[serde(rename = "type")]
+    pub account_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plan_type: Option<String>,
+}
+
+/// Account info response from app-server
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountInfo {
+    pub account: Option<AccountDetails>,
+    pub requires_openai_auth: bool,
 }
 
 /// IPC Bridge provides high-level methods for communicating with app-server
@@ -167,8 +176,8 @@ impl IpcBridge {
             "listThreads" => "thread/list",
             "startTurn" => "turn/start",
             "interruptTurn" => "turn/interrupt",
-            "getAccount" => "account/get",
-            "login" => "account/login",
+            "getAccount" => "account/read",
+            "login" => "account/login/start",
             "logout" => "account/logout",
             _ => method,
         }

@@ -71,6 +71,7 @@ pub fn run() {
             commands::app_server::get_account_info,
             commands::app_server::start_login,
             commands::app_server::logout,
+            commands::app_server::get_models,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

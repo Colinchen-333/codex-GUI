@@ -46,17 +46,29 @@ pub async fn get_account_info(state: State<'_, AppState>) -> Result<AccountInfo>
         .as_mut()
         .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
 
-    // Empty params for account/get
+    // Empty params for account/read
     let response: AccountInfo = server
-        .send_request("account/get", serde_json::json!({}))
+        .send_request("account/read", serde_json::json!({}))
         .await?;
 
     Ok(response)
 }
 
+/// Login response from app-server
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginResponse {
+    #[serde(rename = "type")]
+    pub login_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub login_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth_url: Option<String>,
+}
+
 /// Start login flow
 #[tauri::command]
-pub async fn start_login(state: State<'_, AppState>, method: String) -> Result<()> {
+pub async fn start_login(state: State<'_, AppState>, login_type: String) -> Result<LoginResponse> {
     // Ensure app-server is running
     state.start_app_server().await?;
 
@@ -66,12 +78,12 @@ pub async fn start_login(state: State<'_, AppState>, method: String) -> Result<(
         .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
 
     let params = serde_json::json!({
-        "method": method,
+        "type": login_type,
     });
 
-    let _: serde_json::Value = server.send_request("account/login", params).await?;
+    let response: LoginResponse = server.send_request("account/login/start", params).await?;
 
-    Ok(())
+    Ok(response)
 }
 
 /// Logout
@@ -86,4 +98,53 @@ pub async fn logout(state: State<'_, AppState>) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Reasoning effort option
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReasoningEffortOption {
+    pub reasoning_effort: String,
+    pub description: String,
+}
+
+/// Model information
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Model {
+    pub id: String,
+    pub model: String,
+    pub display_name: String,
+    pub description: String,
+    pub supported_reasoning_efforts: Vec<ReasoningEffortOption>,
+    pub default_reasoning_effort: String,
+    pub is_default: bool,
+}
+
+/// Model list response
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelListResponse {
+    pub data: Vec<Model>,
+    pub next_cursor: Option<String>,
+}
+
+/// Get available models
+#[tauri::command]
+pub async fn get_models(state: State<'_, AppState>) -> Result<ModelListResponse> {
+    // Ensure app-server is running
+    state.start_app_server().await?;
+
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let params = serde_json::json!({
+        "limit": 100,
+    });
+
+    let response: ModelListResponse = server.send_request("model/list", params).await?;
+
+    Ok(response)
 }

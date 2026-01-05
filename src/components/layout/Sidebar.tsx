@@ -3,13 +3,25 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { cn } from '../../lib/utils'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
+import { RenameDialog } from '../ui/RenameDialog'
+import { useToast } from '../ui/Toast'
 
 type Tab = 'projects' | 'sessions'
 
 export function Sidebar() {
   const [activeTab, setActiveTab] = useState<Tab>('projects')
-  const { projects, selectedProjectId, selectProject, addProject } = useProjectsStore()
+  const { projects, selectedProjectId, selectProject, addProject, removeProject, updateProject } =
+    useProjectsStore()
   const { sessions, selectedSessionId, selectSession } = useSessionsStore()
+  const { showToast } = useToast()
+
+  // Rename dialog state
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [projectToRename, setProjectToRename] = useState<{
+    id: string
+    name: string
+  } | null>(null)
 
   const handleAddProject = async () => {
     try {
@@ -20,9 +32,40 @@ export function Sidebar() {
       })
       if (selected && typeof selected === 'string') {
         await addProject(selected)
+        showToast('Project added successfully', 'success')
       }
     } catch (error) {
       console.error('Failed to add project:', error)
+      showToast('Failed to add project', 'error')
+    }
+  }
+
+  const handleRenameProject = (id: string, currentName: string) => {
+    setProjectToRename({ id, name: currentName })
+    setRenameDialogOpen(true)
+  }
+
+  const handleConfirmRename = async (newName: string) => {
+    if (projectToRename) {
+      try {
+        await updateProject(projectToRename.id, newName)
+        showToast('Project renamed successfully', 'success')
+      } catch (error) {
+        console.error('Failed to rename project:', error)
+        showToast('Failed to rename project', 'error')
+      }
+    }
+    setRenameDialogOpen(false)
+    setProjectToRename(null)
+  }
+
+  const handleDeleteProject = async (id: string) => {
+    try {
+      await removeProject(id)
+      showToast('Project removed', 'success')
+    } catch (error) {
+      console.error('Failed to remove project:', error)
+      showToast('Failed to remove project', 'error')
     }
   }
 
@@ -61,6 +104,8 @@ export function Sidebar() {
             projects={projects}
             selectedId={selectedProjectId}
             onSelect={selectProject}
+            onRename={handleRenameProject}
+            onDelete={handleDeleteProject}
           />
         ) : (
           <SessionList
@@ -80,6 +125,18 @@ export function Sidebar() {
           {activeTab === 'projects' ? '+ Add Project' : '+ New Session'}
         </button>
       </div>
+
+      {/* Rename Dialog */}
+      <RenameDialog
+        isOpen={renameDialogOpen}
+        title="Rename Project"
+        currentName={projectToRename?.name || ''}
+        onConfirm={handleConfirmRename}
+        onCancel={() => {
+          setRenameDialogOpen(false)
+          setProjectToRename(null)
+        }}
+      />
     </div>
   )
 }
@@ -94,9 +151,11 @@ interface ProjectListProps {
   }>
   selectedId: string | null
   onSelect: (id: string | null) => void
+  onRename: (id: string, currentName: string) => void
+  onDelete: (id: string) => void
 }
 
-function ProjectList({ projects, selectedId, onSelect }: ProjectListProps) {
+function ProjectList({ projects, selectedId, onSelect, onRename, onDelete }: ProjectListProps) {
   if (projects.length === 0) {
     return (
       <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
@@ -107,25 +166,52 @@ function ProjectList({ projects, selectedId, onSelect }: ProjectListProps) {
 
   return (
     <div className="space-y-1">
-      {projects.map((project) => (
-        <button
-          key={project.id}
-          className={cn(
-            'w-full rounded-md px-3 py-2 text-left transition-colors',
-            selectedId === project.id
-              ? 'bg-accent text-accent-foreground'
-              : 'hover:bg-accent/50'
-          )}
-          onClick={() => onSelect(project.id)}
-        >
-          <div className="truncate text-sm font-medium">
-            {project.displayName || project.path.split('/').pop()}
-          </div>
-          <div className="truncate text-xs text-muted-foreground">
-            {project.path}
-          </div>
-        </button>
-      ))}
+      {projects.map((project) => {
+        const displayName = project.displayName || project.path.split('/').pop() || 'Unknown'
+
+        const contextMenuItems: ContextMenuItem[] = [
+          {
+            label: 'Rename',
+            icon: '✏️',
+            onClick: () => onRename(project.id, displayName),
+          },
+          {
+            label: 'Open in Finder',
+            icon: '📂',
+            onClick: () => {
+              // Use Tauri shell to open folder
+              import('@tauri-apps/plugin-shell').then(({ open }) => {
+                open(project.path)
+              })
+            },
+          },
+          {
+            label: 'Remove',
+            icon: '🗑️',
+            onClick: () => onDelete(project.id),
+            variant: 'danger',
+          },
+        ]
+
+        return (
+          <ContextMenu key={project.id} items={contextMenuItems}>
+            <button
+              className={cn(
+                'w-full rounded-md px-3 py-2 text-left transition-colors',
+                selectedId === project.id
+                  ? 'bg-accent text-accent-foreground'
+                  : 'hover:bg-accent/50'
+              )}
+              onClick={() => onSelect(project.id)}
+            >
+              <div className="truncate text-sm font-medium">{displayName}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {project.path}
+              </div>
+            </button>
+          </ContextMenu>
+        )
+      })}
     </div>
   )
 }

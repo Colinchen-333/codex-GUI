@@ -12,6 +12,7 @@ interface ProjectsState {
   fetchProjects: () => Promise<void>
   addProject: (path: string) => Promise<Project>
   removeProject: (id: string) => Promise<void>
+  updateProject: (id: string, displayName: string) => Promise<void>
   selectProject: (id: string | null) => void
   fetchGitInfo: (projectId: string, path: string) => Promise<void>
 }
@@ -55,6 +56,18 @@ export const useProjectsStore = create<ProjectsState>((set) => ({
         projects: state.projects.filter((p) => p.id !== id),
         selectedProjectId:
           state.selectedProjectId === id ? null : state.selectedProjectId,
+      }))
+    } catch (error) {
+      set({ error: String(error) })
+      throw error
+    }
+  },
+
+  updateProject: async (id: string, displayName: string) => {
+    try {
+      const updated = await projectApi.update(id, displayName)
+      set((state) => ({
+        projects: state.projects.map((p) => (p.id === id ? updated : p)),
       }))
     } catch (error) {
       set({ error: String(error) })

@@ -48,7 +48,16 @@ export function useToast() {
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider')
   }
-  return context
+
+  // Helper function for simple toast messages
+  const showToast = useCallback(
+    (title: string, type: ToastType = 'info', message?: string) => {
+      context.addToast({ type, title, message })
+    },
+    [context]
+  )
+
+  return { ...context, showToast }
 }
 
 // Toast container

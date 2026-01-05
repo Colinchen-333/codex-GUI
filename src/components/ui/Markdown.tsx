@@ -1,13 +1,66 @@
+import { lazy, Suspense, useState, useEffect, type CSSProperties } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import type { CSSProperties } from 'react'
 import { cn } from '../../lib/utils'
+
+// Lazy load syntax highlighter for better initial load performance
+const SyntaxHighlighter = lazy(() =>
+  import('react-syntax-highlighter').then((mod) => ({ default: mod.Prism }))
+)
+
+// Lazy load theme
+const loadTheme = () =>
+  import('react-syntax-highlighter/dist/esm/styles/prism').then((mod) => mod.oneDark)
 
 interface MarkdownProps {
   content: string
   className?: string
+}
+
+// Code block with lazy-loaded syntax highlighting
+function CodeBlock({ language, children }: { language: string; children: string }) {
+  return (
+    <Suspense
+      fallback={
+        <pre className="rounded-lg bg-secondary p-4 text-sm font-mono overflow-x-auto">
+          <code>{children}</code>
+        </pre>
+      }
+    >
+      <LazyCodeBlock language={language}>{children}</LazyCodeBlock>
+    </Suspense>
+  )
+}
+
+function LazyCodeBlock({ language, children }: { language: string; children: string }) {
+  const [theme, setTheme] = useState<Record<string, CSSProperties> | null>(null)
+
+  useEffect(() => {
+    loadTheme().then((t) => setTheme(t as Record<string, CSSProperties>))
+  }, [])
+
+  if (!theme) {
+    return (
+      <pre className="rounded-lg bg-secondary p-4 text-sm font-mono overflow-x-auto">
+        <code>{children}</code>
+      </pre>
+    )
+  }
+
+  return (
+    <SyntaxHighlighter
+      style={theme}
+      language={language}
+      PreTag="div"
+      customStyle={{
+        margin: 0,
+        borderRadius: '0 0 0.5rem 0.5rem',
+        fontSize: '0.875rem',
+      }}
+    >
+      {children}
+    </SyntaxHighlighter>
+  )
 }
 
 export function Markdown({ content, className }: MarkdownProps) {
@@ -16,40 +69,29 @@ export function Markdown({ content, className }: MarkdownProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          code({ className, children, ...props }) {
+          code({ className, children }) {
             const match = /language-(\w+)/.exec(className || '')
             const isInline = !match && !className
 
             if (isInline) {
               return (
-                <code
-                  className="rounded bg-secondary px-1.5 py-0.5 text-sm font-mono"
-                  {...props}
-                >
+                <code className="rounded bg-secondary px-1.5 py-0.5 text-sm font-mono">
                   {children}
                 </code>
               )
             }
 
+            const language = match ? match[1] : 'text'
+            const code = String(children).replace(/\n$/, '')
+
             return (
               <div className="relative rounded-lg overflow-hidden my-2">
                 {match && (
                   <div className="bg-secondary/80 px-3 py-1 text-xs text-muted-foreground border-b border-border">
-                    {match[1]}
+                    {language}
                   </div>
                 )}
-                <SyntaxHighlighter
-                  style={oneDark as Record<string, CSSProperties>}
-                  language={match ? match[1] : 'text'}
-                  PreTag="div"
-                  customStyle={{
-                    margin: 0,
-                    borderRadius: match ? '0 0 0.5rem 0.5rem' : '0.5rem',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>
+                <CodeBlock language={language}>{code}</CodeBlock>
               </div>
             )
           },

@@ -9,6 +9,9 @@ import type {
   FileChangeApprovalRequestedEvent,
   TurnCompletedEvent,
   TurnFailedEvent,
+  ExecCommandBeginEvent,
+  ExecCommandOutputDeltaEvent,
+  ExecCommandEndEvent,
 } from '../lib/events'
 
 // ==================== Thread Item Types ====================
@@ -50,13 +53,18 @@ export interface AgentMessageItem extends ThreadItem {
 export interface CommandExecutionItem extends ThreadItem {
   type: 'commandExecution'
   content: {
-    command: string
+    callId: string
+    command: string | string[]
     cwd: string
-    commandActions: string[]
+    commandActions?: string[]
     output?: string
+    stdout?: string
+    stderr?: string
     exitCode?: number
-    needsApproval: boolean
+    durationMs?: number
+    needsApproval?: boolean
     approved?: boolean
+    isRunning?: boolean
   }
 }
 
@@ -134,6 +142,9 @@ interface ThreadState {
   handleFileChangeApprovalRequested: (event: FileChangeApprovalRequestedEvent) => void
   handleTurnCompleted: (event: TurnCompletedEvent) => void
   handleTurnFailed: (event: TurnFailedEvent) => void
+  handleExecCommandBegin: (event: ExecCommandBeginEvent) => void
+  handleExecCommandOutputDelta: (event: ExecCommandOutputDeltaEvent) => void
+  handleExecCommandEnd: (event: ExecCommandEndEvent) => void
 
   // Snapshot actions
   createSnapshot: (projectPath: string) => Promise<Snapshot>
@@ -523,6 +534,102 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       turnStatus: 'failed',
       error: event.error,
       currentTurnId: null,
+    })
+  },
+
+  // Command Execution Handlers
+  handleExecCommandBegin: (event) => {
+    const commandItem: CommandExecutionItem = {
+      id: event.callId,
+      type: 'commandExecution',
+      status: 'inProgress',
+      content: {
+        callId: event.callId,
+        command: event.command,
+        cwd: event.cwd,
+        output: '',
+        isRunning: true,
+      },
+      createdAt: Date.now(),
+    }
+
+    set((state) => ({
+      items: new Map(state.items).set(event.callId, commandItem),
+      itemOrder: state.itemOrder.includes(event.callId)
+        ? state.itemOrder
+        : [...state.itemOrder, event.callId],
+    }))
+  },
+
+  handleExecCommandOutputDelta: (event) => {
+    set((state) => {
+      const items = new Map(state.items)
+      const existing = items.get(event.callId) as CommandExecutionItem | undefined
+
+      if (existing && existing.type === 'commandExecution') {
+        items.set(event.callId, {
+          ...existing,
+          content: {
+            ...existing.content,
+            output: (existing.content.output || '') + event.delta,
+          },
+        })
+      }
+
+      return { items }
+    })
+  },
+
+  handleExecCommandEnd: (event) => {
+    set((state) => {
+      const items = new Map(state.items)
+      const existing = items.get(event.callId) as CommandExecutionItem | undefined
+
+      if (existing && existing.type === 'commandExecution') {
+        items.set(event.callId, {
+          ...existing,
+          status: 'completed',
+          content: {
+            ...existing.content,
+            command: event.command,
+            cwd: event.cwd,
+            stdout: event.stdout,
+            stderr: event.stderr,
+            exitCode: event.exitCode,
+            durationMs: event.durationMs,
+            output: event.stdout + (event.stderr ? '\n' + event.stderr : ''),
+            isRunning: false,
+          },
+        })
+      } else {
+        // Create new item if it doesn't exist (shouldn't happen normally)
+        const newItem: CommandExecutionItem = {
+          id: event.callId,
+          type: 'commandExecution',
+          status: 'completed',
+          content: {
+            callId: event.callId,
+            command: event.command,
+            cwd: event.cwd,
+            stdout: event.stdout,
+            stderr: event.stderr,
+            exitCode: event.exitCode,
+            durationMs: event.durationMs,
+            output: event.stdout + (event.stderr ? '\n' + event.stderr : ''),
+            isRunning: false,
+          },
+          createdAt: Date.now(),
+        }
+        items.set(event.callId, newItem)
+        return {
+          items,
+          itemOrder: state.itemOrder.includes(event.callId)
+            ? state.itemOrder
+            : [...state.itemOrder, event.callId],
+        }
+      }
+
+      return { items }
     })
   },
 

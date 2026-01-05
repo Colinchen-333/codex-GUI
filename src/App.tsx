@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Sidebar } from './components/layout/Sidebar'
 import { MainArea } from './components/layout/MainArea'
 import { StatusBar } from './components/layout/StatusBar'
@@ -15,15 +15,10 @@ function App() {
   const fetchProjects = useProjectsStore((state) => state.fetchProjects)
   const needsOnboarding = useNeedsOnboarding()
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const {
-    handleItemStarted,
-    handleItemCompleted,
-    handleAgentMessageDelta,
-    handleCommandApprovalRequested,
-    handleFileChangeApprovalRequested,
-    handleTurnCompleted,
-    handleTurnFailed,
-  } = useThreadStore()
+
+  // Use ref to access latest store functions without causing re-renders
+  const unlistenersRef = useRef<(() => void)[]>([])
+  const listenersSetupRef = useRef(false)
 
   // Check if onboarding is needed
   useEffect(() => {
@@ -35,38 +30,36 @@ function App() {
     fetchProjects()
   }, [fetchProjects])
 
-  // Setup event listeners
+  // Setup event listeners - only once on mount
   useEffect(() => {
-    let unlisteners: (() => void)[] = []
+    // Prevent duplicate setup
+    if (listenersSetupRef.current) return
+    listenersSetupRef.current = true
 
     setupEventListeners({
-      onItemStarted: handleItemStarted,
-      onItemCompleted: handleItemCompleted,
-      onAgentMessageDelta: handleAgentMessageDelta,
-      onCommandApprovalRequested: handleCommandApprovalRequested,
-      onFileChangeApprovalRequested: handleFileChangeApprovalRequested,
-      onTurnCompleted: handleTurnCompleted,
-      onTurnFailed: handleTurnFailed,
+      onItemStarted: (event) => useThreadStore.getState().handleItemStarted(event),
+      onItemCompleted: (event) => useThreadStore.getState().handleItemCompleted(event),
+      onAgentMessageDelta: (event) => useThreadStore.getState().handleAgentMessageDelta(event),
+      onCommandApprovalRequested: (event) => useThreadStore.getState().handleCommandApprovalRequested(event),
+      onFileChangeApprovalRequested: (event) => useThreadStore.getState().handleFileChangeApprovalRequested(event),
+      onTurnCompleted: (event) => useThreadStore.getState().handleTurnCompleted(event),
+      onTurnFailed: (event) => useThreadStore.getState().handleTurnFailed(event),
+      onExecCommandBegin: (event) => useThreadStore.getState().handleExecCommandBegin(event),
+      onExecCommandOutputDelta: (event) => useThreadStore.getState().handleExecCommandOutputDelta(event),
+      onExecCommandEnd: (event) => useThreadStore.getState().handleExecCommandEnd(event),
       onServerDisconnected: () => {
         console.log('Server disconnected')
         // TODO: Show reconnection UI
       },
     }).then((listeners) => {
-      unlisteners = listeners
+      unlistenersRef.current = listeners
     })
 
     return () => {
-      cleanupEventListeners(unlisteners)
+      cleanupEventListeners(unlistenersRef.current)
+      listenersSetupRef.current = false
     }
-  }, [
-    handleItemStarted,
-    handleItemCompleted,
-    handleAgentMessageDelta,
-    handleCommandApprovalRequested,
-    handleFileChangeApprovalRequested,
-    handleTurnCompleted,
-    handleTurnFailed,
-  ])
+  }, []) // Empty deps - only run once
 
   // Show onboarding flow if needed
   if (showOnboarding) {

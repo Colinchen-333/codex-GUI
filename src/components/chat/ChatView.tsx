@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, type RefObject } from 'react'
 import { X, Paperclip, Image as ImageIcon, StopCircle, ArrowUp, Terminal, FileCode } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, type AnyThreadItem } from '../../stores/thread'
@@ -385,16 +385,38 @@ function AgentMessage({ item }: { item: AnyThreadItem }) {
 // Command Execution Card
 function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
   const content = item.content as {
-    command: string
+    callId?: string
+    command: string | string[]
     cwd: string
-    commandActions: string[]
-    needsApproval: boolean
+    commandActions?: string[]
+    needsApproval?: boolean
     approved?: boolean
     output?: string
+    stdout?: string
+    stderr?: string
     exitCode?: number
+    durationMs?: number
+    isRunning?: boolean
   }
   const { respondToApproval, activeThread } = useThreadStore()
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
+  const outputRef = useRef<HTMLPreElement>(null)
+
+  // Format command for display
+  const commandDisplay = Array.isArray(content.command)
+    ? content.command.join(' ')
+    : content.command
+
+  // Get output content (prefer output, fallback to stdout)
+  const outputContent = content.output || content.stdout || ''
+
+  // Auto-scroll output when streaming
+  useEffect(() => {
+    if (content.isRunning && outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight
+    }
+  }, [outputContent, content.isRunning])
 
   const handleApprove = (decision: 'accept' | 'acceptForSession' | 'acceptAlways' | 'decline') => {
     if (activeThread) {
@@ -409,109 +431,168 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
           'w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
           content.needsApproval
             ? 'border-l-4 border-l-yellow-500 border-y-border/50 border-r-border/50'
+            : content.isRunning
+            ? 'border-l-4 border-l-blue-500 border-y-border/50 border-r-border/50'
             : 'border-border/50'
         )}
       >
-        <div className="flex items-center justify-between border-b border-border/40 bg-secondary/30 px-4 py-2.5">
+        {/* Header */}
+        <div
+          className="flex items-center justify-between border-b border-border/40 bg-secondary/30 px-4 py-2.5 cursor-pointer select-none"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
           <div className="flex items-center gap-2">
-            <div className="rounded-md bg-background p-1 text-muted-foreground shadow-sm">
-              <Terminal size={14} />
+            <div className={cn(
+              "rounded-md p-1 shadow-sm",
+              content.isRunning
+                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                : "bg-background text-muted-foreground"
+            )}>
+              <Terminal size={14} className={content.isRunning ? "animate-pulse" : ""} />
             </div>
-            <span className="text-xs font-medium text-foreground">Command Execution</span>
+            <code className="text-xs font-medium text-foreground font-mono truncate max-w-md">
+              {commandDisplay}
+            </code>
           </div>
-          {content.exitCode !== undefined && (
-            <span
-              className={cn(
-                'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                content.exitCode === 0
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-              )}
-            >
-              Exit: {content.exitCode}
+          <div className="flex items-center gap-2">
+            {content.isRunning && (
+              <span className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Running...
+              </span>
+            )}
+            {content.exitCode !== undefined && (
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                  content.exitCode === 0
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                )}
+              >
+                Exit: {content.exitCode}
+              </span>
+            )}
+            {content.durationMs !== undefined && (
+              <span className="text-[10px] text-muted-foreground">
+                {content.durationMs < 1000
+                  ? `${content.durationMs}ms`
+                  : `${(content.durationMs / 1000).toFixed(1)}s`}
+              </span>
+            )}
+            <span className="text-muted-foreground text-xs">
+              {isExpanded ? '▼' : '▶'}
             </span>
-          )}
+          </div>
         </div>
 
-        <div className="p-4">
-          <div className="group relative">
-            <code className="block rounded-lg bg-secondary/50 px-4 py-3 font-mono text-sm text-foreground border border-border/50">
-              {content.command}
-            </code>
-            <div className="mt-2 text-[11px] text-muted-foreground font-mono px-1">
-              cwd: {content.cwd}
+        {/* Content */}
+        {isExpanded && (
+          <div className="p-4">
+            {/* Working directory */}
+            <div className="text-[11px] text-muted-foreground font-mono mb-3">
+              <span className="text-muted-foreground/70">cwd:</span> {content.cwd}
             </div>
-          </div>
 
-          {/* Command Actions Tags */}
-          {content.commandActions && content.commandActions.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {content.commandActions.map((action, i) => (
-                <span
-                  key={i}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/50"
-                >
-                  {action}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {content.output && (
-            <div className="mt-4">
-              <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Output</div>
-              <pre className="max-h-60 overflow-auto rounded-lg bg-black/[0.03] p-3 font-mono text-xs text-muted-foreground scrollbar-thin scrollbar-thumb-border">
-                {content.output}
-              </pre>
-            </div>
-          )}
-
-          {content.needsApproval && (
-            <div className="mt-5 pt-3 border-t border-border/40">
-              {/* Primary Actions */}
-              <div className="flex gap-2">
-                <button
-                  className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-                  onClick={() => handleApprove('accept')}
-                >
-                  Run Once
-                </button>
-                <button
-                  className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors"
-                  onClick={() => handleApprove('acceptForSession')}
-                >
-                  Allow for Session
-                </button>
-                <button
-                  className="rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
-                  onClick={() => handleApprove('decline')}
-                >
-                  Decline
-                </button>
-              </div>
-
-              {/* Advanced Options Toggle */}
-              <button
-                className="mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-              >
-                {showAdvanced ? '▼ Hide options' : '▶ More options'}
-              </button>
-
-              {/* Advanced Actions */}
-              {showAdvanced && (
-                <div className="mt-2 flex gap-2 animate-in slide-in-from-top-2 duration-200">
-                  <button
-                    className="flex-1 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-[11px] font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                    onClick={() => handleApprove('acceptAlways')}
+            {/* Command Actions Tags */}
+            {content.commandActions && content.commandActions.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {content.commandActions.map((action, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/50"
                   >
-                    Always Allow (Persistent)
+                    {action}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Output */}
+            {(outputContent || content.isRunning) && (
+              <div>
+                <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  Output
+                  {content.isRunning && (
+                    <span className="text-[9px] normal-case text-blue-500 animate-pulse">
+                      streaming...
+                    </span>
+                  )}
+                </div>
+                <pre
+                  ref={outputRef}
+                  className={cn(
+                    "max-h-60 overflow-auto rounded-lg p-3 font-mono text-xs scrollbar-thin scrollbar-thumb-border",
+                    content.exitCode !== undefined && content.exitCode !== 0
+                      ? "bg-red-50/50 dark:bg-red-900/10 text-red-800 dark:text-red-300"
+                      : "bg-black/[0.03] dark:bg-white/[0.03] text-muted-foreground"
+                  )}
+                >
+                  {outputContent || (content.isRunning ? '...' : '')}
+                </pre>
+              </div>
+            )}
+
+            {/* Stderr if different from output */}
+            {content.stderr && content.stderr !== content.output && (
+              <div className="mt-3">
+                <div className="mb-1 text-[11px] font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
+                  Stderr
+                </div>
+                <pre className="max-h-40 overflow-auto rounded-lg bg-red-50/50 dark:bg-red-900/10 p-3 font-mono text-xs text-red-800 dark:text-red-300 scrollbar-thin scrollbar-thumb-border">
+                  {content.stderr}
+                </pre>
+              </div>
+            )}
+
+            {/* Approval UI */}
+            {content.needsApproval && (
+              <div className="mt-5 pt-3 border-t border-border/40">
+                {/* Primary Actions */}
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                    onClick={() => handleApprove('accept')}
+                  >
+                    Run Once
+                  </button>
+                  <button
+                    className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                    onClick={() => handleApprove('acceptForSession')}
+                  >
+                    Allow for Session
+                  </button>
+                  <button
+                    className="rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+                    onClick={() => handleApprove('decline')}
+                  >
+                    Decline
                   </button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+
+                {/* Advanced Options Toggle */}
+                <button
+                  className="mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                >
+                  {showAdvanced ? '▼ Hide options' : '▶ More options'}
+                </button>
+
+                {/* Advanced Actions */}
+                {showAdvanced && (
+                  <div className="mt-2 flex gap-2 animate-in slide-in-from-top-2 duration-200">
+                    <button
+                      className="flex-1 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-[11px] font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                      onClick={() => handleApprove('acceptAlways')}
+                    >
+                      Always Allow (Persistent)
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -4,6 +4,8 @@ import { MainArea } from './components/layout/MainArea'
 import { StatusBar } from './components/layout/StatusBar'
 import { OnboardingFlow, useNeedsOnboarding } from './components/onboarding/OnboardingFlow'
 import { ToastProvider } from './components/ui/Toast'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { ConnectionStatus } from './components/ui/ConnectionStatus'
 import { useProjectsStore } from './stores/projects'
 import { useThreadStore } from './stores/thread'
 import { setupEventListeners, cleanupEventListeners } from './lib/events'
@@ -80,18 +82,21 @@ function App() {
   }
 
   return (
-    <ToastProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-background">
-        {/* Left Sidebar */}
-        <Sidebar />
+    <ErrorBoundary>
+      <ToastProvider>
+        <div className="flex h-screen w-screen overflow-hidden bg-background">
+          {/* Left Sidebar */}
+          <Sidebar />
 
-        {/* Main Content Area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <MainArea />
-          <StatusBar />
+          {/* Main Content Area */}
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <MainArea />
+            <StatusBar />
+          </div>
         </div>
-      </div>
-    </ToastProvider>
+        <ConnectionStatus />
+      </ToastProvider>
+    </ErrorBoundary>
   )
 }
 

@@ -252,11 +252,23 @@ function MessageItem({ item }: MessageItemProps) {
 
 // User Message
 function UserMessage({ item }: { item: AnyThreadItem }) {
-  const content = item.content as { text: string }
+  const content = item.content as { text: string; images?: string[] }
   return (
     <div className="flex justify-end">
       <div className="max-w-[80%] rounded-lg bg-primary px-4 py-3 text-primary-foreground">
-        <p className="whitespace-pre-wrap text-sm">{content.text}</p>
+        {content.images && content.images.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {content.images.map((img, i) => (
+              <img
+                key={i}
+                src={img}
+                alt={`Attached ${i + 1}`}
+                className="h-24 w-24 rounded-md object-cover border border-primary-foreground/20"
+              />
+            ))}
+          </div>
+        )}
+        {content.text && <p className="whitespace-pre-wrap text-sm">{content.text}</p>}
       </div>
     </div>
   )

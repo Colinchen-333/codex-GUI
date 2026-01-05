@@ -1,12 +1,14 @@
 //! Thread commands - proxy to app-server
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde_json::Value as JsonValue;
+use std::io::Write;
 use tauri::State;
 
 use crate::app_server::ipc_bridge::*;
 use crate::database::SessionMetadata;
 use crate::state::AppState;
-use crate::Result;
+use crate::{Error, Result};
 
 /// Start a new thread
 #[tauri::command]
@@ -82,8 +84,16 @@ pub async fn send_message(
     let mut input: Vec<UserInput> = vec![UserInput::Text { text }];
 
     // Add images if provided
-    if let Some(image_paths) = images {
-        for path in image_paths {
+    // Images can be either file paths or base64 data URLs
+    if let Some(image_data) = images {
+        for data in image_data {
+            let path = if data.starts_with("data:image/") {
+                // This is a base64 data URL - save to temp file
+                save_base64_image_to_temp(&data)?
+            } else {
+                // This is already a file path
+                data
+            };
             input.push(UserInput::LocalImage { path });
         }
     }
@@ -172,4 +182,54 @@ pub async fn list_threads(
     let response: ThreadListResponse = server.send_request("thread/list", params).await?;
 
     Ok(response)
+}
+
+/// Save a base64 data URL image to a temporary file and return the path
+fn save_base64_image_to_temp(data_url: &str) -> Result<String> {
+    // Parse the data URL: data:image/png;base64,<data>
+    let parts: Vec<&str> = data_url.splitn(2, ',').collect();
+    if parts.len() != 2 {
+        return Err(Error::Other("Invalid data URL format".to_string()));
+    }
+
+    let header = parts[0];
+    let base64_data = parts[1];
+
+    // Determine file extension from MIME type
+    let extension = if header.contains("image/png") {
+        "png"
+    } else if header.contains("image/jpeg") || header.contains("image/jpg") {
+        "jpg"
+    } else if header.contains("image/gif") {
+        "gif"
+    } else if header.contains("image/webp") {
+        "webp"
+    } else {
+        "png" // Default to png
+    };
+
+    // Decode base64
+    let image_bytes = STANDARD
+        .decode(base64_data)
+        .map_err(|e| Error::Other(format!("Failed to decode base64 image: {}", e)))?;
+
+    // Create temp file
+    let temp_dir = std::env::temp_dir();
+    let file_name = format!("codex_image_{}_{}.{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis(),
+        extension
+    );
+    let temp_path = temp_dir.join(file_name);
+
+    // Write to file
+    let mut file = std::fs::File::create(&temp_path)
+        .map_err(|e| Error::Other(format!("Failed to create temp file: {}", e)))?;
+    file.write_all(&image_bytes)
+        .map_err(|e| Error::Other(format!("Failed to write image to temp file: {}", e)))?;
+
+    Ok(temp_path.to_string_lossy().to_string())
 }

@@ -27,6 +27,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dirs = "5"
 which = "7"
+base64 = "0.22"
 
 [features]
 default = ["custom-protocol"]

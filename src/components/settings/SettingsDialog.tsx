@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { serverApi, type AccountInfo } from '../../lib/api'
+import { useTheme } from '../../lib/theme'
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -13,14 +14,12 @@ interface Settings {
   model: string
   sandboxMode: 'off' | 'permissive' | 'strict'
   askForApproval: 'always' | 'auto' | 'never'
-  theme: 'light' | 'dark' | 'system'
 }
 
 const defaultSettings: Settings = {
   model: 'gpt-4o',
   sandboxMode: 'permissive',
   askForApproval: 'always',
-  theme: 'system',
 }
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
@@ -100,9 +99,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
           {/* Content */}
           <div className="flex-1 p-6">
-            {activeTab === 'general' && (
-              <GeneralSettings settings={settings} updateSetting={updateSetting} />
-            )}
+            {activeTab === 'general' && <GeneralSettings />}
             {activeTab === 'model' && (
               <ModelSettings settings={settings} updateSetting={updateSetting} />
             )}
@@ -137,30 +134,38 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 }
 
 // General Settings
-function GeneralSettings({
-  settings,
-  updateSetting,
-}: {
-  settings: Settings
-  updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void
-}) {
+function GeneralSettings() {
+  const { theme, setTheme } = useTheme()
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium">General Settings</h3>
 
       <div>
         <label className="mb-2 block text-sm font-medium">Theme</label>
-        <select
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-          value={settings.theme}
-          onChange={(e) => updateSetting('theme', e.target.value as Settings['theme'])}
-        >
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Choose your preferred color theme
+        <div className="flex gap-2">
+          {[
+            { value: 'light' as const, label: 'Light', icon: '☀️' },
+            { value: 'dark' as const, label: 'Dark', icon: '🌙' },
+            { value: 'system' as const, label: 'System', icon: '💻' },
+          ].map((option) => (
+            <button
+              key={option.value}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-colors',
+                theme === option.value
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/50 hover:bg-accent'
+              )}
+              onClick={() => setTheme(option.value)}
+            >
+              <span>{option.icon}</span>
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Choose your preferred color theme. System will automatically match your OS settings.
         </p>
       </div>
 

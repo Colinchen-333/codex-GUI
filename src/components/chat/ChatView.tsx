@@ -1310,14 +1310,14 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
                   Progress
                 </div>
                 <div className="space-y-1 text-xs text-muted-foreground">
-                  {content.progress.map((line, i) => (
+                  {content.progress.map((line: string, i: number) => (
                     <div key={i}>{line}</div>
                   ))}
                 </div>
               </div>
             )}
             {/* Arguments */}
-            {content.arguments && Object.keys(content.arguments as object).length > 0 && (
+            {content.arguments !== undefined && content.arguments !== null && Object.keys(content.arguments as object).length > 0 && (
               <div>
                 <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                   Arguments
@@ -1329,14 +1329,14 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
             )}
 
             {/* Result */}
-            {content.result && (
+            {content.result !== undefined && content.result !== null && (
               <div>
                 <div className="mb-1 text-[11px] font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
                   Result
                 </div>
                 <pre className="max-h-60 overflow-auto rounded-lg bg-green-50/50 dark:bg-green-900/10 p-3 font-mono text-xs text-foreground">
                   {typeof content.result === 'string'
-                    ? content.result
+                    ? (content.result as string)
                     : JSON.stringify(content.result, null, 2)}
                 </pre>
               </div>

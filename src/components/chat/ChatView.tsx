@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback, type RefObject } from 'react'
-import { X, Paperclip, Image as ImageIcon, StopCircle, ArrowUp, Terminal, FileCode } from 'lucide-react'
+import { X, Paperclip, Image as ImageIcon, StopCircle, ArrowUp, Terminal, FileCode, Brain, Wrench, AlertCircle, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, type AnyThreadItem } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
@@ -8,6 +8,7 @@ import { Markdown } from '../ui/Markdown'
 import { DiffView, parseDiff, type FileDiff } from '../ui/DiffView'
 import { SlashCommandPopup } from './SlashCommandPopup'
 import { type SlashCommand, isCompleteCommand } from '../../lib/slashCommands'
+import { executeCommand, parseCommand } from '../../lib/commandExecutor'
 
 // Maximum height for the textarea (in pixels)
 const MAX_TEXTAREA_HEIGHT = 200
@@ -67,6 +68,8 @@ export function ChatView() {
     adjustTextareaHeight()
   }, [inputValue, adjustTextareaHeight])
 
+  const { clearThread } = useThreadStore()
+
   const handleSend = async () => {
     const text = inputValue.trim()
     if ((!text && attachedImages.length === 0) || turnStatus === 'running') return
@@ -76,6 +79,33 @@ export function ChatView() {
     // Reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = 'auto'
+    }
+
+    // Check if it's a slash command
+    if (text.startsWith('/')) {
+      try {
+        const result = await executeCommand(text, {
+          clearThread,
+          sendMessage: async (msg, images) => {
+            await sendMessage(msg, images)
+          },
+          showToast: (message, type) => {
+            console.log(`[${type}] ${message}`)
+          },
+        })
+
+        if (result.handled) {
+          // If command requires UI, we could open a dialog here
+          // For now, settings commands will just show a message
+          if (result.requiresUI) {
+            console.log(`Settings command requires UI: ${result.requiresUI}`)
+            // TODO: Open settings dialog for the specific setting
+          }
+          return
+        }
+      } catch (error) {
+        console.error('Failed to execute command:', error)
+      }
     }
 
     try {
@@ -328,7 +358,14 @@ function MessageItem({ item }: MessageItemProps) {
       return <CommandExecutionCard item={item} />
     case 'fileChange':
       return <FileChangeCard item={item} />
+    case 'reasoning':
+      return <ReasoningCard item={item} />
+    case 'mcpTool':
+      return <McpToolCard item={item} />
+    case 'error':
+      return <ErrorCard item={item} />
     default:
+      console.warn(`Unknown item type: ${item.type}`)
       return null
   }
 }
@@ -783,6 +820,240 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// Reasoning Card - Shows AI's thinking process
+function ReasoningCard({ item }: { item: AnyThreadItem }) {
+  const content = item.content as {
+    summary: string[]
+    fullContent?: string[]
+    isStreaming: boolean
+  }
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
+      <div
+        className={cn(
+          'w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
+          content.isStreaming
+            ? 'border-l-4 border-l-purple-500 border-y-border/50 border-r-border/50'
+            : 'border-border/50'
+        )}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between border-b border-border/40 bg-purple-50/50 dark:bg-purple-900/10 px-4 py-2.5 cursor-pointer select-none"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "rounded-md p-1 shadow-sm",
+              content.isStreaming
+                ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+                : "bg-background text-muted-foreground"
+            )}>
+              <Brain size={14} className={content.isStreaming ? "animate-pulse" : ""} />
+            </div>
+            <span className="text-xs font-medium text-foreground">Reasoning</span>
+            {content.isStreaming && (
+              <span className="flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
+                Thinking...
+              </span>
+            )}
+          </div>
+          <span className="text-muted-foreground text-xs">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        </div>
+
+        {/* Content */}
+        {isExpanded && content.summary && content.summary.length > 0 && (
+          <div className="p-4 space-y-2">
+            {content.summary.map((text, i) => (
+              <div key={i} className="text-sm text-muted-foreground leading-relaxed">
+                {text}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Collapsed preview */}
+        {!isExpanded && content.summary && content.summary.length > 0 && (
+          <div className="px-4 py-2 text-xs text-muted-foreground truncate">
+            {content.summary[0]?.slice(0, 100)}...
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// MCP Tool Card - Shows external tool calls
+function McpToolCard({ item }: { item: AnyThreadItem }) {
+  const content = item.content as {
+    callId: string
+    server: string
+    tool: string
+    arguments: unknown
+    result?: unknown
+    error?: string
+    durationMs?: number
+    isRunning: boolean
+  }
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
+      <div
+        className={cn(
+          'w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
+          content.isRunning
+            ? 'border-l-4 border-l-cyan-500 border-y-border/50 border-r-border/50'
+            : content.error
+            ? 'border-l-4 border-l-red-500 border-y-border/50 border-r-border/50'
+            : 'border-border/50'
+        )}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between border-b border-border/40 bg-cyan-50/50 dark:bg-cyan-900/10 px-4 py-2.5 cursor-pointer select-none"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "rounded-md p-1 shadow-sm",
+              content.isRunning
+                ? "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400"
+                : "bg-background text-muted-foreground"
+            )}>
+              <Wrench size={14} className={content.isRunning ? "animate-spin" : ""} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground">{content.server}</span>
+              <span className="text-muted-foreground/50">/</span>
+              <code className="text-xs font-medium text-foreground font-mono">{content.tool}</code>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {content.isRunning && (
+              <span className="flex items-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                Running...
+              </span>
+            )}
+            {content.error && (
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                Failed
+              </span>
+            )}
+            {!content.isRunning && !content.error && content.durationMs !== undefined && (
+              <span className="text-[10px] text-muted-foreground">
+                {content.durationMs < 1000
+                  ? `${content.durationMs}ms`
+                  : `${(content.durationMs / 1000).toFixed(1)}s`}
+              </span>
+            )}
+            <span className="text-muted-foreground text-xs">
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </span>
+          </div>
+        </div>
+
+        {/* Content */}
+        {isExpanded && (
+          <div className="p-4 space-y-3">
+            {/* Arguments */}
+            {content.arguments && Object.keys(content.arguments as object).length > 0 && (
+              <div>
+                <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Arguments
+                </div>
+                <pre className="max-h-40 overflow-auto rounded-lg bg-secondary/50 p-3 font-mono text-xs text-muted-foreground">
+                  {JSON.stringify(content.arguments, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* Result */}
+            {content.result && (
+              <div>
+                <div className="mb-1 text-[11px] font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
+                  Result
+                </div>
+                <pre className="max-h-60 overflow-auto rounded-lg bg-green-50/50 dark:bg-green-900/10 p-3 font-mono text-xs text-foreground">
+                  {typeof content.result === 'string'
+                    ? content.result
+                    : JSON.stringify(content.result, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* Error */}
+            {content.error && (
+              <div>
+                <div className="mb-1 text-[11px] font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
+                  Error
+                </div>
+                <pre className="max-h-40 overflow-auto rounded-lg bg-red-50/50 dark:bg-red-900/10 p-3 font-mono text-xs text-red-800 dark:text-red-300">
+                  {content.error}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Error Card - Shows stream errors
+function ErrorCard({ item }: { item: AnyThreadItem }) {
+  const content = item.content as {
+    message: string
+    errorType?: string
+    httpStatusCode?: number
+    willRetry?: boolean
+  }
+
+  return (
+    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-l-4 border-l-red-500 border-y-border/50 border-r-border/50 bg-card shadow-sm">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border/40 bg-red-50/50 dark:bg-red-900/10 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="rounded-md bg-red-100 dark:bg-red-900/30 p-1 text-red-600 dark:text-red-400 shadow-sm">
+              <AlertCircle size={14} />
+            </div>
+            <span className="text-xs font-medium text-foreground">Error</span>
+            {content.errorType && (
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                {content.errorType}
+              </span>
+            )}
+            {content.httpStatusCode && (
+              <span className="text-[10px] text-muted-foreground">
+                HTTP {content.httpStatusCode}
+              </span>
+            )}
+          </div>
+          {content.willRetry && (
+            <span className="text-[10px] text-amber-600 dark:text-amber-400">
+              Will retry...
+            </span>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          <p className="text-sm text-red-800 dark:text-red-300 leading-relaxed">
+            {content.message}
+          </p>
+        </div>
       </div>
     </div>
   )

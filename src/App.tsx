@@ -37,16 +37,31 @@ function App() {
     listenersSetupRef.current = true
 
     setupEventListeners({
+      // Item lifecycle
       onItemStarted: (event) => useThreadStore.getState().handleItemStarted(event),
       onItemCompleted: (event) => useThreadStore.getState().handleItemCompleted(event),
+      // Agent messages
       onAgentMessageDelta: (event) => useThreadStore.getState().handleAgentMessageDelta(event),
+      // Approvals
       onCommandApprovalRequested: (event) => useThreadStore.getState().handleCommandApprovalRequested(event),
       onFileChangeApprovalRequested: (event) => useThreadStore.getState().handleFileChangeApprovalRequested(event),
+      // Turn lifecycle
       onTurnCompleted: (event) => useThreadStore.getState().handleTurnCompleted(event),
       onTurnFailed: (event) => useThreadStore.getState().handleTurnFailed(event),
+      // Command execution
       onExecCommandBegin: (event) => useThreadStore.getState().handleExecCommandBegin(event),
       onExecCommandOutputDelta: (event) => useThreadStore.getState().handleExecCommandOutputDelta(event),
       onExecCommandEnd: (event) => useThreadStore.getState().handleExecCommandEnd(event),
+      // Reasoning
+      onReasoningDelta: (event) => useThreadStore.getState().handleReasoningDelta(event),
+      onReasoningCompleted: (event) => useThreadStore.getState().handleReasoningCompleted(event),
+      // MCP Tools
+      onMcpToolCallBegin: (event) => useThreadStore.getState().handleMcpToolCallBegin(event),
+      onMcpToolCallEnd: (event) => useThreadStore.getState().handleMcpToolCallEnd(event),
+      // Token usage
+      onTokenUsage: (event) => useThreadStore.getState().handleTokenUsage(event),
+      // Errors
+      onStreamError: (event) => useThreadStore.getState().handleStreamError(event),
       onServerDisconnected: () => {
         console.log('Server disconnected')
         // TODO: Show reconnection UI

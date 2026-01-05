@@ -12,6 +12,12 @@ import type {
   ExecCommandBeginEvent,
   ExecCommandOutputDeltaEvent,
   ExecCommandEndEvent,
+  ReasoningDeltaEvent,
+  ReasoningCompletedEvent,
+  McpToolCallBeginEvent,
+  McpToolCallEndEvent,
+  TokenUsageEvent,
+  StreamErrorEvent,
 } from '../lib/events'
 
 // ==================== Thread Item Types ====================
@@ -22,8 +28,8 @@ export type ThreadItemType =
   | 'commandExecution'
   | 'fileChange'
   | 'reasoning'
+  | 'mcpTool'
   | 'webSearch'
-  | 'todoList'
   | 'error'
 
 export interface ThreadItem {
@@ -83,11 +89,61 @@ export interface FileChangeItem extends ThreadItem {
   }
 }
 
+export interface ReasoningItem extends ThreadItem {
+  type: 'reasoning'
+  content: {
+    summary: string[]
+    fullContent?: string[]
+    isStreaming: boolean
+  }
+}
+
+export interface McpToolItem extends ThreadItem {
+  type: 'mcpTool'
+  content: {
+    callId: string
+    server: string
+    tool: string
+    arguments: unknown
+    result?: unknown
+    error?: string
+    durationMs?: number
+    isRunning: boolean
+  }
+}
+
+export interface WebSearchItem extends ThreadItem {
+  type: 'webSearch'
+  content: {
+    query: string
+    results?: Array<{
+      title: string
+      url: string
+      snippet: string
+    }>
+    isSearching: boolean
+  }
+}
+
+export interface ErrorItem extends ThreadItem {
+  type: 'error'
+  content: {
+    message: string
+    errorType?: string
+    httpStatusCode?: number
+    willRetry?: boolean
+  }
+}
+
 export type AnyThreadItem =
   | UserMessageItem
   | AgentMessageItem
   | CommandExecutionItem
   | FileChangeItem
+  | ReasoningItem
+  | McpToolItem
+  | WebSearchItem
+  | ErrorItem
   | ThreadItem
 
 // ==================== Turn Status ====================
@@ -105,6 +161,14 @@ export interface PendingApproval {
 
 // ==================== Store State ====================
 
+// Token usage statistics
+export interface TokenUsage {
+  inputTokens: number
+  cachedInputTokens: number
+  outputTokens: number
+  totalTokens: number
+}
+
 interface ThreadState {
   activeThread: ThreadInfo | null
   items: Map<string, AnyThreadItem>
@@ -113,6 +177,7 @@ interface ThreadState {
   currentTurnId: string | null
   pendingApprovals: PendingApproval[]
   snapshots: Snapshot[]
+  tokenUsage: TokenUsage
   isLoading: boolean
   error: string | null
 
@@ -145,6 +210,13 @@ interface ThreadState {
   handleExecCommandBegin: (event: ExecCommandBeginEvent) => void
   handleExecCommandOutputDelta: (event: ExecCommandOutputDeltaEvent) => void
   handleExecCommandEnd: (event: ExecCommandEndEvent) => void
+  // New event handlers
+  handleReasoningDelta: (event: ReasoningDeltaEvent) => void
+  handleReasoningCompleted: (event: ReasoningCompletedEvent) => void
+  handleMcpToolCallBegin: (event: McpToolCallBeginEvent) => void
+  handleMcpToolCallEnd: (event: McpToolCallEndEvent) => void
+  handleTokenUsage: (event: TokenUsageEvent) => void
+  handleStreamError: (event: StreamErrorEvent) => void
 
   // Snapshot actions
   createSnapshot: (projectPath: string) => Promise<Snapshot>
@@ -166,12 +238,21 @@ function mapItemType(type: string): ThreadItemType {
     'file_change': 'fileChange',
     'fileChange': 'fileChange',
     'reasoning': 'reasoning',
+    'mcp_tool': 'mcpTool',
+    'mcpTool': 'mcpTool',
     'web_search': 'webSearch',
     'webSearch': 'webSearch',
-    'todo_list': 'todoList',
-    'todoList': 'todoList',
+    'error': 'error',
   }
   return typeMap[type] || 'agentMessage'
+}
+
+// Default token usage
+const defaultTokenUsage: TokenUsage = {
+  inputTokens: 0,
+  cachedInputTokens: 0,
+  outputTokens: 0,
+  totalTokens: 0,
 }
 
 export const useThreadStore = create<ThreadState>((set, get) => ({
@@ -182,6 +263,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   currentTurnId: null,
   pendingApprovals: [],
   snapshots: [],
+  tokenUsage: defaultTokenUsage,
   isLoading: false,
   error: null,
 
@@ -631,6 +713,207 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
 
       return { items }
     })
+  },
+
+  // Reasoning Handlers
+  handleReasoningDelta: (event) => {
+    set((state) => {
+      const items = new Map(state.items)
+      const existing = items.get(event.itemId) as ReasoningItem | undefined
+
+      if (existing && existing.type === 'reasoning') {
+        const summary = [...existing.content.summary]
+        const index = event.summaryIndex ?? 0
+        summary[index] = (summary[index] || '') + event.delta
+
+        items.set(event.itemId, {
+          ...existing,
+          content: {
+            ...existing.content,
+            summary,
+            isStreaming: true,
+          },
+        })
+      } else {
+        // Create new reasoning item
+        const summary: string[] = []
+        const index = event.summaryIndex ?? 0
+        summary[index] = event.delta
+
+        const newItem: ReasoningItem = {
+          id: event.itemId,
+          type: 'reasoning',
+          status: 'inProgress',
+          content: {
+            summary,
+            isStreaming: true,
+          },
+          createdAt: Date.now(),
+        }
+        items.set(event.itemId, newItem)
+        return {
+          items,
+          itemOrder: state.itemOrder.includes(event.itemId)
+            ? state.itemOrder
+            : [...state.itemOrder, event.itemId],
+        }
+      }
+
+      return { items }
+    })
+  },
+
+  handleReasoningCompleted: (event) => {
+    set((state) => {
+      const items = new Map(state.items)
+      const existing = items.get(event.itemId) as ReasoningItem | undefined
+
+      if (existing && existing.type === 'reasoning') {
+        items.set(event.itemId, {
+          ...existing,
+          status: 'completed',
+          content: {
+            summary: event.summary,
+            fullContent: event.content,
+            isStreaming: false,
+          },
+        })
+      } else {
+        // Create completed reasoning item
+        const newItem: ReasoningItem = {
+          id: event.itemId,
+          type: 'reasoning',
+          status: 'completed',
+          content: {
+            summary: event.summary,
+            fullContent: event.content,
+            isStreaming: false,
+          },
+          createdAt: Date.now(),
+        }
+        items.set(event.itemId, newItem)
+        return {
+          items,
+          itemOrder: state.itemOrder.includes(event.itemId)
+            ? state.itemOrder
+            : [...state.itemOrder, event.itemId],
+        }
+      }
+
+      return { items }
+    })
+  },
+
+  // MCP Tool Handlers
+  handleMcpToolCallBegin: (event) => {
+    const mcpItem: McpToolItem = {
+      id: event.callId,
+      type: 'mcpTool',
+      status: 'inProgress',
+      content: {
+        callId: event.callId,
+        server: event.server,
+        tool: event.tool,
+        arguments: event.arguments,
+        isRunning: true,
+      },
+      createdAt: Date.now(),
+    }
+
+    set((state) => ({
+      items: new Map(state.items).set(event.callId, mcpItem),
+      itemOrder: state.itemOrder.includes(event.callId)
+        ? state.itemOrder
+        : [...state.itemOrder, event.callId],
+    }))
+  },
+
+  handleMcpToolCallEnd: (event) => {
+    set((state) => {
+      const items = new Map(state.items)
+      const existing = items.get(event.callId) as McpToolItem | undefined
+
+      if (existing && existing.type === 'mcpTool') {
+        items.set(event.callId, {
+          ...existing,
+          status: event.error ? 'failed' : 'completed',
+          content: {
+            ...existing.content,
+            result: event.result,
+            error: event.error,
+            durationMs: event.durationMs,
+            isRunning: false,
+          },
+        })
+      } else {
+        // Create completed MCP item
+        const newItem: McpToolItem = {
+          id: event.callId,
+          type: 'mcpTool',
+          status: event.error ? 'failed' : 'completed',
+          content: {
+            callId: event.callId,
+            server: event.server,
+            tool: event.tool,
+            arguments: {},
+            result: event.result,
+            error: event.error,
+            durationMs: event.durationMs,
+            isRunning: false,
+          },
+          createdAt: Date.now(),
+        }
+        items.set(event.callId, newItem)
+        return {
+          items,
+          itemOrder: state.itemOrder.includes(event.callId)
+            ? state.itemOrder
+            : [...state.itemOrder, event.callId],
+        }
+      }
+
+      return { items }
+    })
+  },
+
+  // Token Usage Handler
+  handleTokenUsage: (event) => {
+    set((state) => {
+      const newInput = state.tokenUsage.inputTokens + event.inputTokens
+      const newCached = state.tokenUsage.cachedInputTokens + event.cachedInputTokens
+      const newOutput = state.tokenUsage.outputTokens + event.outputTokens
+
+      return {
+        tokenUsage: {
+          inputTokens: newInput,
+          cachedInputTokens: newCached,
+          outputTokens: newOutput,
+          totalTokens: newInput + newOutput,
+        },
+      }
+    })
+  },
+
+  // Stream Error Handler
+  handleStreamError: (event) => {
+    const errorItem: ErrorItem = {
+      id: `error-${Date.now()}`,
+      type: 'error',
+      status: 'completed',
+      content: {
+        message: event.message,
+        errorType: event.errorInfo?.type,
+        httpStatusCode: event.errorInfo?.httpStatusCode,
+        willRetry: event.willRetry,
+      },
+      createdAt: Date.now(),
+    }
+
+    set((state) => ({
+      items: new Map(state.items).set(errorItem.id, errorItem),
+      itemOrder: [...state.itemOrder, errorItem.id],
+      error: event.message,
+    }))
   },
 
   // Snapshot Actions

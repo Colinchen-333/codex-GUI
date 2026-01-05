@@ -138,6 +138,28 @@ interface ThreadState {
   fetchSnapshots: () => Promise<void>
 }
 
+// Helper to map item types from server to our types
+function mapItemType(type: string): ThreadItemType {
+  const typeMap: Record<string, ThreadItemType> = {
+    'user_message': 'userMessage',
+    'userMessage': 'userMessage',
+    'agent_message': 'agentMessage',
+    'agentMessage': 'agentMessage',
+    'message': 'agentMessage',
+    'command_execution': 'commandExecution',
+    'commandExecution': 'commandExecution',
+    'tool_call': 'commandExecution',
+    'file_change': 'fileChange',
+    'fileChange': 'fileChange',
+    'reasoning': 'reasoning',
+    'web_search': 'webSearch',
+    'webSearch': 'webSearch',
+    'todo_list': 'todoList',
+    'todoList': 'todoList',
+  }
+  return typeMap[type] || 'agentMessage'
+}
+
 export const useThreadStore = create<ThreadState>((set, get) => ({
   activeThread: null,
   items: new Map(),
@@ -177,11 +199,31 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const response = await threadApi.resume(threadId)
-      // TODO: Convert items from response to our format
+
+      // Convert items from response to our format
+      const items = new Map<string, AnyThreadItem>()
+      const itemOrder: string[] = []
+
+      for (const rawItem of response.items) {
+        const item = rawItem as { id: string; type: string; content?: unknown }
+        if (!item.id || !item.type) continue
+
+        const threadItem: AnyThreadItem = {
+          id: item.id,
+          type: mapItemType(item.type),
+          status: 'completed',
+          content: item.content || {},
+          createdAt: Date.now(),
+        }
+
+        items.set(item.id, threadItem)
+        itemOrder.push(item.id)
+      }
+
       set({
         activeThread: response.thread,
-        items: new Map(),
-        itemOrder: [],
+        items,
+        itemOrder,
         turnStatus: 'idle',
         pendingApprovals: [],
         isLoading: false,
@@ -236,7 +278,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   respondToApproval: async (itemId, decision) => {
-    const { activeThread } = get()
+    const { activeThread, snapshots } = get()
     if (!activeThread) return
 
     try {
@@ -248,12 +290,25 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
         const item = items.get(itemId)
         if (item && (item.type === 'commandExecution' || item.type === 'fileChange')) {
           const content = item.content as Record<string, unknown>
+          const isApproved = decision !== 'decline'
+
+          // For file changes, also set applied and snapshotId
+          const extraFields =
+            item.type === 'fileChange' && isApproved
+              ? {
+                  applied: true,
+                  // Use the most recent snapshot if available
+                  snapshotId: snapshots[0]?.id,
+                }
+              : {}
+
           const updatedItem = {
             ...item,
             content: {
               ...content,
               needsApproval: false,
-              approved: decision !== 'decline',
+              approved: isApproved,
+              ...extraFields,
             },
           }
           items.set(itemId, updatedItem as AnyThreadItem)
@@ -304,11 +359,37 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       const items = new Map(state.items)
       const existing = items.get(event.itemId)
       if (existing) {
+        // Merge content to preserve approval state and other existing fields
+        const existingContent = existing.content as Record<string, unknown>
+        const newContent = event.content as Record<string, unknown>
         items.set(event.itemId, {
           ...existing,
           status: 'completed',
-          content: event.content,
+          content: {
+            ...existingContent,
+            ...newContent,
+            // Preserve these fields from existing content if they exist
+            needsApproval: existingContent.needsApproval ?? newContent.needsApproval,
+            approved: existingContent.approved ?? newContent.approved,
+            applied: existingContent.applied ?? newContent.applied,
+          },
         } as AnyThreadItem)
+      } else {
+        // Create new item if it doesn't exist
+        const item: AnyThreadItem = {
+          id: event.itemId,
+          type: mapItemType(event.type),
+          status: 'completed',
+          content: event.content,
+          createdAt: Date.now(),
+        }
+        items.set(event.itemId, item)
+        return {
+          items,
+          itemOrder: state.itemOrder.includes(event.itemId)
+            ? state.itemOrder
+            : [...state.itemOrder, event.itemId],
+        }
       }
       return { items }
     })

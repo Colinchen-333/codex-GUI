@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, type AnyThreadItem } from '../../stores/thread'
+import { useProjectsStore } from '../../stores/projects'
 import { useAppStore } from '../../stores/app'
 import { Markdown } from '../ui/Markdown'
 import { DiffView, parseDiff, type FileDiff } from '../ui/DiffView'
@@ -371,13 +372,51 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
     needsApproval: boolean
     approved?: boolean
     applied?: boolean
+    snapshotId?: string
   }
-  const { respondToApproval, activeThread } = useThreadStore()
+  const { respondToApproval, activeThread, createSnapshot, revertToSnapshot } = useThreadStore()
+  const projects = useProjectsStore((state) => state.projects)
+  const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
   const [expandedFiles, setExpandedFiles] = useState<Set<number>>(new Set())
+  const [isApplying, setIsApplying] = useState(false)
+  const [isReverting, setIsReverting] = useState(false)
 
-  const handleApprove = (decision: 'accept' | 'decline') => {
+  const project = projects.find((p) => p.id === selectedProjectId)
+
+  const handleApplyChanges = async () => {
+    if (!activeThread || !project) return
+
+    setIsApplying(true)
+    try {
+      // Create snapshot before applying changes
+      const snapshot = await createSnapshot(project.path)
+
+      // Update item with snapshot ID (this happens in the store)
+      // Then approve the changes
+      respondToApproval(item.id, 'accept')
+    } catch (error) {
+      console.error('Failed to apply changes:', error)
+    } finally {
+      setIsApplying(false)
+    }
+  }
+
+  const handleRevert = async () => {
+    if (!content.snapshotId || !project) return
+
+    setIsReverting(true)
+    try {
+      await revertToSnapshot(content.snapshotId, project.path)
+    } catch (error) {
+      console.error('Failed to revert changes:', error)
+    } finally {
+      setIsReverting(false)
+    }
+  }
+
+  const handleDecline = () => {
     if (activeThread) {
-      respondToApproval(item.id, decision)
+      respondToApproval(item.id, 'decline')
     }
   }
 
@@ -434,14 +473,15 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
       {content.needsApproval && (
         <div className="mt-4 flex gap-2">
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            onClick={() => handleApprove('accept')}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            onClick={handleApplyChanges}
+            disabled={isApplying}
           >
-            Apply Changes
+            {isApplying ? 'Applying...' : 'Apply Changes'}
           </button>
           <button
             className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
-            onClick={() => handleApprove('decline')}
+            onClick={handleDecline}
           >
             Decline
           </button>
@@ -449,9 +489,20 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
       )}
 
       {content.applied && (
-        <div className="mt-3 flex items-center gap-2 text-sm text-green-500">
-          <span>✓</span>
-          <span>Changes applied successfully</span>
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-green-500">
+            <span>✓</span>
+            <span>Changes applied successfully</span>
+          </div>
+          {content.snapshotId && (
+            <button
+              className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50"
+              onClick={handleRevert}
+              disabled={isReverting}
+            >
+              {isReverting ? 'Reverting...' : 'Revert'}
+            </button>
+          )}
         </div>
       )}
     </div>

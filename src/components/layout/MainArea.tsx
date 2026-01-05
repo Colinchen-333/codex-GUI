@@ -1,10 +1,36 @@
+import { useEffect } from 'react'
 import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore } from '../../stores/thread'
+import { useSessionsStore } from '../../stores/sessions'
+import { useSettingsStore } from '../../stores/settings'
 import { ChatView } from '../chat/ChatView'
 
 export function MainArea() {
   const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
+  const projects = useProjectsStore((state) => state.projects)
+  const fetchGitInfo = useProjectsStore((state) => state.fetchGitInfo)
   const activeThread = useThreadStore((state) => state.activeThread)
+  const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
+  const resumeThread = useThreadStore((state) => state.resumeThread)
+
+  // Load Git info when project is selected
+  useEffect(() => {
+    if (selectedProjectId) {
+      const project = projects.find((p) => p.id === selectedProjectId)
+      if (project) {
+        fetchGitInfo(selectedProjectId, project.path)
+      }
+    }
+  }, [selectedProjectId, projects, fetchGitInfo])
+
+  // Resume thread when session is selected
+  useEffect(() => {
+    if (selectedSessionId && !activeThread) {
+      resumeThread(selectedSessionId).catch((error) => {
+        console.error('Failed to resume session:', error)
+      })
+    }
+  }, [selectedSessionId, activeThread, resumeThread])
 
   // No project selected - show welcome
   if (!selectedProjectId) {
@@ -54,6 +80,7 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
   const gitInfo = useProjectsStore((state) => state.gitInfo)
   const startThread = useThreadStore((state) => state.startThread)
   const isLoading = useThreadStore((state) => state.isLoading)
+  const settings = useSettingsStore((state) => state.settings)
 
   const project = projects.find((p) => p.id === projectId)
   const info = gitInfo[projectId]
@@ -62,7 +89,13 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
 
   const handleStartSession = async () => {
     try {
-      await startThread(projectId, project.path)
+      await startThread(
+        projectId,
+        project.path,
+        settings.model,
+        settings.sandboxMode,
+        settings.askForApproval
+      )
     } catch (error) {
       console.error('Failed to start session:', error)
     }

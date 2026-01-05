@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { serverApi, type AccountInfo } from '../../lib/api'
 import { useTheme } from '../../lib/theme'
+import { useSettingsStore, type Settings } from '../../stores/settings'
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -10,50 +11,21 @@ interface SettingsDialogProps {
 
 type SettingsTab = 'general' | 'model' | 'safety' | 'account'
 
-interface Settings {
-  model: string
-  sandboxMode: 'off' | 'permissive' | 'strict'
-  askForApproval: 'always' | 'auto' | 'never'
-}
-
-const defaultSettings: Settings = {
-  model: 'gpt-4o',
-  sandboxMode: 'permissive',
-  askForApproval: 'always',
-}
-
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
-  const [settings, setSettings] = useState<Settings>(defaultSettings)
+  const { settings, updateSetting } = useSettingsStore()
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    // Load settings from localStorage
-    const saved = localStorage.getItem('codex-desktop-settings')
-    if (saved) {
-      try {
-        setSettings({ ...defaultSettings, ...JSON.parse(saved) })
-      } catch {
-        // Ignore parse errors
-      }
+    if (isOpen) {
+      // Fetch account info when dialog opens
+      serverApi.getAccountInfo().then(setAccountInfo).catch(console.error)
     }
-
-    // Fetch account info
-    serverApi.getAccountInfo().then(setAccountInfo).catch(console.error)
   }, [isOpen])
 
   const handleSave = () => {
-    setIsSaving(true)
-    localStorage.setItem('codex-desktop-settings', JSON.stringify(settings))
-    setTimeout(() => {
-      setIsSaving(false)
-      onClose()
-    }, 300)
-  }
-
-  const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
-    setSettings((prev) => ({ ...prev, [key]: value }))
+    // Settings are already saved via zustand persist
+    onClose()
   }
 
   if (!isOpen) return null
@@ -121,11 +93,10 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             Cancel
           </button>
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             onClick={handleSave}
-            disabled={isSaving}
           >
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            Done
           </button>
         </div>
       </div>

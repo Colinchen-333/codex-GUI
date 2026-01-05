@@ -4,6 +4,8 @@ import { cn } from '../../lib/utils'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { useAppStore } from '../../stores/app'
+import { useThreadStore } from '../../stores/thread'
+import { useSettingsStore } from '../../stores/settings'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { RenameDialog } from '../ui/RenameDialog'
 import { useToast } from '../ui/Toast'
@@ -30,6 +32,8 @@ export function Sidebar() {
     useProjectsStore()
   const { sessions, selectedSessionId, selectSession, fetchSessions, updateSession, deleteSession, isLoading: sessionsLoading } =
     useSessionsStore()
+  const { startThread, clearThread } = useThreadStore()
+  const settings = useSettingsStore((state) => state.settings)
   const { showToast } = useToast()
 
   // Fetch sessions when project is selected
@@ -89,6 +93,35 @@ export function Sidebar() {
     } catch (error) {
       console.error('Failed to remove project:', error)
       showToast('Failed to remove project', 'error')
+    }
+  }
+
+  const handleNewSession = async () => {
+    if (!selectedProjectId) {
+      showToast('Please select a project first', 'error')
+      return
+    }
+
+    const project = projects.find((p) => p.id === selectedProjectId)
+    if (!project) return
+
+    try {
+      // Clear any existing thread first
+      clearThread()
+      // Deselect current session
+      selectSession(null)
+      // Start a new thread
+      await startThread(
+        selectedProjectId,
+        project.path,
+        settings.model,
+        settings.sandboxMode,
+        settings.askForApproval
+      )
+      showToast('New session started', 'success')
+    } catch (error) {
+      console.error('Failed to start new session:', error)
+      showToast('Failed to start new session', 'error')
     }
   }
 
@@ -159,8 +192,9 @@ export function Sidebar() {
       {/* Add Button */}
       <div className="border-t border-border p-2">
         <button
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          onClick={activeTab === 'projects' ? handleAddProject : () => console.log('New session')}
+          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          onClick={activeTab === 'projects' ? handleAddProject : handleNewSession}
+          disabled={activeTab === 'sessions' && !selectedProjectId}
         >
           {activeTab === 'projects' ? '+ Add Project' : '+ New Session'}
         </button>

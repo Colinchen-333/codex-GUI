@@ -46,18 +46,24 @@ function App() {
       onCommandApprovalRequested: (event) => useThreadStore.getState().handleCommandApprovalRequested(event),
       onFileChangeApprovalRequested: (event) => useThreadStore.getState().handleFileChangeApprovalRequested(event),
       // Turn lifecycle
+      onTurnStarted: (event) => useThreadStore.getState().handleTurnStarted(event),
       onTurnCompleted: (event) => useThreadStore.getState().handleTurnCompleted(event),
-      onTurnFailed: (event) => useThreadStore.getState().handleTurnFailed(event),
-      // Command execution
-      onExecCommandBegin: (event) => useThreadStore.getState().handleExecCommandBegin(event),
-      onExecCommandOutputDelta: (event) => useThreadStore.getState().handleExecCommandOutputDelta(event),
-      onExecCommandEnd: (event) => useThreadStore.getState().handleExecCommandEnd(event),
+      onTurnDiffUpdated: (event) => useThreadStore.getState().handleTurnDiffUpdated(event),
+      onTurnPlanUpdated: (event) => useThreadStore.getState().handleTurnPlanUpdated(event),
+      // Command execution output
+      onCommandExecutionOutputDelta: (event) =>
+        useThreadStore.getState().handleCommandExecutionOutputDelta(event),
+      onFileChangeOutputDelta: (event) =>
+        useThreadStore.getState().handleFileChangeOutputDelta(event),
       // Reasoning
-      onReasoningDelta: (event) => useThreadStore.getState().handleReasoningDelta(event),
-      onReasoningCompleted: (event) => useThreadStore.getState().handleReasoningCompleted(event),
+      onReasoningSummaryTextDelta: (event) =>
+        useThreadStore.getState().handleReasoningSummaryTextDelta(event),
+      onReasoningSummaryPartAdded: (event) =>
+        useThreadStore.getState().handleReasoningSummaryPartAdded(event),
+      onReasoningTextDelta: (event) => useThreadStore.getState().handleReasoningTextDelta(event),
       // MCP Tools
-      onMcpToolCallBegin: (event) => useThreadStore.getState().handleMcpToolCallBegin(event),
-      onMcpToolCallEnd: (event) => useThreadStore.getState().handleMcpToolCallEnd(event),
+      onMcpToolCallProgress: (event) =>
+        useThreadStore.getState().handleMcpToolCallProgress(event),
       // Token usage
       onTokenUsage: (event) => useThreadStore.getState().handleTokenUsage(event),
       // Errors

@@ -2,167 +2,186 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
 // ==================== Event Types ====================
 
-// Thread lifecycle events
+export interface ThreadInfoPayload {
+  id: string
+  cwd: string
+  model?: string | null
+  modelProvider?: string | null
+  preview?: string | null
+  createdAt?: number | null
+  cliVersion?: string | null
+  gitInfo?: {
+    sha?: string | null
+    branch?: string | null
+    originUrl?: string | null
+  } | null
+}
+
+export interface TurnErrorPayload {
+  message: string
+  codexErrorInfo?: unknown
+  additionalDetails?: string | null
+}
+
+export interface TurnInfoPayload {
+  id: string
+  status: string
+  items?: unknown[]
+  error?: TurnErrorPayload | null
+}
+
 export interface ThreadStartedEvent {
-  threadId: string
+  thread: ThreadInfoPayload
 }
 
 export interface TurnStartedEvent {
   threadId: string
+  turn: TurnInfoPayload
+}
+
+export interface TurnCompletedEvent {
+  threadId: string
+  turn: TurnInfoPayload
+}
+
+export interface TurnDiffUpdatedEvent {
+  threadId: string
   turnId: string
+  diff: string
+}
+
+export interface TurnPlanUpdatedEvent {
+  threadId: string
+  turnId: string
+  explanation?: string | null
+  plan: Array<{
+    step: string
+    status: string
+  }>
 }
 
 // Item lifecycle events
-export interface ItemStartedEvent {
-  itemId: string
+export interface ThreadItemPayload {
+  id: string
   type: string
-  threadId: string
+  [key: string]: unknown
 }
 
-export interface ItemUpdatedEvent {
-  itemId: string
-  type: string
+export interface ItemStartedEvent {
+  item: ThreadItemPayload
   threadId: string
-  content: unknown
+  turnId: string
 }
 
 export interface ItemCompletedEvent {
-  itemId: string
-  type: string
+  item: ThreadItemPayload
   threadId: string
-  content: unknown
+  turnId: string
 }
 
 // Agent message events
 export interface AgentMessageDeltaEvent {
   itemId: string
   threadId: string
+  turnId: string
   delta: string
 }
 
-// Reasoning events (for models with reasoning capability)
-export interface ReasoningDeltaEvent {
+// Reasoning events
+export interface ReasoningSummaryTextDeltaEvent {
   itemId: string
   threadId: string
+  turnId: string
   delta: string
-  summaryIndex?: number
+  summaryIndex: number
 }
 
-export interface ReasoningCompletedEvent {
+export interface ReasoningSummaryPartAddedEvent {
   itemId: string
   threadId: string
-  summary: string[]
-  content?: string[]
+  turnId: string
+  summaryIndex: number
+}
+
+export interface ReasoningTextDeltaEvent {
+  itemId: string
+  threadId: string
+  turnId: string
+  delta: string
+  contentIndex: number
 }
 
 // Command execution events
-export interface ExecCommandBeginEvent {
-  callId: string
+export interface CommandExecutionOutputDeltaEvent {
+  itemId: string
   threadId: string
   turnId: string
-  command: string[]
-  cwd: string
-}
-
-export interface ExecCommandOutputDeltaEvent {
-  callId: string
-  threadId: string
   delta: string
 }
 
-export interface ExecCommandEndEvent {
-  callId: string
+// File change events
+export interface FileChangeOutputDeltaEvent {
+  itemId: string
   threadId: string
   turnId: string
-  command: string[]
-  cwd: string
-  stdout: string
-  stderr: string
-  exitCode: number
-  durationMs: number
+  delta: string
 }
 
 // MCP tool events
-export interface McpToolCallBeginEvent {
-  callId: string
+export interface McpToolCallProgressEvent {
+  itemId: string
   threadId: string
-  server: string
-  tool: string
-  arguments: unknown
-}
-
-export interface McpToolCallEndEvent {
-  callId: string
-  threadId: string
-  server: string
-  tool: string
-  result?: unknown
-  error?: string
-  durationMs: number
+  turnId: string
+  message: string
 }
 
 // Token usage event
 export interface TokenUsageEvent {
   threadId: string
   turnId: string
-  inputTokens: number
-  cachedInputTokens: number
-  outputTokens: number
+  tokenUsage: {
+    total: {
+      totalTokens: number
+      inputTokens: number
+      cachedInputTokens: number
+      outputTokens: number
+      reasoningOutputTokens?: number
+    }
+    last: {
+      totalTokens: number
+      inputTokens: number
+      cachedInputTokens: number
+      outputTokens: number
+      reasoningOutputTokens?: number
+    }
+    modelContextWindow?: number | null
+  }
 }
 
 // Error events
 export interface StreamErrorEvent {
   threadId: string
   turnId: string
-  message: string
+  error: TurnErrorPayload
   willRetry: boolean
-  errorInfo?: CodexErrorInfo
-}
-
-export interface CodexErrorInfo {
-  type:
-    | 'context_window_exceeded'
-    | 'usage_limit_exceeded'
-    | 'http_connection_failed'
-    | 'internal_server_error'
-    | 'unauthorized'
-    | 'bad_request'
-    | 'sandbox_error'
-    | 'other'
-  httpStatusCode?: number
 }
 
 export interface CommandApprovalRequestedEvent {
   itemId: string
   threadId: string
-  command: string
-  cwd: string
-  commandActions: string[]
+  turnId: string
+  reason?: string | null
+  proposedExecpolicyAmendment?: { command: string[] } | null
   _requestId: number // JSON-RPC request ID for responding
 }
 
 export interface FileChangeApprovalRequestedEvent {
   itemId: string
   threadId: string
-  changes: Array<{
-    path: string
-    kind: 'add' | 'modify' | 'delete'
-    diff: string
-  }>
+  turnId: string
+  reason?: string | null
+  grantRoot?: string | null
   _requestId: number // JSON-RPC request ID for responding
-}
-
-export interface TurnCompletedEvent {
-  threadId: string
-  turnId: string
-}
-
-export interface TurnFailedEvent {
-  threadId: string
-  turnId: string
-  error: string
-  errorInfo?: CodexErrorInfo
-  additionalDetails?: string
 }
 
 export interface ServerDisconnectedEvent {
@@ -176,28 +195,27 @@ export type EventHandlers = {
   onThreadStarted?: (event: ThreadStartedEvent) => void
   onTurnStarted?: (event: TurnStartedEvent) => void
   onTurnCompleted?: (event: TurnCompletedEvent) => void
-  onTurnFailed?: (event: TurnFailedEvent) => void
+  onTurnDiffUpdated?: (event: TurnDiffUpdatedEvent) => void
+  onTurnPlanUpdated?: (event: TurnPlanUpdatedEvent) => void
 
   // Item lifecycle
   onItemStarted?: (event: ItemStartedEvent) => void
-  onItemUpdated?: (event: ItemUpdatedEvent) => void
   onItemCompleted?: (event: ItemCompletedEvent) => void
 
   // Agent message
   onAgentMessageDelta?: (event: AgentMessageDeltaEvent) => void
 
   // Reasoning
-  onReasoningDelta?: (event: ReasoningDeltaEvent) => void
-  onReasoningCompleted?: (event: ReasoningCompletedEvent) => void
+  onReasoningSummaryTextDelta?: (event: ReasoningSummaryTextDeltaEvent) => void
+  onReasoningSummaryPartAdded?: (event: ReasoningSummaryPartAddedEvent) => void
+  onReasoningTextDelta?: (event: ReasoningTextDeltaEvent) => void
 
   // Command execution
-  onExecCommandBegin?: (event: ExecCommandBeginEvent) => void
-  onExecCommandOutputDelta?: (event: ExecCommandOutputDeltaEvent) => void
-  onExecCommandEnd?: (event: ExecCommandEndEvent) => void
+  onCommandExecutionOutputDelta?: (event: CommandExecutionOutputDeltaEvent) => void
+  onFileChangeOutputDelta?: (event: FileChangeOutputDeltaEvent) => void
 
   // MCP tools
-  onMcpToolCallBegin?: (event: McpToolCallBeginEvent) => void
-  onMcpToolCallEnd?: (event: McpToolCallEndEvent) => void
+  onMcpToolCallProgress?: (event: McpToolCallProgressEvent) => void
 
   // Token usage
   onTokenUsage?: (event: TokenUsageEvent) => void
@@ -234,38 +252,61 @@ export async function setupEventListeners(
   await addListener('thread-started', handlers.onThreadStarted, unlisteners)
   await addListener('turn-started', handlers.onTurnStarted, unlisteners)
   await addListener('turn-completed', handlers.onTurnCompleted, unlisteners)
-  await addListener('turn-failed', handlers.onTurnFailed, unlisteners)
+  await addListener('turn-diff-updated', handlers.onTurnDiffUpdated, unlisteners)
+  await addListener('turn-plan-updated', handlers.onTurnPlanUpdated, unlisteners)
 
   // Item lifecycle
   await addListener('item-started', handlers.onItemStarted, unlisteners)
-  await addListener('item-updated', handlers.onItemUpdated, unlisteners)
   await addListener('item-completed', handlers.onItemCompleted, unlisteners)
 
   // Agent message (event name: item/agentMessage/delta -> item-agentMessage-delta)
   await addListener('item-agentMessage-delta', handlers.onAgentMessageDelta, unlisteners)
 
   // Reasoning (event name: item/reasoning/summaryTextDelta -> item-reasoning-summaryTextDelta)
-  await addListener('item-reasoning-summaryTextDelta', handlers.onReasoningDelta, unlisteners)
-  await addListener('item-reasoning-completed', handlers.onReasoningCompleted, unlisteners)
+  await addListener(
+    'item-reasoning-summaryTextDelta',
+    handlers.onReasoningSummaryTextDelta,
+    unlisteners
+  )
+  await addListener(
+    'item-reasoning-summaryPartAdded',
+    handlers.onReasoningSummaryPartAdded,
+    unlisteners
+  )
+  await addListener('item-reasoning-textDelta', handlers.onReasoningTextDelta, unlisteners)
 
-  // Command execution
-  await addListener('exec-command-begin', handlers.onExecCommandBegin, unlisteners)
-  await addListener('exec-command-output-delta', handlers.onExecCommandOutputDelta, unlisteners)
-  await addListener('exec-command-end', handlers.onExecCommandEnd, unlisteners)
+  // Command execution + file change output
+  await addListener(
+    'item-commandExecution-outputDelta',
+    handlers.onCommandExecutionOutputDelta,
+    unlisteners
+  )
+  await addListener(
+    'item-fileChange-outputDelta',
+    handlers.onFileChangeOutputDelta,
+    unlisteners
+  )
 
   // MCP tools
-  await addListener('mcp-tool-call-begin', handlers.onMcpToolCallBegin, unlisteners)
-  await addListener('mcp-tool-call-end', handlers.onMcpToolCallEnd, unlisteners)
+  await addListener('item-mcpToolCall-progress', handlers.onMcpToolCallProgress, unlisteners)
 
   // Token usage
-  await addListener('token-usage', handlers.onTokenUsage, unlisteners)
+  await addListener('thread-tokenUsage-updated', handlers.onTokenUsage, unlisteners)
 
   // Approvals
-  await addListener('command-approval-requested', handlers.onCommandApprovalRequested, unlisteners)
-  await addListener('file-change-approval-requested', handlers.onFileChangeApprovalRequested, unlisteners)
+  await addListener(
+    'item-commandExecution-requestApproval',
+    handlers.onCommandApprovalRequested,
+    unlisteners
+  )
+  await addListener(
+    'item-fileChange-requestApproval',
+    handlers.onFileChangeApprovalRequested,
+    unlisteners
+  )
 
   // Errors
-  await addListener('stream-error', handlers.onStreamError, unlisteners)
+  await addListener('error', handlers.onStreamError, unlisteners)
   await addListener('app-server-disconnected', handlers.onServerDisconnected, unlisteners)
 
   return unlisteners

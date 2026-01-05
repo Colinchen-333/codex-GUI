@@ -10,52 +10,6 @@ export interface SlashCommand {
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
-  // General commands
-  {
-    name: 'help',
-    description: 'Show help and available commands',
-    category: 'general',
-    icon: '❓',
-  },
-  {
-    name: 'clear',
-    description: 'Clear the conversation history',
-    category: 'general',
-    icon: '🗑️',
-  },
-  {
-    name: 'compact',
-    description: 'Summarize and compact conversation context',
-    category: 'general',
-    icon: '📦',
-  },
-  {
-    name: 'undo',
-    description: 'Undo the last action',
-    category: 'general',
-    icon: '↩️',
-  },
-
-  // Tools commands
-  {
-    name: 'bash',
-    description: 'Execute a shell command',
-    category: 'tools',
-    icon: '💻',
-  },
-  {
-    name: 'browser',
-    description: 'Open a URL in the browser',
-    category: 'tools',
-    icon: '🌐',
-  },
-  {
-    name: 'search',
-    description: 'Search codebase or web',
-    category: 'tools',
-    icon: '🔍',
-  },
-
   // Settings commands
   {
     name: 'model',
@@ -64,62 +18,111 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     icon: '🤖',
   },
   {
-    name: 'provider',
-    description: 'Switch model provider',
-    category: 'settings',
-    icon: '🔄',
-  },
-  {
-    name: 'approval',
-    description: 'Change approval policy',
-    aliases: ['approval-mode'],
+    name: 'approvals',
+    description: 'Change approval policy and safety settings',
     category: 'settings',
     icon: '✅',
   },
-  {
-    name: 'sandbox',
-    description: 'Change sandbox mode',
-    category: 'settings',
-    icon: '📦',
-  },
 
-  // Workflow commands
+  // Tools commands
   {
-    name: 'commit',
-    description: 'Create a git commit',
-    category: 'workflow',
-    icon: '📝',
-  },
-  {
-    name: 'pr',
-    description: 'Create a pull request',
-    aliases: ['pull-request'],
-    category: 'workflow',
-    icon: '🔀',
+    name: 'skills',
+    description: 'List available skills and usage',
+    category: 'tools',
+    icon: '🧰',
   },
   {
     name: 'review',
-    description: 'Review code changes',
+    description: 'Review current changes',
     category: 'workflow',
     icon: '👀',
   },
   {
-    name: 'test',
-    description: 'Run tests',
+    name: 'new',
+    description: 'Start a new chat session',
+    category: 'general',
+    icon: '🆕',
+  },
+  {
+    name: 'resume',
+    description: 'Resume a saved chat session',
+    category: 'general',
+    icon: '🕘',
+  },
+  {
+    name: 'init',
+    description: 'Create an AGENTS.md guide',
+    category: 'workflow',
+    icon: '🧭',
+  },
+  {
+    name: 'compact',
+    description: 'Summarize and compact conversation context',
+    category: 'general',
+    icon: '📦',
+  },
+  {
+    name: 'diff',
+    description: 'Show git diff (including untracked files)',
+    category: 'tools',
+    icon: '🧾',
+  },
+  {
+    name: 'mention',
+    description: 'Mention a file (insert @)',
+    category: 'tools',
+    icon: '📌',
+  },
+  {
+    name: 'status',
+    description: 'Show current session status',
+    category: 'general',
+    icon: '📊',
+  },
+  {
+    name: 'mcp',
+    description: 'List configured MCP tools',
+    category: 'tools',
+    icon: '🔌',
+  },
+
+  // General commands
+  {
+    name: 'logout',
+    description: 'Log out of Codex',
+    category: 'general',
+    icon: '🚪',
+  },
+  {
+    name: 'quit',
+    description: 'Quit Codex Desktop',
+    category: 'general',
+    icon: '🛑',
+  },
+  {
+    name: 'exit',
+    description: 'Quit Codex Desktop',
+    category: 'general',
+    icon: '🛑',
+  },
+  // Workflow commands
+  {
+    name: 'feedback',
+    description: 'Send feedback to maintainers',
+    category: 'workflow',
+    icon: '💬',
+  },
+  {
+    name: 'rollout',
+    description: 'Show rollout file path',
     category: 'workflow',
     icon: '🧪',
   },
   {
-    name: 'lint',
-    description: 'Run linter',
+    name: 'test-approval',
+    description: 'Test approval request',
     category: 'workflow',
-    icon: '✨',
-  },
-  {
-    name: 'format',
-    description: 'Format code',
-    category: 'workflow',
-    icon: '🎨',
+    icon: '🧷',
   },
 ]
 

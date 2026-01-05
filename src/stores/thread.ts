@@ -8,14 +8,15 @@ import type {
   CommandApprovalRequestedEvent,
   FileChangeApprovalRequestedEvent,
   TurnCompletedEvent,
-  TurnFailedEvent,
-  ExecCommandBeginEvent,
-  ExecCommandOutputDeltaEvent,
-  ExecCommandEndEvent,
-  ReasoningDeltaEvent,
-  ReasoningCompletedEvent,
-  McpToolCallBeginEvent,
-  McpToolCallEndEvent,
+  TurnStartedEvent,
+  TurnDiffUpdatedEvent,
+  TurnPlanUpdatedEvent,
+  CommandExecutionOutputDeltaEvent,
+  FileChangeOutputDeltaEvent,
+  ReasoningSummaryTextDeltaEvent,
+  ReasoningSummaryPartAddedEvent,
+  ReasoningTextDeltaEvent,
+  McpToolCallProgressEvent,
   TokenUsageEvent,
   StreamErrorEvent,
 } from '../lib/events'
@@ -30,6 +31,8 @@ export type ThreadItemType =
   | 'reasoning'
   | 'mcpTool'
   | 'webSearch'
+  | 'review'
+  | 'info'
   | 'error'
 
 export interface ThreadItem {
@@ -71,6 +74,8 @@ export interface CommandExecutionItem extends ThreadItem {
     needsApproval?: boolean
     approved?: boolean
     isRunning?: boolean
+    reason?: string
+    proposedExecpolicyAmendment?: { command: string[] } | null
   }
 }
 
@@ -79,13 +84,16 @@ export interface FileChangeItem extends ThreadItem {
   content: {
     changes: Array<{
       path: string
-      kind: 'add' | 'modify' | 'delete'
+      kind: 'add' | 'modify' | 'delete' | 'rename'
       diff: string
+      oldPath?: string
     }>
     needsApproval: boolean
     approved?: boolean
     applied?: boolean
     snapshotId?: string
+    output?: string
+    reason?: string
   }
 }
 
@@ -109,6 +117,7 @@ export interface McpToolItem extends ThreadItem {
     error?: string
     durationMs?: number
     isRunning: boolean
+    progress?: string[]
   }
 }
 
@@ -122,6 +131,22 @@ export interface WebSearchItem extends ThreadItem {
       snippet: string
     }>
     isSearching: boolean
+  }
+}
+
+export interface ReviewItem extends ThreadItem {
+  type: 'review'
+  content: {
+    phase: 'started' | 'completed'
+    text: string
+  }
+}
+
+export interface InfoItem extends ThreadItem {
+  type: 'info'
+  content: {
+    title: string
+    details?: string
   }
 }
 
@@ -143,6 +168,8 @@ export type AnyThreadItem =
   | ReasoningItem
   | McpToolItem
   | WebSearchItem
+  | ReviewItem
+  | InfoItem
   | ErrorItem
   | ThreadItem
 
@@ -194,10 +221,11 @@ interface ThreadState {
   interrupt: () => Promise<void>
   respondToApproval: (
     itemId: string,
-    decision: 'accept' | 'acceptForSession' | 'acceptAlways' | 'decline',
-    snapshotId?: string
+    decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline' | 'cancel',
+    options?: { snapshotId?: string; execpolicyAmendment?: { command: string[] } | null }
   ) => Promise<void>
   clearThread: () => void
+  addInfoItem: (title: string, details?: string) => void
 
   // Event handlers
   handleItemStarted: (event: ItemStartedEvent) => void
@@ -205,16 +233,16 @@ interface ThreadState {
   handleAgentMessageDelta: (event: AgentMessageDeltaEvent) => void
   handleCommandApprovalRequested: (event: CommandApprovalRequestedEvent) => void
   handleFileChangeApprovalRequested: (event: FileChangeApprovalRequestedEvent) => void
+  handleTurnStarted: (event: TurnStartedEvent) => void
   handleTurnCompleted: (event: TurnCompletedEvent) => void
-  handleTurnFailed: (event: TurnFailedEvent) => void
-  handleExecCommandBegin: (event: ExecCommandBeginEvent) => void
-  handleExecCommandOutputDelta: (event: ExecCommandOutputDeltaEvent) => void
-  handleExecCommandEnd: (event: ExecCommandEndEvent) => void
-  // New event handlers
-  handleReasoningDelta: (event: ReasoningDeltaEvent) => void
-  handleReasoningCompleted: (event: ReasoningCompletedEvent) => void
-  handleMcpToolCallBegin: (event: McpToolCallBeginEvent) => void
-  handleMcpToolCallEnd: (event: McpToolCallEndEvent) => void
+  handleTurnDiffUpdated: (event: TurnDiffUpdatedEvent) => void
+  handleTurnPlanUpdated: (event: TurnPlanUpdatedEvent) => void
+  handleCommandExecutionOutputDelta: (event: CommandExecutionOutputDeltaEvent) => void
+  handleFileChangeOutputDelta: (event: FileChangeOutputDeltaEvent) => void
+  handleReasoningSummaryTextDelta: (event: ReasoningSummaryTextDeltaEvent) => void
+  handleReasoningSummaryPartAdded: (event: ReasoningSummaryPartAddedEvent) => void
+  handleReasoningTextDelta: (event: ReasoningTextDeltaEvent) => void
+  handleMcpToolCallProgress: (event: McpToolCallProgressEvent) => void
   handleTokenUsage: (event: TokenUsageEvent) => void
   handleStreamError: (event: StreamErrorEvent) => void
 
@@ -227,24 +255,228 @@ interface ThreadState {
 // Helper to map item types from server to our types
 function mapItemType(type: string): ThreadItemType {
   const typeMap: Record<string, ThreadItemType> = {
-    'user_message': 'userMessage',
-    'userMessage': 'userMessage',
-    'agent_message': 'agentMessage',
-    'agentMessage': 'agentMessage',
-    'message': 'agentMessage',
-    'command_execution': 'commandExecution',
-    'commandExecution': 'commandExecution',
-    'tool_call': 'commandExecution',
-    'file_change': 'fileChange',
-    'fileChange': 'fileChange',
-    'reasoning': 'reasoning',
-    'mcp_tool': 'mcpTool',
-    'mcpTool': 'mcpTool',
-    'web_search': 'webSearch',
-    'webSearch': 'webSearch',
-    'error': 'error',
+    userMessage: 'userMessage',
+    agentMessage: 'agentMessage',
+    reasoning: 'reasoning',
+    commandExecution: 'commandExecution',
+    fileChange: 'fileChange',
+    mcpToolCall: 'mcpTool',
+    webSearch: 'webSearch',
+    imageView: 'info',
+    enteredReviewMode: 'review',
+    exitedReviewMode: 'review',
   }
   return typeMap[type] || 'agentMessage'
+}
+
+function normalizeStatus(status?: string | null): ThreadItem['status'] {
+  switch (status) {
+    case 'completed':
+    case 'Completed':
+      return 'completed'
+    case 'failed':
+    case 'Failed':
+      return 'failed'
+    case 'declined':
+    case 'Declined':
+      return 'failed'
+    case 'inProgress':
+    case 'InProgress':
+      return 'inProgress'
+    default:
+      return 'completed'
+  }
+}
+
+function stringifyCommandAction(action: unknown): string {
+  if (!action || typeof action !== 'object') return 'unknown'
+  const record = action as Record<string, unknown>
+  const type = String(record.type || record.kind || record.action || 'action')
+  const command = typeof record.command === 'string' ? record.command : ''
+  const path = typeof record.path === 'string' ? record.path : ''
+  const query = typeof record.query === 'string' ? record.query : ''
+  const parts = [type, command, path, query].filter(Boolean)
+  return parts.join(' ')
+}
+
+function toThreadItem(item: { id: string; type: string } & Record<string, unknown>): AnyThreadItem {
+  const base = {
+    id: item.id,
+    type: mapItemType(item.type),
+    status: normalizeStatus(item.status as string | undefined),
+    createdAt: Date.now(),
+  }
+
+  switch (item.type) {
+    case 'userMessage':
+      return {
+        ...base,
+        type: 'userMessage',
+        content: {
+          text:
+            Array.isArray(item.content) && item.content.length > 0
+              ? item.content
+                  .map((entry) => {
+                    if (entry && typeof entry === 'object' && 'text' in (entry as object)) {
+                      return String((entry as { text?: string }).text || '')
+                    }
+                    return ''
+                  })
+                  .join('\n')
+              : '',
+          images: Array.isArray(item.content)
+            ? item.content
+                .map((entry) => {
+                  if (entry && typeof entry === 'object') {
+                    const asObj = entry as { type?: string; url?: string; path?: string }
+                    if (asObj.type === 'image' && asObj.url) return asObj.url
+                    if (asObj.type === 'localImage' && asObj.path) return asObj.path
+                  }
+                  return null
+                })
+                .filter(Boolean) as string[]
+            : undefined,
+        },
+      }
+    case 'agentMessage':
+      return {
+        ...base,
+        type: 'agentMessage',
+        content: {
+          text: typeof item.text === 'string' ? item.text : '',
+          isStreaming: base.status === 'inProgress',
+        },
+      }
+    case 'reasoning':
+      return {
+        ...base,
+        type: 'reasoning',
+        content: {
+          summary: Array.isArray(item.summary) ? (item.summary as string[]) : [],
+          fullContent: Array.isArray(item.content) ? (item.content as string[]) : undefined,
+          isStreaming: base.status === 'inProgress',
+        },
+      }
+    case 'commandExecution':
+      return {
+        ...base,
+        type: 'commandExecution',
+        content: {
+          callId: item.id,
+          command: typeof item.command === 'string' ? item.command : '',
+          cwd: typeof item.cwd === 'string' ? item.cwd : '',
+          commandActions: Array.isArray(item.commandActions)
+            ? (item.commandActions as unknown[]).map(stringifyCommandAction)
+            : undefined,
+          output: typeof item.aggregatedOutput === 'string' ? item.aggregatedOutput : '',
+          stdout: typeof item.aggregatedOutput === 'string' ? item.aggregatedOutput : undefined,
+          exitCode: typeof item.exitCode === 'number' ? item.exitCode : undefined,
+          durationMs: typeof item.durationMs === 'number' ? item.durationMs : undefined,
+          needsApproval: false,
+          approved: undefined,
+          isRunning: base.status === 'inProgress',
+        },
+      }
+    case 'fileChange':
+      return {
+        ...base,
+        type: 'fileChange',
+        content: {
+          changes: Array.isArray(item.changes)
+            ? (item.changes as Array<Record<string, unknown>>).map((change) => {
+                const kind = change.kind as { type?: string; movePath?: string } | string
+                if (typeof kind === 'string') {
+                  const lower = kind.toLowerCase()
+                  return {
+                    path: String(change.path || ''),
+                    kind: lower === 'add' ? 'add' : lower === 'delete' ? 'delete' : 'modify',
+                    diff: String(change.diff || ''),
+                  }
+                }
+                if (kind && typeof kind === 'object') {
+                  if (kind.type === 'add') {
+                    return { path: String(change.path || ''), kind: 'add', diff: String(change.diff || '') }
+                  }
+                  if (kind.type === 'delete') {
+                    return { path: String(change.path || ''), kind: 'delete', diff: String(change.diff || '') }
+                  }
+                  const movePath =
+                    typeof (kind as { movePath?: string }).movePath === 'string'
+                      ? (kind as { movePath?: string }).movePath
+                      : undefined
+                  return {
+                    path: String(change.path || ''),
+                    kind: movePath ? 'rename' : 'modify',
+                    diff: String(change.diff || ''),
+                    oldPath: movePath,
+                  }
+                }
+                return { path: String(change.path || ''), kind: 'modify', diff: String(change.diff || '') }
+              })
+            : [],
+          needsApproval: false,
+          approved: undefined,
+          applied: base.status === 'completed',
+        },
+      }
+    case 'mcpToolCall':
+      return {
+        ...base,
+        type: 'mcpTool',
+        content: {
+          callId: item.id,
+          server: typeof item.server === 'string' ? item.server : '',
+          tool: typeof item.tool === 'string' ? item.tool : '',
+          arguments: item.arguments ?? {},
+          result: item.result,
+          error: item.error ? String((item.error as { message?: string }).message || item.error) : undefined,
+          durationMs: typeof item.durationMs === 'number' ? item.durationMs : undefined,
+          isRunning: base.status === 'inProgress',
+        },
+      }
+    case 'webSearch':
+      return {
+        ...base,
+        type: 'webSearch',
+        content: {
+          query: typeof item.query === 'string' ? item.query : '',
+          isSearching: base.status === 'inProgress',
+        },
+      }
+    case 'enteredReviewMode':
+      return {
+        ...base,
+        type: 'review',
+        content: {
+          phase: 'started',
+          text: typeof item.review === 'string' ? item.review : 'Review started',
+        },
+      }
+    case 'exitedReviewMode':
+      return {
+        ...base,
+        type: 'review',
+        content: {
+          phase: 'completed',
+          text: typeof item.review === 'string' ? item.review : '',
+        },
+      }
+    case 'imageView':
+      return {
+        ...base,
+        type: 'info',
+        content: {
+          title: 'Image view',
+          details: typeof item.path === 'string' ? item.path : '',
+        },
+      }
+    default:
+      return {
+        ...base,
+        type: mapItemType(item.type),
+        content: item,
+      }
+  }
 }
 
 // Default token usage
@@ -301,19 +533,12 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       const itemOrder: string[] = []
 
       for (const rawItem of response.items) {
-        const item = rawItem as { id: string; type: string; content?: unknown }
+        if (!rawItem || typeof rawItem !== 'object') continue
+        const item = rawItem as { id?: string; type?: string }
         if (!item.id || !item.type) continue
-
-        const threadItem: AnyThreadItem = {
-          id: item.id,
-          type: mapItemType(item.type),
-          status: 'completed',
-          content: item.content || {},
-          createdAt: Date.now(),
-        }
-
-        items.set(item.id, threadItem)
-        itemOrder.push(item.id)
+        const threadItem = toThreadItem(rawItem as { id: string; type: string } & Record<string, unknown>)
+        items.set(threadItem.id, threadItem)
+        itemOrder.push(threadItem.id)
       }
 
       set({
@@ -373,7 +598,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     }
   },
 
-  respondToApproval: async (itemId, decision, snapshotId) => {
+  respondToApproval: async (itemId, decision, options) => {
     const { activeThread, pendingApprovals } = get()
     if (!activeThread) return
 
@@ -385,7 +610,13 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     }
 
     try {
-      await threadApi.respondToApproval(activeThread.id, itemId, decision, pendingApproval.requestId)
+      await threadApi.respondToApproval(
+        activeThread.id,
+        itemId,
+        decision,
+        pendingApproval.requestId,
+        options?.execpolicyAmendment
+      )
 
       // Update item status
       set((state) => {
@@ -401,7 +632,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
               ? {
                   applied: true,
                   // Use the provided snapshotId (created before applying)
-                  snapshotId: snapshotId,
+                  snapshotId: options?.snapshotId,
                 }
               : {}
 
@@ -441,57 +672,62 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     })
   },
 
-  // Event Handlers
-  handleItemStarted: (event) => {
-    const item: ThreadItem = {
-      id: event.itemId,
-      type: event.type as ThreadItemType,
-      status: 'inProgress',
-      content: {},
+  addInfoItem: (title, details) => {
+    const infoItem: InfoItem = {
+      id: `info-${Date.now()}`,
+      type: 'info',
+      status: 'completed',
+      content: { title, details },
       createdAt: Date.now(),
     }
+    set((state) => ({
+      items: new Map(state.items).set(infoItem.id, infoItem),
+      itemOrder: [...state.itemOrder, infoItem.id],
+    }))
+  },
+
+  // Event Handlers
+  handleItemStarted: (event) => {
+    const item = toThreadItem(event.item)
+    const inProgressItem = {
+      ...item,
+      status: 'inProgress',
+    } as AnyThreadItem
 
     set((state) => ({
-      items: new Map(state.items).set(event.itemId, item as AnyThreadItem),
-      itemOrder: [...state.itemOrder, event.itemId],
+      items: new Map(state.items).set(item.id, inProgressItem),
+      itemOrder: [...state.itemOrder, item.id],
     }))
   },
 
   handleItemCompleted: (event) => {
     set((state) => {
       const items = new Map(state.items)
-      const existing = items.get(event.itemId)
+      const nextItem = toThreadItem(event.item)
+      const existing = items.get(nextItem.id)
+
       if (existing) {
-        // Merge content to preserve approval state and other existing fields
         const existingContent = existing.content as Record<string, unknown>
-        const newContent = event.content as Record<string, unknown>
-        items.set(event.itemId, {
-          ...existing,
-          status: 'completed',
+        const nextContent = nextItem.content as Record<string, unknown>
+        items.set(nextItem.id, {
+          ...nextItem,
+          status: nextItem.status === 'inProgress' ? 'completed' : nextItem.status,
           content: {
-            ...existingContent,
-            ...newContent,
-            // Preserve these fields from existing content if they exist
-            needsApproval: existingContent.needsApproval ?? newContent.needsApproval,
-            approved: existingContent.approved ?? newContent.approved,
-            applied: existingContent.applied ?? newContent.applied,
+            ...nextContent,
+            needsApproval: existingContent.needsApproval ?? nextContent.needsApproval,
+            approved: existingContent.approved ?? nextContent.approved,
+            applied: existingContent.applied ?? nextContent.applied,
+            snapshotId: existingContent.snapshotId ?? nextContent.snapshotId,
+            output: existingContent.output ?? nextContent.output,
           },
         } as AnyThreadItem)
       } else {
-        // Create new item if it doesn't exist
-        const item: AnyThreadItem = {
-          id: event.itemId,
-          type: mapItemType(event.type),
-          status: 'completed',
-          content: event.content,
-          createdAt: Date.now(),
-        }
-        items.set(event.itemId, item)
+        items.set(nextItem.id, nextItem)
         return {
           items,
-          itemOrder: state.itemOrder.includes(event.itemId)
+          itemOrder: state.itemOrder.includes(nextItem.id)
             ? state.itemOrder
-            : [...state.itemOrder, event.itemId],
+            : [...state.itemOrder, nextItem.id],
         }
       }
       return { items }
@@ -537,21 +773,26 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleCommandApprovalRequested: (event) => {
-    const commandItem: CommandExecutionItem = {
-      id: event.itemId,
-      type: 'commandExecution',
-      status: 'inProgress',
-      content: {
-        command: event.command,
-        cwd: event.cwd,
-        commandActions: event.commandActions,
-        needsApproval: true,
-      },
-      createdAt: Date.now(),
-    }
-
     set((state) => ({
-      items: new Map(state.items).set(event.itemId, commandItem),
+      items: new Map(state.items).set(event.itemId, {
+        ...(state.items.get(event.itemId) || {
+          id: event.itemId,
+          type: 'commandExecution',
+          status: 'inProgress',
+          content: {
+            callId: event.itemId,
+            command: '',
+            cwd: '',
+          },
+          createdAt: Date.now(),
+        }),
+        content: {
+          ...((state.items.get(event.itemId)?.content || {}) as Record<string, unknown>),
+          needsApproval: true,
+          reason: event.reason,
+          proposedExecpolicyAmendment: event.proposedExecpolicyAmendment,
+        },
+      } as AnyThreadItem),
       itemOrder: state.itemOrder.includes(event.itemId)
         ? state.itemOrder
         : [...state.itemOrder, event.itemId],
@@ -563,19 +804,23 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleFileChangeApprovalRequested: (event) => {
-    const fileChangeItem: FileChangeItem = {
-      id: event.itemId,
-      type: 'fileChange',
-      status: 'inProgress',
-      content: {
-        changes: event.changes,
-        needsApproval: true,
-      },
-      createdAt: Date.now(),
-    }
-
     set((state) => ({
-      items: new Map(state.items).set(event.itemId, fileChangeItem),
+      items: new Map(state.items).set(event.itemId, {
+        ...(state.items.get(event.itemId) || {
+          id: event.itemId,
+          type: 'fileChange',
+          status: 'inProgress',
+          content: {
+            changes: [],
+          },
+          createdAt: Date.now(),
+        }),
+        content: {
+          ...((state.items.get(event.itemId)?.content || {}) as Record<string, unknown>),
+          needsApproval: true,
+          reason: event.reason,
+        },
+      } as AnyThreadItem),
       itemOrder: state.itemOrder.includes(event.itemId)
         ? state.itemOrder
         : [...state.itemOrder, event.itemId],
@@ -586,7 +831,23 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     }))
   },
 
-  handleTurnCompleted: (_event) => {
+  handleTurnStarted: (event) => {
+    set({
+      turnStatus: 'running',
+      currentTurnId: event.turn.id,
+      error: null,
+    })
+  },
+
+  handleTurnCompleted: (event) => {
+    const status = event.turn.status
+    const nextTurnStatus: TurnStatus =
+      status === 'failed'
+        ? 'failed'
+        : status === 'interrupted'
+        ? 'interrupted'
+        : 'completed'
+
     set((state) => {
       // Mark all streaming items as complete
       const items = new Map(state.items)
@@ -605,51 +866,81 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
 
       return {
         items,
-        turnStatus: 'completed',
+        turnStatus: nextTurnStatus,
         currentTurnId: null,
+        error: event.turn.error?.message || null,
       }
     })
   },
-
-  handleTurnFailed: (event) => {
-    set({
-      turnStatus: 'failed',
-      error: event.error,
-      currentTurnId: null,
-    })
-  },
-
-  // Command Execution Handlers
-  handleExecCommandBegin: (event) => {
-    const commandItem: CommandExecutionItem = {
-      id: event.callId,
-      type: 'commandExecution',
-      status: 'inProgress',
+  handleTurnDiffUpdated: (event) => {
+    const infoItem: InfoItem = {
+      id: `diff-${event.turnId}`,
+      type: 'info',
+      status: 'completed',
       content: {
-        callId: event.callId,
-        command: event.command,
-        cwd: event.cwd,
-        output: '',
-        isRunning: true,
+        title: 'Turn diff updated',
+        details: event.diff,
       },
       createdAt: Date.now(),
     }
 
     set((state) => ({
-      items: new Map(state.items).set(event.callId, commandItem),
-      itemOrder: state.itemOrder.includes(event.callId)
+      items: new Map(state.items).set(infoItem.id, infoItem),
+      itemOrder: state.itemOrder.includes(infoItem.id)
         ? state.itemOrder
-        : [...state.itemOrder, event.callId],
+        : [...state.itemOrder, infoItem.id],
     }))
   },
 
-  handleExecCommandOutputDelta: (event) => {
+  handleTurnPlanUpdated: (event) => {
+    const steps = event.plan.map((step) => `${step.status}: ${step.step}`).join('\n')
+    const details = event.explanation ? `${event.explanation}\n${steps}` : steps
+    const infoItem: InfoItem = {
+      id: `plan-${event.turnId}`,
+      type: 'info',
+      status: 'completed',
+      content: {
+        title: 'Plan updated',
+        details,
+      },
+      createdAt: Date.now(),
+    }
+
+    set((state) => ({
+      items: new Map(state.items).set(infoItem.id, infoItem),
+      itemOrder: state.itemOrder.includes(infoItem.id)
+        ? state.itemOrder
+        : [...state.itemOrder, infoItem.id],
+    }))
+  },
+
+  handleCommandExecutionOutputDelta: (event) => {
     set((state) => {
       const items = new Map(state.items)
-      const existing = items.get(event.callId) as CommandExecutionItem | undefined
+      const existing = items.get(event.itemId) as CommandExecutionItem | undefined
 
       if (existing && existing.type === 'commandExecution') {
-        items.set(event.callId, {
+        items.set(event.itemId, {
+          ...existing,
+          content: {
+            ...existing.content,
+            output: (existing.content.output || '') + event.delta,
+            isRunning: true,
+          },
+        })
+      }
+
+      return { items }
+    })
+  },
+
+  handleFileChangeOutputDelta: (event) => {
+    set((state) => {
+      const items = new Map(state.items)
+      const existing = items.get(event.itemId) as FileChangeItem | undefined
+
+      if (existing && existing.type === 'fileChange') {
+        items.set(event.itemId, {
           ...existing,
           content: {
             ...existing.content,
@@ -662,68 +953,14 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     })
   },
 
-  handleExecCommandEnd: (event) => {
-    set((state) => {
-      const items = new Map(state.items)
-      const existing = items.get(event.callId) as CommandExecutionItem | undefined
-
-      if (existing && existing.type === 'commandExecution') {
-        items.set(event.callId, {
-          ...existing,
-          status: 'completed',
-          content: {
-            ...existing.content,
-            command: event.command,
-            cwd: event.cwd,
-            stdout: event.stdout,
-            stderr: event.stderr,
-            exitCode: event.exitCode,
-            durationMs: event.durationMs,
-            output: event.stdout + (event.stderr ? '\n' + event.stderr : ''),
-            isRunning: false,
-          },
-        })
-      } else {
-        // Create new item if it doesn't exist (shouldn't happen normally)
-        const newItem: CommandExecutionItem = {
-          id: event.callId,
-          type: 'commandExecution',
-          status: 'completed',
-          content: {
-            callId: event.callId,
-            command: event.command,
-            cwd: event.cwd,
-            stdout: event.stdout,
-            stderr: event.stderr,
-            exitCode: event.exitCode,
-            durationMs: event.durationMs,
-            output: event.stdout + (event.stderr ? '\n' + event.stderr : ''),
-            isRunning: false,
-          },
-          createdAt: Date.now(),
-        }
-        items.set(event.callId, newItem)
-        return {
-          items,
-          itemOrder: state.itemOrder.includes(event.callId)
-            ? state.itemOrder
-            : [...state.itemOrder, event.callId],
-        }
-      }
-
-      return { items }
-    })
-  },
-
-  // Reasoning Handlers
-  handleReasoningDelta: (event) => {
+  handleReasoningSummaryTextDelta: (event) => {
     set((state) => {
       const items = new Map(state.items)
       const existing = items.get(event.itemId) as ReasoningItem | undefined
+      const index = event.summaryIndex ?? 0
 
       if (existing && existing.type === 'reasoning') {
         const summary = [...existing.content.summary]
-        const index = event.summaryIndex ?? 0
         summary[index] = (summary[index] || '') + event.delta
 
         items.set(event.itemId, {
@@ -735,11 +972,8 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
           },
         })
       } else {
-        // Create new reasoning item
         const summary: string[] = []
-        const index = event.summaryIndex ?? 0
         summary[index] = event.delta
-
         const newItem: ReasoningItem = {
           id: event.itemId,
           type: 'reasoning',
@@ -763,113 +997,68 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     })
   },
 
-  handleReasoningCompleted: (event) => {
+  handleReasoningSummaryPartAdded: (event) => {
     set((state) => {
       const items = new Map(state.items)
       const existing = items.get(event.itemId) as ReasoningItem | undefined
 
       if (existing && existing.type === 'reasoning') {
+        const summary = [...existing.content.summary]
+        const index = event.summaryIndex ?? summary.length
+        summary[index] = summary[index] || ''
+
         items.set(event.itemId, {
           ...existing,
-          status: 'completed',
           content: {
-            summary: event.summary,
-            fullContent: event.content,
-            isStreaming: false,
+            ...existing.content,
+            summary,
+            isStreaming: true,
           },
         })
-      } else {
-        // Create completed reasoning item
-        const newItem: ReasoningItem = {
-          id: event.itemId,
-          type: 'reasoning',
-          status: 'completed',
-          content: {
-            summary: event.summary,
-            fullContent: event.content,
-            isStreaming: false,
-          },
-          createdAt: Date.now(),
-        }
-        items.set(event.itemId, newItem)
-        return {
-          items,
-          itemOrder: state.itemOrder.includes(event.itemId)
-            ? state.itemOrder
-            : [...state.itemOrder, event.itemId],
-        }
       }
 
       return { items }
     })
   },
 
-  // MCP Tool Handlers
-  handleMcpToolCallBegin: (event) => {
-    const mcpItem: McpToolItem = {
-      id: event.callId,
-      type: 'mcpTool',
-      status: 'inProgress',
-      content: {
-        callId: event.callId,
-        server: event.server,
-        tool: event.tool,
-        arguments: event.arguments,
-        isRunning: true,
-      },
-      createdAt: Date.now(),
-    }
-
-    set((state) => ({
-      items: new Map(state.items).set(event.callId, mcpItem),
-      itemOrder: state.itemOrder.includes(event.callId)
-        ? state.itemOrder
-        : [...state.itemOrder, event.callId],
-    }))
-  },
-
-  handleMcpToolCallEnd: (event) => {
+  handleReasoningTextDelta: (event) => {
     set((state) => {
       const items = new Map(state.items)
-      const existing = items.get(event.callId) as McpToolItem | undefined
+      const existing = items.get(event.itemId) as ReasoningItem | undefined
+      const index = event.contentIndex ?? 0
 
-      if (existing && existing.type === 'mcpTool') {
-        items.set(event.callId, {
+      if (existing && existing.type === 'reasoning') {
+        const content = existing.content.fullContent ? [...existing.content.fullContent] : []
+        content[index] = (content[index] || '') + event.delta
+
+        items.set(event.itemId, {
           ...existing,
-          status: event.error ? 'failed' : 'completed',
           content: {
             ...existing.content,
-            result: event.result,
-            error: event.error,
-            durationMs: event.durationMs,
-            isRunning: false,
+            fullContent: content,
+            isStreaming: true,
           },
         })
-      } else {
-        // Create completed MCP item
-        const newItem: McpToolItem = {
-          id: event.callId,
-          type: 'mcpTool',
-          status: event.error ? 'failed' : 'completed',
+      }
+
+      return { items }
+    })
+  },
+
+  handleMcpToolCallProgress: (event) => {
+    set((state) => {
+      const items = new Map(state.items)
+      const existing = items.get(event.itemId) as McpToolItem | undefined
+
+      if (existing && existing.type === 'mcpTool') {
+        items.set(event.itemId, {
+          ...existing,
           content: {
-            callId: event.callId,
-            server: event.server,
-            tool: event.tool,
-            arguments: {},
-            result: event.result,
-            error: event.error,
-            durationMs: event.durationMs,
-            isRunning: false,
+            ...existing.content,
+            progress: [...(existing.content.progress || []), event.message],
+            isRunning: true,
           },
-          createdAt: Date.now(),
-        }
-        items.set(event.callId, newItem)
-        return {
-          items,
-          itemOrder: state.itemOrder.includes(event.callId)
-            ? state.itemOrder
-            : [...state.itemOrder, event.callId],
-        }
+        })
       }
 
       return { items }
@@ -879,16 +1068,22 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   // Token Usage Handler
   handleTokenUsage: (event) => {
     set((state) => {
-      const newInput = state.tokenUsage.inputTokens + event.inputTokens
-      const newCached = state.tokenUsage.cachedInputTokens + event.cachedInputTokens
-      const newOutput = state.tokenUsage.outputTokens + event.outputTokens
+      const totals = event.tokenUsage?.total
+      const fallbackInput = state.tokenUsage.inputTokens
+      const fallbackCached = state.tokenUsage.cachedInputTokens
+      const fallbackOutput = state.tokenUsage.outputTokens
+
+      const newInput = totals?.inputTokens ?? fallbackInput
+      const newCached = totals?.cachedInputTokens ?? fallbackCached
+      const newOutput = totals?.outputTokens ?? fallbackOutput
+      const totalTokens = totals?.totalTokens ?? newInput + newOutput
 
       return {
         tokenUsage: {
           inputTokens: newInput,
           cachedInputTokens: newCached,
           outputTokens: newOutput,
-          totalTokens: newInput + newOutput,
+          totalTokens,
         },
       }
     })
@@ -896,14 +1091,17 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
 
   // Stream Error Handler
   handleStreamError: (event) => {
+    const errorInfo =
+      event.error.codexErrorInfo && typeof event.error.codexErrorInfo === 'object'
+        ? JSON.stringify(event.error.codexErrorInfo)
+        : event.error.codexErrorInfo
     const errorItem: ErrorItem = {
       id: `error-${Date.now()}`,
       type: 'error',
       status: 'completed',
       content: {
-        message: event.message,
-        errorType: event.errorInfo?.type,
-        httpStatusCode: event.errorInfo?.httpStatusCode,
+        message: event.error.message,
+        errorType: errorInfo ? String(errorInfo) : undefined,
         willRetry: event.willRetry,
       },
       createdAt: Date.now(),

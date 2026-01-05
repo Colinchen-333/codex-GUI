@@ -121,6 +121,47 @@ export interface ModelListResponse {
   nextCursor: string | null
 }
 
+export interface SkillMetadata {
+  name: string
+  description: string
+  shortDescription?: string | null
+  path: string
+  scope: string
+}
+
+export interface SkillsListEntry {
+  cwd: string
+  skills: SkillMetadata[]
+  errors: Array<{ path: string; message: string }>
+}
+
+export interface SkillsListResponse {
+  data: SkillsListEntry[]
+}
+
+export interface McpServerStatus {
+  name: string
+  tools: Record<string, unknown>
+  resources: unknown[]
+  resourceTemplates: unknown[]
+  authStatus: unknown
+}
+
+export interface McpServerStatusResponse {
+  data: McpServerStatus[]
+  nextCursor: string | null
+}
+
+export interface ReviewStartResponse {
+  turn: TurnInfo
+  reviewThreadId: string
+}
+
+export interface GitDiffResponse {
+  isGitRepo: boolean
+  diff: string
+}
+
 // ==================== Config Types ====================
 
 export interface ConfigLayer {
@@ -163,6 +204,7 @@ export const projectApi = {
     invoke<Project>('update_project', { id, displayName, settings }),
 
   getGitInfo: (path: string) => invoke<GitInfo>('get_project_git_info', { path }),
+  getGitDiff: (path: string) => invoke<GitDiffResponse>('get_project_git_diff', { path }),
 }
 
 // ==================== Session API ====================
@@ -240,10 +282,17 @@ export const threadApi = {
   respondToApproval: (
     threadId: string,
     itemId: string,
-    decision: 'accept' | 'acceptForSession' | 'decline',
-    requestId: number
+    decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline' | 'cancel',
+    requestId: number,
+    execpolicyAmendment?: { command: string[] } | null
   ) =>
-    invoke<void>('respond_to_approval', { threadId, itemId, decision, requestId }),
+    invoke<void>('respond_to_approval', {
+      threadId,
+      itemId,
+      decision,
+      requestId,
+      execpolicyAmendment,
+    }),
 }
 
 // ==================== Snapshot API ====================
@@ -274,6 +323,14 @@ export const serverApi = {
   logout: () => invoke<void>('logout'),
 
   getModels: () => invoke<ModelListResponse>('get_models'),
+
+  listSkills: (cwds: string[], forceReload = false) =>
+    invoke<SkillsListResponse>('list_skills', { cwds, forceReload }),
+
+  listMcpServers: () => invoke<McpServerStatusResponse>('list_mcp_servers'),
+
+  startReview: (threadId: string) =>
+    invoke<ReviewStartResponse>('start_review', { threadId }),
 }
 
 // ==================== Config API ====================

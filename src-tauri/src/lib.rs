@@ -49,6 +49,7 @@ pub fn run() {
             commands::projects::remove_project,
             commands::projects::update_project,
             commands::projects::get_project_git_info,
+            commands::projects::get_project_git_diff,
             // Session commands
             commands::sessions::list_sessions,
             commands::sessions::get_session,
@@ -72,6 +73,9 @@ pub fn run() {
             commands::app_server::start_login,
             commands::app_server::logout,
             commands::app_server::get_models,
+            commands::app_server::list_skills,
+            commands::app_server::list_mcp_servers,
+            commands::app_server::start_review,
             // Config commands
             commands::app_server::read_config,
             commands::app_server::write_config,

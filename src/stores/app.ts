@@ -6,6 +6,8 @@ interface AppState {
   // Dialog states
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
+  settingsTab: 'general' | 'model' | 'safety' | 'account'
+  setSettingsTab: (tab: 'general' | 'model' | 'safety' | 'account') => void
   snapshotsOpen: boolean
   setSnapshotsOpen: (open: boolean) => void
   aboutOpen: boolean
@@ -27,6 +29,8 @@ export const useAppStore = create<AppState>((set) => ({
   // Dialog states
   settingsOpen: false,
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  settingsTab: 'general',
+  setSettingsTab: (tab) => set({ settingsTab: tab }),
   snapshotsOpen: false,
   setSnapshotsOpen: (open) => set({ snapshotsOpen: open }),
   aboutOpen: false,

@@ -3,19 +3,32 @@ import { X, Paperclip, Image as ImageIcon, StopCircle, ArrowUp, Terminal, FileCo
 import { cn } from '../../lib/utils'
 import { useThreadStore, type AnyThreadItem } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
+import { useSessionsStore } from '../../stores/sessions'
+import { useSettingsStore } from '../../stores/settings'
 import { useAppStore } from '../../stores/app'
 import { Markdown } from '../ui/Markdown'
 import { DiffView, parseDiff, type FileDiff } from '../ui/DiffView'
 import { SlashCommandPopup } from './SlashCommandPopup'
-import { type SlashCommand, isCompleteCommand } from '../../lib/slashCommands'
-import { executeCommand, parseCommand } from '../../lib/commandExecutor'
+import { type SlashCommand } from '../../lib/slashCommands'
+import { executeCommand } from '../../lib/commandExecutor'
+import { useToast } from '../ui/Toast'
+import { serverApi, projectApi } from '../../lib/api'
 
 // Maximum height for the textarea (in pixels)
 const MAX_TEXTAREA_HEIGHT = 200
 
 export function ChatView() {
-  const { items, itemOrder, turnStatus, sendMessage, interrupt } = useThreadStore()
+  const { items, itemOrder, turnStatus, sendMessage, interrupt, addInfoItem } = useThreadStore()
   const { shouldFocusInput, clearFocusInput } = useAppStore()
+  const { showToast } = useToast()
+  const { setSettingsOpen, setSettingsTab, setSidebarTab } = useAppStore()
+  const settings = useSettingsStore((state) => state.settings)
+  const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
+  const projects = useProjectsStore((state) => state.projects)
+  const fetchSessions = useSessionsStore((state) => state.fetchSessions)
+  const selectSession = useSessionsStore((state) => state.selectSession)
+  const resumeThread = useThreadStore((state) => state.resumeThread)
+  const startThread = useThreadStore((state) => state.startThread)
   const [inputValue, setInputValue] = useState('')
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -68,11 +81,12 @@ export function ChatView() {
     adjustTextareaHeight()
   }, [inputValue, adjustTextareaHeight])
 
-  const { clearThread } = useThreadStore()
+  const { clearThread, tokenUsage, activeThread } = useThreadStore()
 
   const handleSend = async () => {
     const text = inputValue.trim()
-    if ((!text && attachedImages.length === 0) || turnStatus === 'running') return
+    if (!text && attachedImages.length === 0) return
+    if (turnStatus === 'running' && !text.startsWith('/')) return
 
     setInputValue('')
     setAttachedImages([])
@@ -90,17 +104,129 @@ export function ChatView() {
             await sendMessage(msg, images)
           },
           showToast: (message, type) => {
-            console.log(`[${type}] ${message}`)
+            showToast(message, type)
+          },
+          addInfoItem,
+          openSettingsTab: (tab) => {
+            setSettingsTab(tab)
+            setSettingsOpen(true)
+          },
+          startNewSession: async () => {
+            if (!selectedProjectId) {
+              showToast('Please select a project first', 'error')
+              return
+            }
+            const project = projects.find((p) => p.id === selectedProjectId)
+            if (!project) return
+
+            clearThread()
+            selectSession(null)
+            await startThread(
+              selectedProjectId,
+              project.path,
+              settings.model,
+              settings.sandboxMode,
+              settings.approvalPolicy
+            )
+            await fetchSessions(selectedProjectId)
+            setSidebarTab('sessions')
+            showToast('New session started', 'success')
+          },
+          resumeSession: async (sessionId) => {
+            if (!sessionId) {
+              setSidebarTab('sessions')
+              showToast('Select a session to resume', 'info')
+              return
+            }
+            selectSession(sessionId)
+            await resumeThread(sessionId)
+            showToast('Session resumed', 'success')
+          },
+          showStatus: () => {
+            const parts = [
+              `Model: ${settings.model || 'default'}`,
+              `Approval: ${settings.approvalPolicy}`,
+              `Sandbox: ${settings.sandboxMode}`,
+              `Tokens: ${tokenUsage.totalTokens}`,
+              activeThread ? `Thread: ${activeThread.id}` : 'Thread: none',
+            ]
+            addInfoItem('Status', parts.join('\n'))
+          },
+          showDiff: async () => {
+            if (!selectedProjectId) {
+              showToast('Select a project first', 'error')
+              return
+            }
+            const project = projects.find((p) => p.id === selectedProjectId)
+            if (!project) return
+
+            try {
+              const diff = await projectApi.getGitDiff(project.path)
+              if (!diff.isGitRepo) {
+                addInfoItem('Git diff', 'Not inside a git repository.')
+                return
+              }
+              addInfoItem('Git diff', diff.diff || '(no changes)')
+            } catch (error) {
+              addInfoItem('Git diff', `Failed to compute diff: ${String(error)}`)
+            }
+          },
+          listSkills: async () => {
+            if (!selectedProjectId) {
+              showToast('Select a project first', 'error')
+              return
+            }
+            const project = projects.find((p) => p.id === selectedProjectId)
+            if (!project) return
+            try {
+              const response = await serverApi.listSkills([project.path])
+              const lines = response.data.flatMap((entry) =>
+                entry.skills.map((skill) => `- ${skill.name}: ${skill.description}`)
+              )
+              addInfoItem('Skills', lines.length ? lines.join('\n') : 'No skills found.')
+            } catch (error) {
+              addInfoItem('Skills', `Failed to load skills: ${String(error)}`)
+            }
+          },
+          listMcp: async () => {
+            try {
+              const response = await serverApi.listMcpServers()
+              const lines = response.data.map((server) => {
+                const toolCount = Object.keys(server.tools || {}).length
+                return `- ${server.name} (${toolCount} tools)`
+              })
+              addInfoItem('MCP Servers', lines.length ? lines.join('\n') : 'No MCP servers found.')
+            } catch (error) {
+              addInfoItem('MCP Servers', `Failed to load MCP servers: ${String(error)}`)
+            }
+          },
+          startReview: async () => {
+            if (!activeThread) {
+              showToast('No active session', 'error')
+              return
+            }
+            await serverApi.startReview(activeThread.id)
+            addInfoItem('Review', 'Review started.')
+          },
+          logout: async () => {
+            await serverApi.logout()
+            showToast('Logged out', 'success')
+          },
+          quit: () => {
+            import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+              getCurrentWindow().close()
+            })
+          },
+          insertText: (value) => {
+            setInputValue(value)
+            inputRef.current?.focus()
+          },
+          openUrl: (url) => {
+            import('@tauri-apps/plugin-shell').then(({ open }) => open(url))
           },
         })
 
         if (result.handled) {
-          // If command requires UI, we could open a dialog here
-          // For now, settings commands will just show a message
-          if (result.requiresUI) {
-            console.log(`Settings command requires UI: ${result.requiresUI}`)
-            // TODO: Open settings dialog for the specific setting
-          }
           return
         }
       } catch (error) {
@@ -362,6 +488,12 @@ function MessageItem({ item }: MessageItemProps) {
       return <ReasoningCard item={item} />
     case 'mcpTool':
       return <McpToolCard item={item} />
+    case 'webSearch':
+      return <WebSearchCard item={item} />
+    case 'review':
+      return <ReviewCard item={item} />
+    case 'info':
+      return <InfoCard item={item} />
     case 'error':
       return <ErrorCard item={item} />
     default:
@@ -434,6 +566,8 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
     exitCode?: number
     durationMs?: number
     isRunning?: boolean
+    reason?: string
+    proposedExecpolicyAmendment?: { command: string[] } | null
   }
   const { respondToApproval, activeThread } = useThreadStore()
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -455,9 +589,13 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
     }
   }, [outputContent, content.isRunning])
 
-  const handleApprove = (decision: 'accept' | 'acceptForSession' | 'acceptAlways' | 'decline') => {
+  const handleApprove = (
+    decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline'
+  ) => {
     if (activeThread) {
-      respondToApproval(item.id, decision)
+      respondToApproval(item.id, decision, {
+        execpolicyAmendment: content.proposedExecpolicyAmendment,
+      })
     }
   }
 
@@ -582,6 +720,12 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
               </div>
             )}
 
+            {content.reason && (
+              <div className="mt-3 text-xs text-muted-foreground">
+                Reason: {content.reason}
+              </div>
+            )}
+
             {/* Approval UI */}
             {content.needsApproval && (
               <div className="mt-5 pt-3 border-t border-border/40">
@@ -608,19 +752,21 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
                 </div>
 
                 {/* Advanced Options Toggle */}
-                <button
-                  className="mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                >
-                  {showAdvanced ? '▼ Hide options' : '▶ More options'}
-                </button>
+                {content.proposedExecpolicyAmendment && (
+                  <button
+                    className="mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                  >
+                    {showAdvanced ? '▼ Hide options' : '▶ More options'}
+                  </button>
+                )}
 
                 {/* Advanced Actions */}
-                {showAdvanced && (
+                {showAdvanced && content.proposedExecpolicyAmendment && (
                   <div className="mt-2 flex gap-2 animate-in slide-in-from-top-2 duration-200">
                     <button
                       className="flex-1 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-[11px] font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                      onClick={() => handleApprove('acceptAlways')}
+                      onClick={() => handleApprove('acceptWithExecpolicyAmendment')}
                     >
                       Always Allow (Persistent)
                     </button>
@@ -638,11 +784,12 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
 // File Change Card
 function FileChangeCard({ item }: { item: AnyThreadItem }) {
   const content = item.content as {
-    changes: Array<{ path: string; kind: string; diff: string }>
+    changes: Array<{ path: string; kind: string; diff: string; oldPath?: string }>
     needsApproval: boolean
     approved?: boolean
     applied?: boolean
     snapshotId?: string
+    reason?: string
   }
   const { respondToApproval, activeThread, createSnapshot, revertToSnapshot } = useThreadStore()
   const projects = useProjectsStore((state) => state.projects)
@@ -650,11 +797,10 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
   const [expandedFiles, setExpandedFiles] = useState<Set<number>>(new Set())
   const [isApplying, setIsApplying] = useState(false)
   const [isReverting, setIsReverting] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const project = projects.find((p) => p.id === selectedProjectId)
 
-  const handleApplyChanges = async (decision: 'accept' | 'acceptForSession' | 'acceptAlways' = 'accept') => {
+  const handleApplyChanges = async (decision: 'accept' | 'acceptForSession' = 'accept') => {
     if (!activeThread || !project || isApplying) return
 
     setIsApplying(true)
@@ -663,7 +809,7 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
       const snapshot = await createSnapshot(project.path)
 
       // Approve the changes with the specific snapshot ID
-      await respondToApproval(item.id, decision, snapshot.id)
+      await respondToApproval(item.id, decision, { snapshotId: snapshot.id })
     } catch (error) {
       console.error('Failed to apply changes:', error)
     } finally {
@@ -703,13 +849,16 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
   }
 
   const addCount = content.changes.filter((c) => c.kind === 'add').length
-  const modifyCount = content.changes.filter((c) => c.kind === 'modify').length
+  const modifyCount = content.changes.filter(
+    (c) => c.kind === 'modify' || c.kind === 'rename'
+  ).length
   const deleteCount = content.changes.filter((c) => c.kind === 'delete').length
 
   // Convert changes to FileDiff format
   const fileDiffs: FileDiff[] = content.changes.map((change) => ({
     path: change.path,
-    kind: change.kind as 'add' | 'modify' | 'delete',
+    kind: change.kind as 'add' | 'modify' | 'delete' | 'rename',
+    oldPath: change.oldPath,
     hunks: change.diff ? parseDiff(change.diff) : [],
   }))
 
@@ -752,6 +901,9 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
 
         {content.needsApproval && (
           <div className="bg-secondary/10 p-4 border-t border-border/40">
+            {content.reason && (
+              <div className="mb-3 text-xs text-muted-foreground">Reason: {content.reason}</div>
+            )}
             {/* Primary Actions */}
             <div className="flex gap-2">
               <button
@@ -776,26 +928,6 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
               </button>
             </div>
 
-            {/* Advanced Options Toggle */}
-            <button
-              className="mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              {showAdvanced ? '▼ Hide options' : '▶ More options'}
-            </button>
-
-            {/* Advanced Actions */}
-            {showAdvanced && (
-              <div className="mt-2 flex gap-2 animate-in slide-in-from-top-2 duration-200">
-                <button
-                  className="flex-1 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-[11px] font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50"
-                  onClick={() => handleApplyChanges('acceptAlways')}
-                  disabled={isApplying}
-                >
-                  Always Allow (Persistent)
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -904,6 +1036,7 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
     error?: string
     durationMs?: number
     isRunning: boolean
+    progress?: string[]
   }
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -967,6 +1100,18 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
         {/* Content */}
         {isExpanded && (
           <div className="p-4 space-y-3">
+            {content.progress && content.progress.length > 0 && (
+              <div>
+                <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Progress
+                </div>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {content.progress.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Arguments */}
             {content.arguments && Object.keys(content.arguments as object).length > 0 && (
               <div>
@@ -1005,6 +1150,95 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
               </div>
             )}
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Web Search Card
+function WebSearchCard({ item }: { item: AnyThreadItem }) {
+  const content = item.content as {
+    query: string
+    results?: Array<{ title: string; url: string; snippet: string }>
+    isSearching: boolean
+  }
+
+  return (
+    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border/40 bg-secondary/30 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="rounded-md bg-background p-1 text-muted-foreground shadow-sm">
+              <ExternalLink size={14} />
+            </div>
+            <span className="text-xs font-medium text-foreground">Web Search</span>
+          </div>
+          {content.isSearching && (
+            <span className="text-[10px] text-muted-foreground">Searching...</span>
+          )}
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="text-sm text-muted-foreground">Query: {content.query}</div>
+          {content.results && content.results.length > 0 && (
+            <div className="space-y-2 text-xs">
+              {content.results.map((result, i) => (
+                <div key={i} className="rounded-lg border border-border/40 p-3">
+                  <div className="font-medium text-foreground">{result.title}</div>
+                  <div className="text-muted-foreground truncate">{result.url}</div>
+                  <div className="text-muted-foreground mt-1">{result.snippet}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Review Card
+function ReviewCard({ item }: { item: AnyThreadItem }) {
+  const content = item.content as { phase: 'started' | 'completed'; text: string }
+  return (
+    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
+      <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border/40 bg-secondary/30 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="rounded-md bg-background p-1 text-muted-foreground shadow-sm">
+              <AlertCircle size={14} />
+            </div>
+            <span className="text-xs font-medium text-foreground">
+              {content.phase === 'started' ? 'Review started' : 'Review complete'}
+            </span>
+          </div>
+        </div>
+        <div className="p-4">
+          <Markdown content={content.text} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Info Card
+function InfoCard({ item }: { item: AnyThreadItem }) {
+  const content = item.content as { title: string; details?: string }
+  return (
+    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
+      <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border/40 bg-secondary/30 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="rounded-md bg-background p-1 text-muted-foreground shadow-sm">
+              <ChevronRight size={14} />
+            </div>
+            <span className="text-xs font-medium text-foreground">{content.title}</span>
+          </div>
+        </div>
+        {content.details && (
+          <pre className="p-4 text-xs text-muted-foreground whitespace-pre-wrap font-mono">
+            {content.details}
+          </pre>
         )}
       </div>
     </div>

@@ -7,6 +7,19 @@ export interface CommandContext {
   clearThread: () => void
   sendMessage: (text: string, images?: string[]) => Promise<void>
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void
+  addInfoItem?: (title: string, details?: string) => void
+  openSettingsTab?: (tab: 'model' | 'safety') => void
+  startNewSession?: () => Promise<void>
+  resumeSession?: (sessionId?: string) => Promise<void>
+  showStatus?: () => void
+  showDiff?: () => Promise<void>
+  listSkills?: () => Promise<void>
+  listMcp?: () => Promise<void>
+  startReview?: (args: string[]) => Promise<void>
+  logout?: () => Promise<void>
+  quit?: () => void
+  insertText?: (text: string) => void
+  openUrl?: (url: string) => void
 }
 
 export interface CommandResult {
@@ -16,16 +29,7 @@ export interface CommandResult {
 }
 
 // Commands that can be executed immediately without sending to the AI
-const IMMEDIATE_COMMANDS = ['clear', 'help']
-
-// Commands that should be sent as messages to the AI for processing
-const AI_COMMANDS = [
-  'compact', 'undo', 'bash', 'browser', 'search',
-  'commit', 'pr', 'review', 'test', 'lint', 'format'
-]
-
-// Commands that require settings UI
-const SETTINGS_COMMANDS = ['model', 'provider', 'approval', 'sandbox']
+const IMMEDIATE_COMMANDS = ['new', 'resume', 'mention', 'status', 'diff', 'skills', 'mcp']
 
 /**
  * Parse a slash command from input text
@@ -56,37 +60,56 @@ export function canExecuteImmediately(command: SlashCommand): boolean {
 }
 
 /**
- * Check if a command should be sent to AI
- */
-export function shouldSendToAI(command: SlashCommand): boolean {
-  return AI_COMMANDS.includes(command.name)
-}
-
-/**
- * Check if a command requires settings UI
- */
-export function requiresSettingsUI(command: SlashCommand): boolean {
-  return SETTINGS_COMMANDS.includes(command.name)
-}
-
-/**
  * Execute an immediate command
  */
 export async function executeImmediateCommand(
   command: SlashCommand,
-  _args: string[],
+  args: string[],
   context: CommandContext
 ): Promise<CommandResult> {
   switch (command.name) {
-    case 'clear':
-      context.clearThread()
-      context.showToast?.('Conversation cleared', 'success')
-      return { executed: true, message: 'Conversation cleared' }
+    case 'new':
+      if (context.startNewSession) {
+        await context.startNewSession()
+        return { executed: true }
+      }
+      return { executed: false }
 
-    case 'help':
-      // For help, we'll send it to AI to generate contextual help
-      await context.sendMessage('/help - Show available commands and how to use them')
+    case 'resume':
+      if (context.resumeSession) {
+        await context.resumeSession(args[0])
+        return { executed: true }
+      }
+      return { executed: false }
+
+    case 'mention':
+      context.insertText?.('@')
       return { executed: true }
+
+    case 'status':
+      context.showStatus?.()
+      return { executed: true }
+
+    case 'diff':
+      if (context.showDiff) {
+        await context.showDiff()
+        return { executed: true }
+      }
+      return { executed: false }
+
+    case 'skills':
+      if (context.listSkills) {
+        await context.listSkills()
+        return { executed: true }
+      }
+      return { executed: false }
+
+    case 'mcp':
+      if (context.listMcp) {
+        await context.listMcp()
+        return { executed: true }
+      }
+      return { executed: false }
 
     default:
       return { executed: false, error: `Unknown immediate command: ${command.name}` }
@@ -104,55 +127,13 @@ export function formatCommandForAI(command: SlashCommand, args: string[]): strin
     case 'compact':
       return 'Please summarize our conversation so far and compact the context.'
 
-    case 'undo':
-      return argsStr
-        ? `Please undo the changes related to: ${argsStr}`
-        : 'Please undo the last code change you made.'
-
-    case 'bash':
-      return argsStr
-        ? `Execute this bash command: ${argsStr}`
-        : 'What bash command would you like me to run?'
-
-    case 'browser':
-      return argsStr
-        ? `Open this URL in the browser: ${argsStr}`
-        : 'What URL would you like me to open?'
-
-    case 'search':
-      return argsStr
-        ? `Search for: ${argsStr}`
-        : 'What would you like me to search for?'
-
-    case 'commit':
-      return argsStr
-        ? `Create a git commit with message: ${argsStr}`
-        : 'Please create a git commit for the changes made.'
-
-    case 'pr':
-      return argsStr
-        ? `Create a pull request: ${argsStr}`
-        : 'Please create a pull request for the current branch.'
-
     case 'review':
       return argsStr
         ? `Review the code changes in: ${argsStr}`
         : 'Please review the recent code changes.'
 
-    case 'test':
-      return argsStr
-        ? `Run tests for: ${argsStr}`
-        : 'Please run the test suite.'
-
-    case 'lint':
-      return argsStr
-        ? `Run linter on: ${argsStr}`
-        : 'Please run the linter and fix any issues.'
-
-    case 'format':
-      return argsStr
-        ? `Format the code in: ${argsStr}`
-        : 'Please format the code according to the project style.'
+    case 'init':
+      return 'Create an AGENTS.md contributor guide for this repository.'
 
     default:
       return `/${command.name} ${argsStr}`.trim()
@@ -166,7 +147,7 @@ export function formatCommandForAI(command: SlashCommand, args: string[]): strin
 export async function executeCommand(
   input: string,
   context: CommandContext
-): Promise<{ handled: boolean; requiresUI?: 'model' | 'provider' | 'approval' | 'sandbox' }> {
+): Promise<{ handled: boolean; insertText?: string }> {
   const { command, args } = parseCommand(input)
 
   if (!command) {
@@ -179,13 +160,46 @@ export async function executeCommand(
     return { handled: true }
   }
 
-  // Handle settings commands that need UI
-  if (requiresSettingsUI(command)) {
-    return { handled: true, requiresUI: command.name as 'model' | 'provider' | 'approval' | 'sandbox' }
+  // Settings commands
+  if (command.name === 'model') {
+    context.openSettingsTab?.('model')
+    return { handled: true }
+  }
+  if (command.name === 'approvals') {
+    context.openSettingsTab?.('safety')
+    return { handled: true }
   }
 
-  // Handle AI commands
-  if (shouldSendToAI(command)) {
+  // Native actions
+  if (command.name === 'review') {
+    if (context.startReview) {
+      await context.startReview(args)
+      return { handled: true }
+    }
+  }
+  if (command.name === 'logout') {
+    await context.logout?.()
+    return { handled: true }
+  }
+  if (command.name === 'quit' || command.name === 'exit') {
+    context.quit?.()
+    return { handled: true }
+  }
+  if (command.name === 'feedback') {
+    context.openUrl?.('https://github.com/openai/codex/issues')
+    return { handled: true }
+  }
+  if (command.name === 'rollout') {
+    context.addInfoItem?.('Rollout path', 'Rollout path is not exposed in Codex Desktop yet.')
+    return { handled: true }
+  }
+  if (command.name === 'test-approval') {
+    context.addInfoItem?.('Approval test', 'Approval testing is not wired in Codex Desktop yet.')
+    return { handled: true }
+  }
+
+  // Fallback to AI for supported prompts
+  if (['compact', 'init'].includes(command.name)) {
     const prompt = formatCommandForAI(command, args)
     await context.sendMessage(prompt)
     return { handled: true }

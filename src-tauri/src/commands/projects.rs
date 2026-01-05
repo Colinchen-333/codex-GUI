@@ -131,6 +131,44 @@ pub async fn get_project_git_info(path: String) -> Result<GitInfo> {
     })
 }
 
+/// Get git diff for a project (tracked + untracked)
+#[tauri::command]
+pub async fn get_project_git_diff(path: String) -> Result<GitDiff> {
+    let project_path = Path::new(&path);
+    if !project_path.exists() {
+        return Err(crate::Error::InvalidPath(format!(
+            "Path does not exist: {}",
+            path
+        )));
+    }
+
+    if !inside_git_repo(project_path)? {
+        return Ok(GitDiff {
+            is_git_repo: false,
+            diff: String::new(),
+        });
+    }
+
+    let tracked_diff = run_git_capture_diff(project_path, &["diff"])?;
+    let untracked_output =
+        run_git_capture_stdout(project_path, &["ls-files", "--others", "--exclude-standard"])?;
+
+    let mut untracked_diff = String::new();
+    let null_path = if cfg!(windows) { "NUL" } else { "/dev/null" };
+
+    for file in untracked_output.lines().map(str::trim).filter(|s| !s.is_empty()) {
+        let args = ["diff", "--no-index", "--", null_path, file];
+        if let Ok(diff) = run_git_capture_diff(project_path, &args) {
+            untracked_diff.push_str(&diff);
+        }
+    }
+
+    Ok(GitDiff {
+        is_git_repo: true,
+        diff: format!("{tracked_diff}{untracked_diff}"),
+    })
+}
+
 /// Git repository information
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -139,4 +177,63 @@ pub struct GitInfo {
     pub branch: Option<String>,
     pub is_dirty: Option<bool>,
     pub last_commit: Option<String>,
+}
+
+/// Git diff response
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitDiff {
+    pub is_git_repo: bool,
+    pub diff: String,
+}
+
+fn inside_git_repo(project_path: &Path) -> Result<bool> {
+    let status = std::process::Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(project_path)
+        .status();
+
+    match status {
+        Ok(s) if s.success() => Ok(true),
+        Ok(_) => Ok(false),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(err) => Err(crate::Error::Other(format!(
+            "Failed to check git repo: {}",
+            err
+        ))),
+    }
+}
+
+fn run_git_capture_stdout(project_path: &Path, args: &[&str]) -> Result<String> {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(project_path)
+        .output()
+        .map_err(|err| crate::Error::Other(format!("Failed to run git: {}", err)))?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    } else {
+        Err(crate::Error::Other(format!(
+            "git {:?} failed with status {}",
+            args, output.status
+        )))
+    }
+}
+
+fn run_git_capture_diff(project_path: &Path, args: &[&str]) -> Result<String> {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(project_path)
+        .output()
+        .map_err(|err| crate::Error::Other(format!("Failed to run git: {}", err)))?;
+
+    if output.status.success() || output.status.code() == Some(1) {
+        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    } else {
+        Err(crate::Error::Other(format!(
+            "git {:?} failed with status {}",
+            args, output.status
+        )))
+    }
 }

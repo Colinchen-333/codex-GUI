@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '../../lib/utils'
 import { serverApi, type AccountInfo, type Model } from '../../lib/api'
 import { useTheme } from '../../lib/theme'
@@ -12,6 +12,7 @@ import {
   REASONING_SUMMARY_OPTIONS,
 } from '../../stores/settings'
 import { useModelsStore, modelSupportsReasoning } from '../../stores/models'
+import { useAppStore } from '../../stores/app'
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -21,7 +22,7 @@ interface SettingsDialogProps {
 type SettingsTab = 'general' | 'model' | 'safety' | 'account'
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+  const { settingsTab: activeTab, setSettingsTab } = useAppStore()
   const { settings, updateSetting } = useSettingsStore()
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null)
 
@@ -70,7 +71,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent/50'
                 )}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setSettingsTab(tab.id)}
               >
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>

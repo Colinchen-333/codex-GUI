@@ -149,6 +149,137 @@ pub async fn get_models(state: State<'_, AppState>) -> Result<ModelListResponse>
     Ok(response)
 }
 
+// ==================== Skills Commands ====================
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsListParams {
+    pub cwds: Vec<String>,
+    pub force_reload: bool,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillMetadata {
+    pub name: String,
+    pub description: String,
+    pub short_description: Option<String>,
+    pub path: String,
+    pub scope: String,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillErrorInfo {
+    pub path: String,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsListEntry {
+    pub cwd: String,
+    pub skills: Vec<SkillMetadata>,
+    pub errors: Vec<SkillErrorInfo>,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsListResponse {
+    pub data: Vec<SkillsListEntry>,
+}
+
+#[tauri::command]
+pub async fn list_skills(
+    state: State<'_, AppState>,
+    cwds: Vec<String>,
+    force_reload: bool,
+) -> Result<SkillsListResponse> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let params = SkillsListParams { cwds, force_reload };
+    let response: SkillsListResponse = server.send_request("skills/list", params).await?;
+    Ok(response)
+}
+
+// ==================== MCP Commands ====================
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerStatus {
+    pub name: String,
+    pub tools: std::collections::HashMap<String, serde_json::Value>,
+    pub resources: Vec<serde_json::Value>,
+    pub resource_templates: Vec<serde_json::Value>,
+    pub auth_status: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerStatusResponse {
+    pub data: Vec<McpServerStatus>,
+    pub next_cursor: Option<String>,
+}
+
+#[tauri::command]
+pub async fn list_mcp_servers(state: State<'_, AppState>) -> Result<McpServerStatusResponse> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let params = serde_json::json!({
+        "limit": 100,
+    });
+    let response: McpServerStatusResponse = server
+        .send_request("mcpServerStatus/list", params)
+        .await?;
+    Ok(response)
+}
+
+// ==================== Review Commands ====================
+
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewStartResponse {
+    pub turn: serde_json::Value,
+    pub review_thread_id: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ReviewTarget {
+    UncommittedChanges,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewStartParams {
+    pub thread_id: String,
+    pub target: ReviewTarget,
+}
+
+#[tauri::command]
+pub async fn start_review(state: State<'_, AppState>, thread_id: String) -> Result<ReviewStartResponse> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let params = ReviewStartParams {
+        thread_id,
+        target: ReviewTarget::UncommittedChanges,
+    };
+    let response: ReviewStartResponse = server.send_request("review/start", params).await?;
+    Ok(response)
+}
+
 // ==================== Config Commands ====================
 
 /// Config layer information

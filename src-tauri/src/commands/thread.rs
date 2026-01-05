@@ -162,12 +162,21 @@ pub async fn respond_to_approval(
     _item_id: String,
     decision: String,
     request_id: u64,
+    execpolicy_amendment: Option<crate::app_server::ipc_bridge::ExecPolicyAmendment>,
 ) -> Result<()> {
     let decision = match decision.as_str() {
         "accept" => ApprovalDecision::Accept,
         "acceptForSession" => ApprovalDecision::AcceptForSession,
-        "acceptAlways" => ApprovalDecision::AcceptAlways,
+        "acceptWithExecpolicyAmendment" => {
+            let amendment = execpolicy_amendment.ok_or_else(|| {
+                crate::Error::Other("Missing execpolicy amendment".to_string())
+            })?;
+            ApprovalDecision::AcceptWithExecpolicyAmendment {
+                execpolicy_amendment: amendment,
+            }
+        }
         "decline" => ApprovalDecision::Decline,
+        "cancel" => ApprovalDecision::Cancel,
         _ => return Err(crate::Error::Other(format!("Invalid decision: {}", decision))),
     };
 

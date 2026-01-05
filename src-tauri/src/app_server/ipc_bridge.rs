@@ -231,6 +231,13 @@ pub struct TurnInterruptParams {
     pub thread_id: String,
 }
 
+/// Execpolicy amendment for persistent approvals
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExecPolicyAmendment {
+    pub command: Vec<String>,
+}
+
 /// Approval decision
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -239,10 +246,12 @@ pub enum ApprovalDecision {
     Accept,
     /// Allow this action for the current session
     AcceptForSession,
-    /// Always allow this action (persistent)
-    AcceptAlways,
+    /// Approve and persist execpolicy amendment
+    AcceptWithExecpolicyAmendment { execpolicy_amendment: ExecPolicyAmendment },
     /// Decline/reject this action
     Decline,
+    /// Cancel the request
+    Cancel,
 }
 
 /// Approval response parameters (for notification fallback)

@@ -188,7 +188,6 @@ export type AnyThreadItem =
   | InfoItem
   | ErrorItem
   | PlanItem
-  | ThreadItem
 
 // ==================== Turn Status ====================
 
@@ -458,6 +457,13 @@ function toThreadItem(item: { id: string; type: string } & Record<string, unknow
         type: 'webSearch',
         content: {
           query: typeof item.query === 'string' ? item.query : '',
+          results: Array.isArray(item.results)
+            ? (item.results as Array<Record<string, unknown>>).map((result) => ({
+                title: typeof result.title === 'string' ? result.title : '',
+                url: typeof result.url === 'string' ? result.url : '',
+                snippet: typeof result.snippet === 'string' ? result.snippet : '',
+              }))
+            : undefined,
           isSearching: base.status === 'inProgress',
         },
       }
@@ -489,10 +495,14 @@ function toThreadItem(item: { id: string; type: string } & Record<string, unknow
         },
       }
     default:
+      // Handle unknown item types as info items
       return {
         ...base,
-        type: mapItemType(item.type),
-        content: item,
+        type: 'info' as const,
+        content: {
+          title: `Unknown item type: ${String(item.type)}`,
+          details: JSON.stringify(item, null, 2),
+        },
       }
   }
 }

@@ -42,81 +42,71 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-2xl rounded-lg bg-background shadow-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-xl font-semibold">Settings</h2>
-          <button
-            className="text-muted-foreground hover:text-foreground"
-            onClick={onClose}
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-8">
+      <div className="flex h-[600px] w-full max-w-4xl overflow-hidden rounded-[2rem] bg-card shadow-2xl border border-border/50 animate-in zoom-in-95 duration-300">
+        
+        {/* Sidebar */}
+        <div className="w-60 bg-secondary/30 p-4 border-r border-border/50 flex flex-col gap-1">
+          <div className="mb-6 px-4 py-2">
+            <h2 className="text-xl font-bold tracking-tight">Settings</h2>
+          </div>
+          
+          {[
+            { id: 'general' as const, label: 'General', icon: '⚙️' },
+            { id: 'model' as const, label: 'Model', icon: '🤖' },
+            { id: 'safety' as const, label: 'Safety', icon: '🛡️' },
+            { id: 'allowlist' as const, label: 'Allowlist', icon: '✅' },
+            { id: 'account' as const, label: 'Account', icon: '👤' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition-all',
+                activeTab === tab.id
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+              )}
+              onClick={() => setSettingsTab(tab.id)}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
 
-        <div className="flex min-h-[400px]">
-          {/* Sidebar */}
-          <div className="w-48 border-r border-border p-2">
-            {[
-              { id: 'general' as const, label: 'General', icon: '⚙️' },
-              { id: 'model' as const, label: 'Model', icon: '🤖' },
-              { id: 'safety' as const, label: 'Safety', icon: '🛡️' },
-              { id: 'allowlist' as const, label: 'Allowlist', icon: '✅' },
-              { id: 'account' as const, label: 'Account', icon: '👤' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm',
-                  activeTab === tab.id
-                    ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-accent/50'
-                )}
-                onClick={() => setSettingsTab(tab.id)}
-              >
-                <span>{tab.icon}</span>
-                <span>{tab.label}</span>
-              </button>
-            ))}
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-2xl mx-auto">
+              {activeTab === 'general' && <GeneralSettings />}
+              {activeTab === 'model' && (
+                <ModelSettings settings={settings} updateSetting={updateSetting} />
+              )}
+              {activeTab === 'safety' && (
+                <SafetySettings settings={settings} updateSetting={updateSetting} />
+              )}
+              {activeTab === 'allowlist' && <AllowlistSettings />}
+              {activeTab === 'account' && (
+                <AccountSettings
+                  accountInfo={accountInfo}
+                  onRefresh={async () => {
+                    const info = await serverApi.getAccountInfo()
+                    setAccountInfo(info)
+                  }}
+                />
+              )}
+            </div>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 p-6">
-            {activeTab === 'general' && <GeneralSettings />}
-            {activeTab === 'model' && (
-              <ModelSettings settings={settings} updateSetting={updateSetting} />
-            )}
-            {activeTab === 'safety' && (
-              <SafetySettings settings={settings} updateSetting={updateSetting} />
-            )}
-            {activeTab === 'allowlist' && <AllowlistSettings />}
-            {activeTab === 'account' && (
-              <AccountSettings
-                accountInfo={accountInfo}
-                onRefresh={async () => {
-                  const info = await serverApi.getAccountInfo()
-                  setAccountInfo(info)
-                }}
-              />
-            )}
+          {/* Footer */}
+          <div className="flex justify-end gap-3 border-t border-border/50 bg-background/50 p-6 backdrop-blur-sm">
+            <button
+              className="rounded-xl px-6 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
+              onClick={onClose}
+            >
+              Close
+            </button>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
-          <button
-            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            onClick={handleSave}
-          >
-            Done
-          </button>
         </div>
       </div>
     </div>

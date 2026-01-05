@@ -85,10 +85,15 @@ export function Markdown({ content, className }: MarkdownProps) {
             const code = String(children).replace(/\n$/, '')
 
             return (
-              <div className="relative rounded-lg overflow-hidden my-2">
+              <div className="relative rounded-xl overflow-hidden my-3 border border-border/50 bg-card shadow-sm">
                 {match && (
-                  <div className="bg-secondary/80 px-3 py-1 text-xs text-muted-foreground border-b border-border">
-                    {language}
+                  <div className="bg-secondary/30 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border/50 flex items-center gap-2">
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-400/20"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/20"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-400/20"></div>
+                    </div>
+                    <span className="ml-2 uppercase tracking-wider opacity-70">{language}</span>
                   </div>
                 )}
                 <CodeBlock language={language}>{code}</CodeBlock>
@@ -104,44 +109,44 @@ export function Markdown({ content, className }: MarkdownProps) {
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary hover:underline"
+                className="text-primary font-medium hover:underline decoration-primary/30 underline-offset-2 transition-colors"
               >
                 {children}
               </a>
             )
           },
           ul({ children }) {
-            return <ul className="list-disc pl-4 my-2">{children}</ul>
+            return <ul className="list-disc pl-5 my-3 space-y-1 marker:text-muted-foreground">{children}</ul>
           },
           ol({ children }) {
-            return <ol className="list-decimal pl-4 my-2">{children}</ol>
+            return <ol className="list-decimal pl-5 my-3 space-y-1 marker:text-muted-foreground">{children}</ol>
           },
           li({ children }) {
-            return <li className="my-1">{children}</li>
+            return <li className="my-1 leading-relaxed">{children}</li>
           },
           p({ children }) {
-            return <p className="my-2 first:mt-0 last:mb-0">{children}</p>
+            return <p className="my-3 first:mt-0 last:mb-0 leading-relaxed text-foreground/90">{children}</p>
           },
           h1({ children }) {
-            return <h1 className="text-xl font-bold my-3">{children}</h1>
+            return <h1 className="text-2xl font-bold mt-6 mb-4 tracking-tight text-foreground">{children}</h1>
           },
           h2({ children }) {
-            return <h2 className="text-lg font-bold my-2">{children}</h2>
+            return <h2 className="text-xl font-semibold mt-5 mb-3 tracking-tight text-foreground">{children}</h2>
           },
           h3({ children }) {
-            return <h3 className="text-base font-bold my-2">{children}</h3>
+            return <h3 className="text-lg font-semibold mt-4 mb-2 tracking-tight text-foreground">{children}</h3>
           },
           blockquote({ children }) {
             return (
-              <blockquote className="border-l-4 border-primary/50 pl-4 my-2 italic text-muted-foreground">
+              <blockquote className="my-4 border-l-4 border-primary/20 bg-secondary/10 pl-4 py-1 pr-2 rounded-r-xl text-muted-foreground italic">
                 {children}
               </blockquote>
             )
           },
           table({ children }) {
             return (
-              <div className="overflow-x-auto my-2">
-                <table className="min-w-full border-collapse border border-border">
+              <div className="overflow-x-auto my-4 rounded-xl border border-border/50 shadow-sm">
+                <table className="min-w-full border-collapse">
                   {children}
                 </table>
               </div>
@@ -149,16 +154,16 @@ export function Markdown({ content, className }: MarkdownProps) {
           },
           th({ children }) {
             return (
-              <th className="border border-border bg-secondary px-3 py-2 text-left font-semibold">
+              <th className="bg-secondary/30 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
                 {children}
               </th>
             )
           },
           td({ children }) {
-            return <td className="border border-border px-3 py-2">{children}</td>
+            return <td className="px-4 py-2 border-b border-border/30 last:border-0 text-sm">{children}</td>
           },
           hr() {
-            return <hr className="my-4 border-border" />
+            return <hr className="my-6 border-border/50" />
           },
         }}
       >

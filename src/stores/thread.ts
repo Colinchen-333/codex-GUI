@@ -259,7 +259,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
 
     try {
       const response = await threadApi.sendMessage(activeThread.id, text, images)
-      set({ currentTurnId: response.turnId })
+      set({ currentTurnId: response.turn.id })
     } catch (error) {
       set({ turnStatus: 'failed', error: String(error) })
       throw error

@@ -17,18 +17,17 @@ pub async fn start_thread(
     project_id: String,
     cwd: String,
     model: Option<String>,
-    sandbox_mode: Option<String>,
-    ask_for_approval: Option<String>,
+    sandbox: Option<String>,
+    approval_policy: Option<String>,
 ) -> Result<ThreadStartResponse> {
     // Ensure app-server is running
     state.start_app_server().await?;
 
     let params = ThreadStartParams {
-        cwd: cwd.clone(),
+        cwd: Some(cwd.clone()),
         model,
-        sandbox_mode,
-        ask_for_approval,
-        additional_directories: None,
+        sandbox,
+        approval_policy,
     };
 
     let mut server = state.app_server.write().await;
@@ -107,7 +106,7 @@ pub async fn send_message(
 
     let response: TurnStartResponse = server.send_request("turn/start", params).await?;
 
-    tracing::info!("Started turn: {}", response.turn_id);
+    tracing::info!("Started turn: {}", response.turn.id);
 
     Ok(response)
 }

@@ -44,8 +44,15 @@ export interface ThreadResumeResponse {
   items: unknown[]
 }
 
+export interface TurnInfo {
+  id: string
+  status: string
+  items: unknown[]
+  error: unknown | null
+}
+
 export interface TurnStartResponse {
-  turnId: string
+  turn: TurnInfo
 }
 
 export interface ServerStatus {
@@ -148,15 +155,15 @@ export const threadApi = {
     projectId: string,
     cwd: string,
     model?: string,
-    sandboxMode?: string,
-    askForApproval?: string
+    sandbox?: string,
+    approvalPolicy?: string
   ) =>
     invoke<ThreadStartResponse>('start_thread', {
       projectId,
       cwd,
       model,
-      sandboxMode,
-      askForApproval,
+      sandbox,
+      approvalPolicy,
     }),
 
   resume: (threadId: string) =>

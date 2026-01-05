@@ -11,23 +11,20 @@ use serde_json::Value as JsonValue;
 #[serde(rename_all = "camelCase")]
 pub struct ThreadStartParams {
     /// Working directory for the thread
-    pub cwd: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
 
     /// Optional model to use
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
 
-    /// Sandbox mode
+    /// Sandbox policy: "readOnly" | "workspaceWrite" | "dangerFullAccess"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sandbox_mode: Option<String>,
+    pub sandbox: Option<String>,
 
-    /// Ask for approval policy
+    /// Approval policy: "never" | "onRequest" | "onFailure" | "unlessTrusted"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ask_for_approval: Option<String>,
-
-    /// Additional directories to include
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub additional_directories: Option<Vec<String>>,
+    pub approval_policy: Option<String>,
 }
 
 /// Thread start response
@@ -112,11 +109,22 @@ pub enum UserInput {
     LocalImage { path: String },
 }
 
+/// Turn info
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnInfo {
+    pub id: String,
+    pub status: String,
+    #[serde(default)]
+    pub items: Vec<JsonValue>,
+    pub error: Option<JsonValue>,
+}
+
 /// Turn start response
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TurnStartResponse {
-    pub turn_id: String,
+    pub turn: TurnInfo,
 }
 
 /// Turn interrupt parameters

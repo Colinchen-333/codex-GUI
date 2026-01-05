@@ -384,17 +384,18 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
   const project = projects.find((p) => p.id === selectedProjectId)
 
   const handleApplyChanges = async () => {
-    if (!activeThread || !project) return
+    if (!activeThread || !project || isApplying) return
 
     setIsApplying(true)
     try {
       // Create snapshot before applying changes
-      await createSnapshot(project.path)
+      const snapshot = await createSnapshot(project.path)
 
-      // Approve the changes (snapshot is stored in thread store)
-      respondToApproval(item.id, 'accept')
+      // Approve the changes with the specific snapshot ID
+      await respondToApproval(item.id, 'accept', snapshot.id)
     } catch (error) {
       console.error('Failed to apply changes:', error)
+      // Error is logged but user sees the button enabled again
     } finally {
       setIsApplying(false)
     }

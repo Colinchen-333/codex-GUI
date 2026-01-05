@@ -119,7 +119,8 @@ interface ThreadState {
   interrupt: () => Promise<void>
   respondToApproval: (
     itemId: string,
-    decision: 'accept' | 'acceptForSession' | 'decline'
+    decision: 'accept' | 'acceptForSession' | 'decline',
+    snapshotId?: string
   ) => Promise<void>
   clearThread: () => void
 
@@ -277,8 +278,8 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     }
   },
 
-  respondToApproval: async (itemId, decision) => {
-    const { activeThread, snapshots } = get()
+  respondToApproval: async (itemId, decision, snapshotId) => {
+    const { activeThread } = get()
     if (!activeThread) return
 
     try {
@@ -297,8 +298,8 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
             item.type === 'fileChange' && isApproved
               ? {
                   applied: true,
-                  // Use the most recent snapshot if available
-                  snapshotId: snapshots[0]?.id,
+                  // Use the provided snapshotId (created before applying)
+                  snapshotId: snapshotId,
                 }
               : {}
 

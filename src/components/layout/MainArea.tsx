@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
@@ -10,8 +10,12 @@ export function MainArea() {
   const projects = useProjectsStore((state) => state.projects)
   const fetchGitInfo = useProjectsStore((state) => state.fetchGitInfo)
   const activeThread = useThreadStore((state) => state.activeThread)
+  const clearThread = useThreadStore((state) => state.clearThread)
   const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
   const resumeThread = useThreadStore((state) => state.resumeThread)
+
+  // Track previous session ID to detect switches
+  const prevSessionIdRef = useRef<string | null>(null)
 
   // Load Git info when project is selected
   useEffect(() => {
@@ -23,14 +27,30 @@ export function MainArea() {
     }
   }, [selectedProjectId, projects, fetchGitInfo])
 
-  // Resume thread when session is selected
+  // Resume thread when session is selected or switched
   useEffect(() => {
-    if (selectedSessionId && !activeThread) {
+    // Skip if no session selected
+    if (!selectedSessionId) {
+      prevSessionIdRef.current = null
+      return
+    }
+
+    // Check if session changed
+    const sessionChanged = prevSessionIdRef.current !== selectedSessionId
+    prevSessionIdRef.current = selectedSessionId
+
+    // If session changed and we have an active thread for a different session, clear it first
+    if (sessionChanged && activeThread && activeThread.id !== selectedSessionId) {
+      clearThread()
+    }
+
+    // Resume the selected session if no active thread or if we just cleared it
+    if (!activeThread || sessionChanged) {
       resumeThread(selectedSessionId).catch((error) => {
         console.error('Failed to resume session:', error)
       })
     }
-  }, [selectedSessionId, activeThread, resumeThread])
+  }, [selectedSessionId, activeThread, resumeThread, clearThread])
 
   // No project selected - show welcome
   if (!selectedProjectId) {

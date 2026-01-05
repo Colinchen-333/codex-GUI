@@ -147,6 +147,10 @@ export function Sidebar() {
         settings.sandboxMode,
         settings.askForApproval
       )
+      // Refresh sessions list to show the new session
+      await fetchSessions(selectedProjectId)
+      // Switch to sessions tab to show the new session
+      setActiveTab('sessions')
       showToast('New session started', 'success')
     } catch (error) {
       console.error('Failed to start new session:', error)

@@ -140,7 +140,12 @@ export function ChatView() {
 
   // RAF-optimized auto-scroll to bottom when new messages or deltas arrive
   // Use 'instant' during streaming to avoid jitter, 'smooth' otherwise
+  // IMPORTANT: Only depend on itemOrder.length, not items object, to prevent RAF stacking
   const scrollRAFRef = useRef<number | null>(null)
+  const lastItemId = itemOrder[itemOrder.length - 1] || ''
+  const lastItemText = items[lastItemId]?.type === 'agentMessage'
+    ? (items[lastItemId].content as { text: string }).text.length
+    : 0
   useEffect(() => {
     if (autoScroll) {
       // Cancel any pending RAF to avoid stacking
@@ -161,7 +166,7 @@ export function ChatView() {
         cancelAnimationFrame(scrollRAFRef.current)
       }
     }
-  }, [itemOrder, items, autoScroll, turnStatus])
+  }, [itemOrder.length, lastItemText, autoScroll, turnStatus])
 
   // Throttled scroll handler using RAF for better performance
   const scrollThrottleRef = useRef(false)
@@ -587,6 +592,8 @@ export function ChatView() {
                     <img
                       src={img}
                       alt={`Attached ${i + 1}`}
+                      loading="lazy"
+                      decoding="async"
                       className="h-14 w-14 rounded-xl object-cover border border-border/50 shadow-sm"
                     />
                     <button
@@ -1366,6 +1373,18 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
   }
   const [isExpanded, setIsExpanded] = useState(false)
 
+  // Memoize JSON.stringify to avoid re-computation on every render
+  const argumentsJson = useMemo(() =>
+    content.arguments ? JSON.stringify(content.arguments, null, 2) : '',
+    [content.arguments]
+  )
+  const resultJson = useMemo(() =>
+    content.result && typeof content.result !== 'string'
+      ? JSON.stringify(content.result, null, 2)
+      : null,
+    [content.result]
+  )
+
   return (
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
       <div
@@ -1443,13 +1462,13 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
               </div>
             )}
             {/* Arguments */}
-            {content.arguments !== undefined && content.arguments !== null && Object.keys(content.arguments as object).length > 0 && (
+            {argumentsJson && (
               <div>
                 <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                   Arguments
                 </div>
                 <pre className="max-h-40 overflow-auto rounded-lg bg-secondary/50 p-3 font-mono text-xs text-muted-foreground">
-                  {JSON.stringify(content.arguments, null, 2)}
+                  {argumentsJson}
                 </pre>
               </div>
             )}
@@ -1461,9 +1480,7 @@ function McpToolCard({ item }: { item: AnyThreadItem }) {
                   Result
                 </div>
                 <pre className="max-h-60 overflow-auto rounded-lg bg-green-50/50 dark:bg-green-900/10 p-3 font-mono text-xs text-foreground">
-                  {typeof content.result === 'string'
-                    ? (content.result as string)
-                    : JSON.stringify(content.result, null, 2)}
+                  {typeof content.result === 'string' ? content.result : resultJson}
                 </pre>
               </div>
             )}

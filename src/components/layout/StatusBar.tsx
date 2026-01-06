@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Activity, ShieldCheck, HelpCircle, Info, Settings, Camera, Coins, GitBranch, Clock } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { Activity, ShieldCheck, HelpCircle, Info, Settings, Camera, Coins, GitBranch, Clock, Zap } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { serverApi, projectApi, type ServerStatus, type AccountInfo, type GitInfo } from '../../lib/api'
 import { useProjectsStore } from '../../stores/projects'
@@ -36,6 +36,9 @@ export function StatusBar() {
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null)
   const [gitInfo, setGitInfo] = useState<GitInfo | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0) // Real-time elapsed counter
+  const [tokenRate, setTokenRate] = useState(0) // Token consumption rate
+  const prevTokensRef = useRef(0)
+  const prevTimeRef = useRef(0)
   const { selectedProjectId, projects } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const {
@@ -54,23 +57,40 @@ export function StatusBar() {
   const tokenUsage = useThreadStore((state) => state.tokenUsage)
   const turnStatus = useThreadStore((state) => state.turnStatus)
   const turnTiming = useThreadStore((state) => state.turnTiming)
+  const pendingApprovals = useThreadStore((state) => state.pendingApprovals)
 
-  // Real-time elapsed time update when running
+  // Real-time elapsed time + token rate update when running (50ms for smooth display)
   useEffect(() => {
     if (turnStatus !== 'running' || !turnTiming.startedAt) {
+      setTokenRate(0)
+      prevTokensRef.current = tokenUsage.totalTokens
+      prevTimeRef.current = Date.now()
       return
     }
-    // Update elapsed time every 100ms for smooth display
+    // Update elapsed time every 50ms for CLI-like smooth display
     const interval = setInterval(() => {
-      setElapsedMs(Date.now() - turnTiming.startedAt!)
-    }, 100)
+      const now = Date.now()
+      setElapsedMs(now - turnTiming.startedAt!)
+
+      // Calculate token rate every 500ms for stability
+      const timeDelta = (now - prevTimeRef.current) / 1000
+      if (timeDelta >= 0.5) {
+        const tokenDelta = tokenUsage.totalTokens - prevTokensRef.current
+        if (tokenDelta > 0 && timeDelta > 0) {
+          setTokenRate(Math.round(tokenDelta / timeDelta))
+        }
+        prevTokensRef.current = tokenUsage.totalTokens
+        prevTimeRef.current = now
+      }
+    }, 50)
     return () => clearInterval(interval)
-  }, [turnStatus, turnTiming.startedAt])
+  }, [turnStatus, turnTiming.startedAt, tokenUsage.totalTokens])
 
   // Reset elapsed when turn completes
   useEffect(() => {
     if (turnStatus !== 'running') {
       setElapsedMs(0)
+      setTokenRate(0)
     }
   }, [turnStatus])
 
@@ -207,6 +227,19 @@ export function StatusBar() {
               <span className="uppercase tracking-widest text-[10px] font-medium shimmer-text">
                 Working
               </span>
+              {/* Pending approvals badge */}
+              {pendingApprovals.length > 0 && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[9px] font-medium">
+                  {pendingApprovals.length} pending
+                </span>
+              )}
+              {/* Token rate */}
+              {tokenRate > 0 && (
+                <span className="flex items-center gap-1 text-[9px] text-muted-foreground/70">
+                  <Zap size={9} />
+                  {tokenRate} tok/s
+                </span>
+              )}
               {/* Elapsed time */}
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Clock size={10} />
@@ -214,7 +247,7 @@ export function StatusBar() {
               </span>
               {/* Interrupt hint */}
               <span className="text-[9px] text-muted-foreground/60">
-                • Esc to stop
+                • esc
               </span>
             </div>
           )}

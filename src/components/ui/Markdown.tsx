@@ -61,9 +61,9 @@ const LazyCodeBlock = memo(function LazyCodeBlock({ language, children }: { lang
       PreTag="div"
       customStyle={{
         margin: 0,
-        borderRadius: 0,
-        fontSize: '0.8125rem',
-        padding: '0.75rem',
+        borderRadius: '0 0 0.75rem 0.75rem',
+        fontSize: '0.875rem',
+        padding: '1rem',
       }}
     >
       {children}
@@ -93,9 +93,9 @@ const markdownComponents = {
     const code = String(children).replace(/\n$/, '')
 
     return (
-      <div className="relative rounded-md overflow-hidden my-2 border border-border/40 bg-secondary/20">
+      <div className="relative rounded-xl overflow-hidden my-3 border border-border/50 bg-card shadow-sm">
         {match && (
-          <div className="bg-secondary/50 px-3 py-1 text-[10px] font-mono text-muted-foreground border-b border-border/40 uppercase tracking-wide">
+          <div className="bg-secondary/30 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border/30 uppercase tracking-wide">
             {language}
           </div>
         )}
@@ -141,14 +141,14 @@ const markdownComponents = {
   },
   blockquote({ children }: { children?: React.ReactNode }) {
     return (
-      <blockquote className="my-3 border-l-2 border-muted-foreground/30 pl-3 py-0.5 text-muted-foreground">
+      <blockquote className="my-4 border-l-4 border-primary/20 bg-secondary/30 pl-4 py-2 pr-3 rounded-r-xl text-muted-foreground italic">
         {children}
       </blockquote>
     )
   },
   table({ children }: { children?: React.ReactNode }) {
     return (
-      <div className="overflow-x-auto my-3 rounded-md border border-border/40">
+      <div className="overflow-x-auto my-4 rounded-xl border border-border/50 shadow-sm">
         <table className="min-w-full border-collapse">
           {children}
         </table>

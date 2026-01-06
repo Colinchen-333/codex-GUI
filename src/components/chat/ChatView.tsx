@@ -625,7 +625,8 @@ export function ChatView() {
 
           <div
             className={cn(
-              "relative rounded-2xl bg-card shadow-lg border border-border/50 p-2 transition-all duration-75",
+              "relative rounded-2xl bg-card shadow-lg border border-border/40 p-2.5 transition-all duration-150",
+              "hover:shadow-xl hover:border-border/60",
               isDragging && "scale-[1.02] ring-2 ring-primary ring-offset-2"
             )}
           >
@@ -827,9 +828,9 @@ const MessageItem = memo(
 function UserMessage({ item }: { item: AnyThreadItem }) {
   const content = item.content as { text: string; images?: string[] }
   return (
-    <div className="flex justify-end pl-12 animate-in slide-in-from-bottom-2 duration-150">
+    <div className="flex justify-end pl-12 animate-in slide-in-from-bottom-2 duration-200">
       <div className="group relative max-w-[85%]">
-        <div className="rounded-2xl rounded-tr-sm bg-primary px-5 py-3.5 text-primary-foreground shadow-sm">
+        <div className="rounded-2xl rounded-tr-sm bg-primary px-5 py-4 text-primary-foreground shadow-md">
           {content.images && content.images.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">
               {content.images.map((img, i) => (
@@ -839,7 +840,7 @@ function UserMessage({ item }: { item: AnyThreadItem }) {
                   alt={`Attached ${i + 1}`}
                   loading="lazy"
                   decoding="async"
-                  className="h-32 w-32 rounded-lg object-cover border border-primary-foreground/10 bg-black/20"
+                  className="h-32 w-32 rounded-xl object-cover border border-primary-foreground/10 bg-black/20 shadow-sm"
                 />
               ))}
             </div>
@@ -859,12 +860,14 @@ function UserMessage({ item }: { item: AnyThreadItem }) {
 function AgentMessage({ item }: { item: AnyThreadItem }) {
   const content = item.content as { text: string; isStreaming: boolean }
   return (
-    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
-      <div className="max-w-[90%] rounded-xl rounded-tl-sm bg-card px-5 py-3 shadow-sm border border-border/40">
+    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-200">
+      <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-card px-5 py-4 shadow-md border border-border/30 backdrop-blur-sm">
         <Markdown content={content.text} />
         {content.isStreaming && (
-          <div className="mt-1.5 flex items-center gap-0.5">
-            <span className="h-1 w-1 rounded-full bg-primary/50 animate-pulse" />
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
         )}
       </div>
@@ -2051,7 +2054,7 @@ function WorkingStatusBar() {
   const pendingCount = pendingApprovals.length
 
   return (
-    <div className="mb-2 px-4 py-2 rounded-2xl bg-secondary/50 border border-border/30 animate-in fade-in slide-in-from-bottom-2 duration-100">
+    <div className="mb-3 px-4 py-3 rounded-2xl bg-secondary/40 border border-border/30 shadow-sm backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* Spinning indicator */}

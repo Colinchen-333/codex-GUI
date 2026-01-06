@@ -139,11 +139,16 @@ export function ChatView() {
   }, [inputValue, mentionStartPos, fileMentionQuery])
 
   // Auto-scroll to bottom when new messages or deltas arrive
+  // Use 'instant' during streaming to avoid jitter, 'smooth' otherwise
   useEffect(() => {
     if (autoScroll) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      // Check if any item is streaming
+      const isStreaming = turnStatus === 'running'
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isStreaming ? 'instant' : 'smooth'
+      })
     }
-  }, [itemOrder, items, autoScroll])
+  }, [itemOrder, items, autoScroll, turnStatus])
 
   const handleScroll = useCallback(() => {
     const container = scrollAreaRef.current
@@ -658,6 +663,33 @@ interface MessageItemProps {
   item: AnyThreadItem
 }
 
+// Shallow compare two objects (O(1) instead of O(n) JSON.stringify)
+function shallowContentEqual(prev: unknown, next: unknown): boolean {
+  if (prev === next) return true
+  if (typeof prev !== 'object' || typeof next !== 'object') return prev === next
+  if (prev === null || next === null) return prev === next
+
+  const prevObj = prev as Record<string, unknown>
+  const nextObj = next as Record<string, unknown>
+  const prevKeys = Object.keys(prevObj)
+  const nextKeys = Object.keys(nextObj)
+
+  if (prevKeys.length !== nextKeys.length) return false
+
+  for (const key of prevKeys) {
+    const prevVal = prevObj[key]
+    const nextVal = nextObj[key]
+    // For arrays, compare length and first/last elements (fast heuristic)
+    if (Array.isArray(prevVal) && Array.isArray(nextVal)) {
+      if (prevVal.length !== nextVal.length) return false
+      if (prevVal.length > 0 && prevVal[prevVal.length - 1] !== nextVal[nextVal.length - 1]) return false
+    } else if (prevVal !== nextVal) {
+      return false
+    }
+  }
+  return true
+}
+
 const MessageItem = memo(
   function MessageItem({ item }: MessageItemProps) {
     switch (item.type) {
@@ -688,23 +720,18 @@ const MessageItem = memo(
         return null
     }
   },
-  // Custom comparison function for better memoization
+  // Custom comparison function for better memoization - O(1) shallow compare
   (prevProps, nextProps) => {
     const prev = prevProps.item
     const next = nextProps.item
-    // Compare identity first
+    // Compare identity first (fastest path)
     if (prev === next) return true
     // Compare key properties
     if (prev.id !== next.id) return false
     if (prev.status !== next.status) return false
-    // For streaming content, compare content deeply
-    if (prev.type === 'agentMessage' && next.type === 'agentMessage') {
-      const prevContent = prev.content as { text: string; isStreaming: boolean }
-      const nextContent = next.content as { text: string; isStreaming: boolean }
-      return prevContent.text === nextContent.text && prevContent.isStreaming === nextContent.isStreaming
-    }
-    // Default: use shallow comparison of content
-    return JSON.stringify(prev.content) === JSON.stringify(next.content)
+    if (prev.type !== next.type) return false
+    // Use O(1) shallow comparison instead of O(n) JSON.stringify
+    return shallowContentEqual(prev.content, next.content)
   }
 )
 
@@ -1743,21 +1770,41 @@ function parseReasoningSummary(text: string): string {
 function WorkingStatusBar() {
   const turnStatus = useThreadStore((state) => state.turnStatus)
   const turnTiming = useThreadStore((state) => state.turnTiming)
+  const tokenUsage = useThreadStore((state) => state.tokenUsage)
+  const pendingApprovals = useThreadStore((state) => state.pendingApprovals)
   const items = useThreadStore((state) => state.items)
   const itemOrder = useThreadStore((state) => state.itemOrder)
   const [elapsedMs, setElapsedMs] = useState(0)
+  const [tokenRate, setTokenRate] = useState(0)
+  const prevTokensRef = useRef(0)
+  const prevTimeRef = useRef(0)
 
-  // Real-time elapsed time update
+  // Real-time elapsed time update at 50ms for smoother display (like CLI)
   useEffect(() => {
     if (turnStatus !== 'running' || !turnTiming.startedAt) {
       setElapsedMs(0)
+      setTokenRate(0)
+      prevTokensRef.current = tokenUsage.totalTokens
+      prevTimeRef.current = Date.now()
       return
     }
     const interval = setInterval(() => {
-      setElapsedMs(Date.now() - turnTiming.startedAt!)
-    }, 100)
+      const now = Date.now()
+      setElapsedMs(now - turnTiming.startedAt!)
+
+      // Calculate token rate (tokens per second)
+      const timeDelta = (now - prevTimeRef.current) / 1000
+      if (timeDelta >= 0.5) { // Update rate every 500ms for stability
+        const tokenDelta = tokenUsage.totalTokens - prevTokensRef.current
+        if (tokenDelta > 0 && timeDelta > 0) {
+          setTokenRate(Math.round(tokenDelta / timeDelta))
+        }
+        prevTokensRef.current = tokenUsage.totalTokens
+        prevTimeRef.current = now
+      }
+    }, 50) // 50ms update for smoother time display
     return () => clearInterval(interval)
-  }, [turnStatus, turnTiming.startedAt])
+  }, [turnStatus, turnTiming.startedAt, tokenUsage.totalTokens])
 
   // Find current reasoning summary (streaming or recent)
   const currentReasoning = useMemo(() => {
@@ -1782,8 +1829,11 @@ function WorkingStatusBar() {
 
   const formatElapsed = (ms: number) => {
     const secs = Math.floor(ms / 1000)
-    return `${secs}s`
+    const tenths = Math.floor((ms % 1000) / 100)
+    return `${secs}.${tenths}s`
   }
+
+  const pendingCount = pendingApprovals.length
 
   return (
     <div className="mb-2 px-4 py-2 rounded-2xl bg-secondary/50 border border-border/30 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -1802,16 +1852,31 @@ function WorkingStatusBar() {
           ) : (
             <span className="text-sm font-medium shimmer-text">Working</span>
           )}
+        </div>
+        {/* Right side stats */}
+        <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+          {/* Pending approvals badge */}
+          {pendingCount > 0 && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-medium">
+              {pendingCount} pending
+            </span>
+          )}
+          {/* Token rate */}
+          {tokenRate > 0 && (
+            <span className="text-[10px] text-muted-foreground/70">
+              {tokenRate} tok/s
+            </span>
+          )}
           {/* Elapsed time */}
-          <span className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock size={12} />
             {formatElapsed(elapsedMs)}
           </span>
+          {/* Interrupt hint */}
+          <span className="text-[10px] text-muted-foreground/70">
+            esc
+          </span>
         </div>
-        {/* Interrupt hint */}
-        <span className="text-[10px] text-muted-foreground/70 flex-shrink-0 ml-2">
-          esc to interrupt
-        </span>
       </div>
     </div>
   )

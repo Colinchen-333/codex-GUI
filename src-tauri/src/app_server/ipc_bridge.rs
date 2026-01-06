@@ -109,6 +109,8 @@ pub struct ThreadResumeParams {
 #[serde(rename_all = "camelCase")]
 pub struct ThreadResumeResponse {
     pub thread: ThreadInfo,
+    /// Items in the thread (may be missing for new/empty threads)
+    #[serde(default)]
     pub items: Vec<JsonValue>,
 }
 

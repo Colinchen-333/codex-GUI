@@ -138,25 +138,46 @@ export function ChatView() {
     setMentionStartPos(-1)
   }, [inputValue, mentionStartPos, fileMentionQuery])
 
-  // Auto-scroll to bottom when new messages or deltas arrive
+  // RAF-optimized auto-scroll to bottom when new messages or deltas arrive
   // Use 'instant' during streaming to avoid jitter, 'smooth' otherwise
+  const scrollRAFRef = useRef<number | null>(null)
   useEffect(() => {
     if (autoScroll) {
-      // Check if any item is streaming
-      const isStreaming = turnStatus === 'running'
-      messagesEndRef.current?.scrollIntoView({
-        behavior: isStreaming ? 'instant' : 'smooth'
+      // Cancel any pending RAF to avoid stacking
+      if (scrollRAFRef.current) {
+        cancelAnimationFrame(scrollRAFRef.current)
+      }
+      // Use RAF for smoother scroll timing aligned with browser repaint
+      scrollRAFRef.current = requestAnimationFrame(() => {
+        const isStreaming = turnStatus === 'running'
+        messagesEndRef.current?.scrollIntoView({
+          behavior: isStreaming ? 'instant' : 'smooth'
+        })
+        scrollRAFRef.current = null
       })
+    }
+    return () => {
+      if (scrollRAFRef.current) {
+        cancelAnimationFrame(scrollRAFRef.current)
+      }
     }
   }, [itemOrder, items, autoScroll, turnStatus])
 
+  // Throttled scroll handler using RAF for better performance
+  const scrollThrottleRef = useRef(false)
   const handleScroll = useCallback(() => {
-    const container = scrollAreaRef.current
-    if (!container) return
-    const threshold = 120
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight
-    setAutoScroll(distanceFromBottom < threshold)
+    if (scrollThrottleRef.current) return
+    scrollThrottleRef.current = true
+    requestAnimationFrame(() => {
+      const container = scrollAreaRef.current
+      if (container) {
+        const threshold = 120
+        const distanceFromBottom =
+          container.scrollHeight - container.scrollTop - container.clientHeight
+        setAutoScroll(distanceFromBottom < threshold)
+      }
+      scrollThrottleRef.current = false
+    })
   }, [])
 
   // Handle focus input trigger from keyboard shortcut
@@ -749,6 +770,8 @@ function UserMessage({ item }: { item: AnyThreadItem }) {
                   key={i}
                   src={img}
                   alt={`Attached ${i + 1}`}
+                  loading="lazy"
+                  decoding="async"
                   className="h-32 w-32 rounded-lg object-cover border border-primary-foreground/10 bg-black/20"
                 />
               ))}

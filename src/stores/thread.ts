@@ -45,9 +45,38 @@ const deltaBuffer: DeltaBuffer = {
 
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 const FLUSH_INTERVAL_MS = 50 // 20 FPS
+const MAX_BUFFER_SIZE = 500_000 // 500KB - force flush to prevent memory issues
+
+// Calculate current buffer size for overflow detection
+function getBufferSize(): number {
+  let size = 0
+  deltaBuffer.agentMessages.forEach((text) => { size += text.length })
+  deltaBuffer.commandOutputs.forEach((text) => { size += text.length })
+  deltaBuffer.fileChangeOutputs.forEach((text) => { size += text.length })
+  deltaBuffer.reasoningSummaries.forEach((arr) => {
+    arr.forEach((item) => { size += item.text.length })
+  })
+  deltaBuffer.reasoningContents.forEach((arr) => {
+    arr.forEach((item) => { size += item.text.length })
+  })
+  deltaBuffer.mcpProgress.forEach((arr) => {
+    arr.forEach((msg) => { size += msg.length })
+  })
+  return size
+}
 
 // Schedule a flush - immediate=true for first delta to reduce perceived latency
 function scheduleFlush(flushFn: () => void, immediate = false) {
+  // Check for buffer overflow - force flush if too large
+  if (getBufferSize() > MAX_BUFFER_SIZE) {
+    if (flushTimer) {
+      clearTimeout(flushTimer)
+      flushTimer = null
+    }
+    flushFn()
+    return
+  }
+
   if (immediate && flushTimer === null) {
     // First delta: flush immediately for instant first-character display
     flushFn()

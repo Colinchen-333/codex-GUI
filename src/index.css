@@ -146,3 +146,29 @@
 .fade-in {
   animation-name: fade-in;
 }
+
+/* CLI-style shimmer text animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    theme('colors.blue.500') 0%,
+    theme('colors.blue.300') 25%,
+    theme('colors.blue.500') 50%,
+    theme('colors.blue.300') 75%,
+    theme('colors.blue.500') 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s linear infinite;
+}

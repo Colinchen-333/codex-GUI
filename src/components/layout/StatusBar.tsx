@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Activity, ShieldCheck, HelpCircle, Info, Settings, Camera, Coins, GitBranch } from 'lucide-react'
+import { Activity, ShieldCheck, HelpCircle, Info, Settings, Camera, Coins, GitBranch, Clock } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { serverApi, projectApi, type ServerStatus, type AccountInfo, type GitInfo } from '../../lib/api'
 import { useProjectsStore } from '../../stores/projects'
@@ -9,12 +9,33 @@ import { AboutDialog } from '../dialogs/AboutDialog'
 import { HelpDialog } from '../dialogs/HelpDialog'
 import { KeyboardShortcutsDialog } from '../dialogs/KeyboardShortcutsDialog'
 import { useAppStore } from '../../stores/app'
-import { useThreadStore } from '../../stores/thread'
+import { useThreadStore, type TokenUsage } from '../../stores/thread'
+
+// Format elapsed time compactly like CLI: "0s", "1m 30s", "1h 05m 30s"
+function formatElapsedCompact(ms: number): string {
+  const totalSecs = Math.floor(ms / 1000)
+  if (totalSecs < 60) return `${totalSecs}s`
+  const mins = Math.floor(totalSecs / 60)
+  const secs = totalSecs % 60
+  if (mins < 60) return `${mins}m ${secs.toString().padStart(2, '0')}s`
+  const hours = Math.floor(mins / 60)
+  const remMins = mins % 60
+  return `${hours}h ${remMins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`
+}
+
+// Format token count like CLI: 1.2K, 3.5M, etc.
+function formatTokenCount(count: number): string {
+  if (count >= 1_000_000_000) return `${(count / 1_000_000_000).toFixed(1)}B`
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`
+  return count.toString()
+}
 
 export function StatusBar() {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null)
   const [gitInfo, setGitInfo] = useState<GitInfo | null>(null)
+  const [elapsedMs, setElapsedMs] = useState(0) // Real-time elapsed counter
   const { selectedProjectId, projects } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const {
@@ -32,9 +53,29 @@ export function StatusBar() {
   const activeThread = useThreadStore((state) => state.activeThread)
   const tokenUsage = useThreadStore((state) => state.tokenUsage)
   const turnStatus = useThreadStore((state) => state.turnStatus)
+  const turnTiming = useThreadStore((state) => state.turnTiming)
+
+  // Real-time elapsed time update when running
+  useEffect(() => {
+    if (turnStatus !== 'running' || !turnTiming.startedAt) {
+      return
+    }
+    // Update elapsed time every 100ms for smooth display
+    const interval = setInterval(() => {
+      setElapsedMs(Date.now() - turnTiming.startedAt!)
+    }, 100)
+    return () => clearInterval(interval)
+  }, [turnStatus, turnTiming.startedAt])
+
+  // Reset elapsed when turn completes
+  useEffect(() => {
+    if (turnStatus !== 'running') {
+      setElapsedMs(0)
+    }
+  }, [turnStatus])
 
   useEffect(() => {
-    // Fetch status on mount
+    // Fetch status on mount only (no polling - rely on events)
     const fetchStatus = async () => {
       try {
         const status = await serverApi.getStatus()
@@ -56,8 +97,8 @@ export function StatusBar() {
     fetchStatus()
     fetchAccount()
 
-    // Poll status every 10 seconds
-    const interval = setInterval(fetchStatus, 10000)
+    // Reduced polling to 60 seconds (status comes from events now)
+    const interval = setInterval(fetchStatus, 60000)
     return () => clearInterval(interval)
   }, [])
 
@@ -154,11 +195,27 @@ export function StatusBar() {
             </div>
           )}
 
-          {/* Turn status indicator */}
+          {/* Turn status indicator with elapsed time - CLI style */}
           {turnStatus === 'running' && (
-            <div className="flex items-center gap-1.5 text-blue-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-              <span className="uppercase tracking-widest text-[10px]">Processing...</span>
+            <div className="flex items-center gap-2 text-blue-500">
+              {/* Shimmer effect spinner */}
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+              </span>
+              {/* Shimmer text effect */}
+              <span className="uppercase tracking-widest text-[10px] font-medium shimmer-text">
+                Working
+              </span>
+              {/* Elapsed time */}
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Clock size={10} />
+                {formatElapsedCompact(elapsedMs)}
+              </span>
+              {/* Interrupt hint */}
+              <span className="text-[9px] text-muted-foreground/60">
+                • Esc to stop
+              </span>
             </div>
           )}
 
@@ -226,55 +283,54 @@ export function StatusBar() {
   )
 }
 
-// Context Window Indicator Component
+// Context Window Indicator Component - Uses dynamic context window from server
 interface ContextWindowIndicatorProps {
-  tokenUsage: {
-    totalTokens: number
-    inputTokens: number
-    outputTokens: number
-    cachedInputTokens: number
-  }
+  tokenUsage: TokenUsage
 }
 
 function ContextWindowIndicator({ tokenUsage }: ContextWindowIndicatorProps) {
-  // Common model context windows (conservative estimate)
-  const MAX_CONTEXT = 200000 // 200k tokens (Claude 3.5)
+  // Use dynamic context window from server, fallback to 200k
+  const contextWindow = tokenUsage.modelContextWindow || 200000
 
-  const usagePercent = Math.min((tokenUsage.totalTokens / MAX_CONTEXT) * 100, 100)
+  const usagePercent = Math.min((tokenUsage.totalTokens / contextWindow) * 100, 100)
+  const remainingPercent = 100 - usagePercent
   const cachePercent = tokenUsage.inputTokens > 0
     ? Math.round((tokenUsage.cachedInputTokens / tokenUsage.inputTokens) * 100)
     : 0
 
-  // Color based on usage
-  const getColor = (percent: number) => {
-    if (percent >= 90) return 'bg-red-500'
-    if (percent >= 70) return 'bg-yellow-500'
+  // Color based on usage (inverted - show remaining)
+  const getColor = (remainPct: number) => {
+    if (remainPct <= 10) return 'bg-red-500'
+    if (remainPct <= 30) return 'bg-yellow-500'
     return 'bg-green-500'
   }
 
-  const getTextColor = (percent: number) => {
-    if (percent >= 90) return 'text-red-500'
-    if (percent >= 70) return 'text-yellow-500'
+  const getTextColor = (remainPct: number) => {
+    if (remainPct <= 10) return 'text-red-500'
+    if (remainPct <= 30) return 'text-yellow-500'
     return 'text-muted-foreground/70'
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Coins size={12} className={getTextColor(usagePercent)} />
+    <div className="flex items-center gap-2" title={`${formatTokenCount(tokenUsage.totalTokens)} / ${formatTokenCount(contextWindow)} tokens used`}>
+      <Coins size={12} className={getTextColor(remainingPercent)} />
 
-      {/* Progress bar */}
-      <div className="relative w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
+      {/* CLI-style progress bar */}
+      <div className="relative w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
         <div
-          className={cn('h-full transition-all duration-300', getColor(usagePercent))}
+          className={cn('h-full transition-all duration-300', getColor(remainingPercent))}
           style={{ width: `${usagePercent}%` }}
         />
       </div>
 
-      <span className={cn('text-[10px]', getTextColor(usagePercent))}>
-        {tokenUsage.totalTokens.toLocaleString()}
+      {/* Token count with remaining percentage */}
+      <span className={cn('text-[10px] tabular-nums', getTextColor(remainingPercent))}>
+        {formatTokenCount(tokenUsage.totalTokens)}
+        <span className="text-muted-foreground/50 mx-0.5">/</span>
+        {formatTokenCount(contextWindow)}
         {cachePercent > 0 && (
           <span className="text-green-500/70 ml-1">
-            ({cachePercent}% cached)
+            ({cachePercent}%↓)
           </span>
         )}
       </span>

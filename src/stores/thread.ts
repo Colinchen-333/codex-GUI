@@ -46,7 +46,13 @@ const deltaBuffer: DeltaBuffer = {
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 const FLUSH_INTERVAL_MS = 50 // 20 FPS
 
-function scheduleFlush(flushFn: () => void) {
+// Schedule a flush - immediate=true for first delta to reduce perceived latency
+function scheduleFlush(flushFn: () => void, immediate = false) {
+  if (immediate && flushTimer === null) {
+    // First delta: flush immediately for instant first-character display
+    flushFn()
+    return
+  }
   if (flushTimer === null) {
     flushTimer = setTimeout(() => {
       flushTimer = null
@@ -243,6 +249,13 @@ export interface TokenUsage {
   cachedInputTokens: number
   outputTokens: number
   totalTokens: number
+  modelContextWindow: number | null // Dynamic context window from server
+}
+
+// Turn timing for elapsed display
+export interface TurnTiming {
+  startedAt: number | null
+  completedAt: number | null
 }
 
 interface ThreadState {
@@ -255,6 +268,7 @@ interface ThreadState {
   pendingApprovals: PendingApproval[]
   snapshots: Snapshot[]
   tokenUsage: TokenUsage
+  turnTiming: TurnTiming
   isLoading: boolean
   error: string | null
 
@@ -548,6 +562,12 @@ const defaultTokenUsage: TokenUsage = {
   cachedInputTokens: 0,
   outputTokens: 0,
   totalTokens: 0,
+  modelContextWindow: null,
+}
+
+const defaultTurnTiming: TurnTiming = {
+  startedAt: null,
+  completedAt: null,
 }
 
 export const useThreadStore = create<ThreadState>((set, get) => ({
@@ -559,6 +579,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   pendingApprovals: [],
   snapshots: [],
   tokenUsage: defaultTokenUsage,
+  turnTiming: defaultTurnTiming,
   isLoading: false,
   error: null,
 
@@ -986,8 +1007,9 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   handleAgentMessageDelta: (event) => {
     // Buffer the delta instead of updating state immediately
     const current = deltaBuffer.agentMessages.get(event.itemId) || ''
+    const isFirstDelta = current === '' // First character should show immediately
     deltaBuffer.agentMessages.set(event.itemId, current + event.delta)
-    scheduleFlush(() => get().flushDeltaBuffer())
+    scheduleFlush(() => get().flushDeltaBuffer(), isFirstDelta)
   },
 
   handleCommandApprovalRequested: (event) => {
@@ -1062,6 +1084,10 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       turnStatus: 'running',
       currentTurnId: event.turn.id,
       error: null,
+      turnTiming: {
+        startedAt: Date.now(),
+        completedAt: null,
+      },
     })
   },
 
@@ -1103,6 +1129,10 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
         currentTurnId: null,
         error: event.turn.error?.message || null,
         pendingApprovals: [],
+        turnTiming: {
+          ...state.turnTiming,
+          completedAt: Date.now(),
+        },
       }
     })
   },
@@ -1196,21 +1226,24 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   handleCommandExecutionOutputDelta: (event) => {
     // Buffer the delta instead of updating state immediately
     const current = deltaBuffer.commandOutputs.get(event.itemId) || ''
+    const isFirstDelta = current === ''
     deltaBuffer.commandOutputs.set(event.itemId, current + event.delta)
-    scheduleFlush(() => get().flushDeltaBuffer())
+    scheduleFlush(() => get().flushDeltaBuffer(), isFirstDelta)
   },
 
   handleFileChangeOutputDelta: (event) => {
     // Buffer the delta instead of updating state immediately
     const current = deltaBuffer.fileChangeOutputs.get(event.itemId) || ''
+    const isFirstDelta = current === ''
     deltaBuffer.fileChangeOutputs.set(event.itemId, current + event.delta)
-    scheduleFlush(() => get().flushDeltaBuffer())
+    scheduleFlush(() => get().flushDeltaBuffer(), isFirstDelta)
   },
 
   handleReasoningSummaryTextDelta: (event) => {
     // Buffer the delta instead of updating state immediately
     const index = event.summaryIndex ?? 0
     const updates = deltaBuffer.reasoningSummaries.get(event.itemId) || []
+    const isFirstDelta = updates.length === 0
     const existingIdx = updates.findIndex((u) => u.index === index)
     if (existingIdx >= 0) {
       updates[existingIdx].text += event.delta
@@ -1218,7 +1251,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       updates.push({ index, text: event.delta })
     }
     deltaBuffer.reasoningSummaries.set(event.itemId, updates)
-    scheduleFlush(() => get().flushDeltaBuffer())
+    scheduleFlush(() => get().flushDeltaBuffer(), isFirstDelta)
   },
 
   handleReasoningSummaryPartAdded: (_event) => {
@@ -1230,6 +1263,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     // Buffer the delta instead of updating state immediately
     const index = event.contentIndex ?? 0
     const updates = deltaBuffer.reasoningContents.get(event.itemId) || []
+    const isFirstDelta = updates.length === 0
     const existingIdx = updates.findIndex((u) => u.index === index)
     if (existingIdx >= 0) {
       updates[existingIdx].text += event.delta
@@ -1237,15 +1271,16 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       updates.push({ index, text: event.delta })
     }
     deltaBuffer.reasoningContents.set(event.itemId, updates)
-    scheduleFlush(() => get().flushDeltaBuffer())
+    scheduleFlush(() => get().flushDeltaBuffer(), isFirstDelta)
   },
 
   handleMcpToolCallProgress: (event) => {
     // Buffer the progress message instead of updating state immediately
     const messages = deltaBuffer.mcpProgress.get(event.itemId) || []
+    const isFirstMessage = messages.length === 0
     messages.push(event.message)
     deltaBuffer.mcpProgress.set(event.itemId, messages)
-    scheduleFlush(() => get().flushDeltaBuffer())
+    scheduleFlush(() => get().flushDeltaBuffer(), isFirstMessage)
   },
 
   // Token Usage Handler
@@ -1261,12 +1296,16 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       const newOutput = totals?.outputTokens ?? fallbackOutput
       const totalTokens = totals?.totalTokens ?? newInput + newOutput
 
+      // Get context window from event (dynamic based on model)
+      const modelContextWindow = event.tokenUsage?.modelContextWindow ?? state.tokenUsage.modelContextWindow
+
       return {
         tokenUsage: {
           inputTokens: newInput,
           cachedInputTokens: newCached,
           outputTokens: newOutput,
           totalTokens,
+          modelContextWindow,
         },
       }
     })

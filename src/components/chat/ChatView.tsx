@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, memo } from 'react'
+import { useRef, useEffect, useState, useCallback, memo, useMemo } from 'react'
 import { X, Paperclip, Image as ImageIcon, StopCircle, ArrowUp, Terminal, FileCode, Brain, Wrench, AlertCircle, ChevronDown, ChevronRight, ExternalLink, ListChecks, Circle, CheckCircle2, XCircle, Loader2, Clock, Coins } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, type AnyThreadItem, type PlanStep } from '../../stores/thread'
@@ -1194,7 +1194,7 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
   )
 }
 
-// Reasoning Card - Shows AI's thinking process
+// Reasoning Card - Shows AI's thinking process (only when completed, streaming is shown in WorkingStatusBar)
 function ReasoningCard({ item }: { item: AnyThreadItem }) {
   const content = item.content as {
     summary: string[]
@@ -1204,39 +1204,29 @@ function ReasoningCard({ item }: { item: AnyThreadItem }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showFullContent, setShowFullContent] = useState(false)
 
+  // Don't show card while streaming - it's displayed in WorkingStatusBar
+  if (content.isStreaming) {
+    return null
+  }
+
   const hasFullContent = content.fullContent && content.fullContent.length > 0
+
+  // Parse summaries to remove **header** format
+  const parsedSummaries = content.summary?.map(parseReasoningSummary) || []
 
   return (
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-300">
-      <div
-        className={cn(
-          'w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
-          content.isStreaming
-            ? 'border-l-4 border-l-purple-500 border-y-border/50 border-r-border/50'
-            : 'border-border/50'
-        )}
-      >
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm transition-all">
         {/* Header */}
         <div
           className="flex items-center justify-between border-b border-border/40 bg-purple-50/50 dark:bg-purple-900/10 px-4 py-2.5 cursor-pointer select-none"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center gap-2">
-            <div className={cn(
-              "rounded-md p-1 shadow-sm",
-              content.isStreaming
-                ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
-                : "bg-background text-muted-foreground"
-            )}>
-              <Brain size={14} className={content.isStreaming ? "animate-pulse" : ""} />
+            <div className="rounded-md p-1 shadow-sm bg-background text-muted-foreground">
+              <Brain size={14} />
             </div>
             <span className="text-xs font-medium text-foreground">Reasoning</span>
-            {content.isStreaming && (
-              <span className="flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
-                Thinking...
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-2">
             {/* Timestamp */}
@@ -1276,10 +1266,10 @@ function ReasoningCard({ item }: { item: AnyThreadItem }) {
               </div>
             )}
 
-            {/* Summary content */}
-            {(!showFullContent || !hasFullContent) && content.summary && content.summary.length > 0 && (
+            {/* Summary content - parsed to remove **header** */}
+            {(!showFullContent || !hasFullContent) && parsedSummaries.length > 0 && (
               <div className="space-y-2">
-                {content.summary.map((text, i) => (
+                {parsedSummaries.map((text, i) => (
                   <div key={i} className="text-sm text-muted-foreground leading-relaxed">
                     • {text}
                   </div>
@@ -1300,10 +1290,10 @@ function ReasoningCard({ item }: { item: AnyThreadItem }) {
           </div>
         )}
 
-        {/* Collapsed preview */}
-        {!isExpanded && content.summary && content.summary.length > 0 && (
+        {/* Collapsed preview - parsed to remove **header** */}
+        {!isExpanded && parsedSummaries.length > 0 && (
           <div className="px-4 py-2 text-xs text-muted-foreground truncate">
-            {content.summary[0]?.slice(0, 100)}...
+            {parsedSummaries[0]?.slice(0, 100)}...
           </div>
         )}
       </div>
@@ -1729,10 +1719,32 @@ function PlanCard({ item }: { item: AnyThreadItem }) {
   )
 }
 
+// Parse reasoning summary - strip **header** format like CLI does
+function parseReasoningSummary(text: string): string {
+  const trimmed = text.trim()
+  // Check for **header** format: **High level reasoning**\n\nActual summary
+  if (trimmed.startsWith('**')) {
+    const closeIdx = trimmed.indexOf('**', 2)
+    if (closeIdx > 2) {
+      // Found closing **, extract content after it
+      const afterHeader = trimmed.slice(closeIdx + 2).trim()
+      if (afterHeader) {
+        return afterHeader
+      }
+      // If nothing after header, return the header content without **
+      return trimmed.slice(2, closeIdx)
+    }
+  }
+  return trimmed
+}
+
 // CLI-style Working Status Bar - Shown above input when AI is working
+// Also shows reasoning summary like CLI does
 function WorkingStatusBar() {
   const turnStatus = useThreadStore((state) => state.turnStatus)
   const turnTiming = useThreadStore((state) => state.turnTiming)
+  const items = useThreadStore((state) => state.items)
+  const itemOrder = useThreadStore((state) => state.itemOrder)
   const [elapsedMs, setElapsedMs] = useState(0)
 
   // Real-time elapsed time update
@@ -1747,6 +1759,25 @@ function WorkingStatusBar() {
     return () => clearInterval(interval)
   }, [turnStatus, turnTiming.startedAt])
 
+  // Find current reasoning summary (streaming or recent)
+  const currentReasoning = useMemo(() => {
+    // Look for reasoning items in reverse order (most recent first)
+    for (let i = itemOrder.length - 1; i >= 0; i--) {
+      const item = items[itemOrder[i]]
+      if (item?.type === 'reasoning') {
+        const content = item.content as { summary: string[]; isStreaming: boolean }
+        if (content.isStreaming && content.summary && content.summary.length > 0) {
+          // Get the latest summary line and parse it
+          const latestSummary = content.summary[content.summary.length - 1]
+          if (latestSummary) {
+            return parseReasoningSummary(latestSummary)
+          }
+        }
+      }
+    }
+    return null
+  }, [items, itemOrder])
+
   if (turnStatus !== 'running') return null
 
   const formatElapsed = (ms: number) => {
@@ -1757,22 +1788,28 @@ function WorkingStatusBar() {
   return (
     <div className="mb-2 px-4 py-2 rounded-2xl bg-secondary/50 border border-border/30 animate-in fade-in slide-in-from-bottom-2 duration-200">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* Spinning indicator */}
-          <span className="relative flex h-2 w-2">
+          <span className="relative flex h-2 w-2 flex-shrink-0">
             <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
           </span>
-          {/* Status text with shimmer */}
-          <span className="text-sm font-medium shimmer-text">Working</span>
+          {/* Status text with shimmer or reasoning summary */}
+          {currentReasoning ? (
+            <span className="text-sm text-muted-foreground truncate">
+              {currentReasoning}
+            </span>
+          ) : (
+            <span className="text-sm font-medium shimmer-text">Working</span>
+          )}
           {/* Elapsed time */}
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
             <Clock size={12} />
             {formatElapsed(elapsedMs)}
           </span>
         </div>
         {/* Interrupt hint */}
-        <span className="text-[10px] text-muted-foreground/70">
+        <span className="text-[10px] text-muted-foreground/70 flex-shrink-0 ml-2">
           esc to interrupt
         </span>
       </div>

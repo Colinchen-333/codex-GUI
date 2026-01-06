@@ -1051,6 +1051,28 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       const nextItem = toThreadItem(event.item)
       const existing = state.items[nextItem.id]
 
+      // Check for duplicate user message by content (not just ID)
+      // This handles the case where we already added a local user message
+      // and the server sends back the same message with a different ID
+      if (nextItem.type === 'userMessage') {
+        const nextUser = nextItem as UserMessageItem
+        const recentUserIds = [...state.itemOrder]
+          .slice(-10)
+          .filter((id) => state.items[id]?.type === 'userMessage')
+
+        for (const userId of recentUserIds) {
+          const existingUser = state.items[userId] as UserMessageItem
+          if (existingUser && existingUser.content.text === nextUser.content.text) {
+            const existingImagesCount = existingUser.content.images?.length || 0
+            const nextImagesCount = nextUser.content.images?.length || 0
+            if (existingImagesCount === nextImagesCount) {
+              // This is a duplicate, don't add it
+              return state
+            }
+          }
+        }
+      }
+
       if (existing) {
         const existingContent = existing.content as Record<string, unknown>
         const nextContent = nextItem.content as Record<string, unknown>

@@ -89,6 +89,18 @@ export const SLASH_COMMANDS: SlashCommand[] = [
 
   // General commands
   {
+    name: 'sessions',
+    description: 'Browse and resume previous sessions',
+    category: 'general',
+    icon: 'history',
+  },
+  {
+    name: 'bug',
+    description: 'Report a bug with session info',
+    category: 'workflow',
+    icon: 'bug',
+  },
+  {
     name: 'logout',
     description: 'Log out of Codex',
     category: 'general',

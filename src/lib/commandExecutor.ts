@@ -9,6 +9,8 @@ export interface CommandContext {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void
   addInfoItem?: (title: string, details?: string) => void
   openSettingsTab?: (tab: 'model' | 'safety') => void
+  openHelpDialog?: () => void
+  openSessionsPanel?: () => void
   startNewSession?: () => Promise<void>
   resumeSession?: (sessionId?: string) => Promise<void>
   showStatus?: () => void
@@ -20,6 +22,8 @@ export interface CommandContext {
   quit?: () => void
   insertText?: (text: string) => void
   openUrl?: (url: string) => void
+  compactConversation?: (instructions?: string) => Promise<void>
+  generateBugReport?: () => Promise<void>
 }
 
 export interface CommandResult {
@@ -160,6 +164,31 @@ export async function executeCommand(
     return { handled: true }
   }
 
+  // Clear command - like CLI, clears conversation
+  if (command.name === 'clear') {
+    context.clearThread()
+    context.showToast?.('Conversation cleared', 'success')
+    return { handled: true }
+  }
+
+  // Help command - open keyboard shortcuts / help dialog
+  if (command.name === 'help') {
+    if (context.openHelpDialog) {
+      context.openHelpDialog()
+    } else {
+      context.addInfoItem?.('Help', 'Use ? key to open keyboard shortcuts dialog.')
+    }
+    return { handled: true }
+  }
+
+  // Sessions command - open sessions panel
+  if (command.name === 'sessions') {
+    if (context.openSessionsPanel) {
+      context.openSessionsPanel()
+    }
+    return { handled: true }
+  }
+
   // Settings commands
   if (command.name === 'model') {
     context.openSettingsTab?.('model')
@@ -167,6 +196,28 @@ export async function executeCommand(
   }
   if (command.name === 'approvals') {
     context.openSettingsTab?.('safety')
+    return { handled: true }
+  }
+
+  // Compact command - like CLI, uses API to compact conversation
+  if (command.name === 'compact') {
+    if (context.compactConversation) {
+      await context.compactConversation(args.join(' ') || undefined)
+    } else {
+      // Fallback: send as AI message if compactConversation not available
+      const prompt = formatCommandForAI(command, args)
+      await context.sendMessage(prompt)
+    }
+    return { handled: true }
+  }
+
+  // Bug report command - like CLI, generates GitHub issue URL
+  if (command.name === 'bug') {
+    if (context.generateBugReport) {
+      await context.generateBugReport()
+    } else {
+      context.openUrl?.('https://github.com/anthropics/claude-code/issues/new')
+    }
     return { handled: true }
   }
 
@@ -186,7 +237,7 @@ export async function executeCommand(
     return { handled: true }
   }
   if (command.name === 'feedback') {
-    context.openUrl?.('https://github.com/openai/codex/issues')
+    context.openUrl?.('https://github.com/anthropics/claude-code/issues')
     return { handled: true }
   }
   if (command.name === 'rollout') {
@@ -198,8 +249,8 @@ export async function executeCommand(
     return { handled: true }
   }
 
-  // Fallback to AI for supported prompts
-  if (['compact', 'init'].includes(command.name)) {
+  // Fallback to AI for init command
+  if (command.name === 'init') {
     const prompt = formatCommandForAI(command, args)
     await context.sendMessage(prompt)
     return { handled: true }

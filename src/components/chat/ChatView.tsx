@@ -48,7 +48,7 @@ export function ChatView() {
   const { items, itemOrder, turnStatus, sendMessage, interrupt, addInfoItem } = useThreadStore()
   const { shouldFocusInput, clearFocusInput } = useAppStore()
   const { showToast } = useToast()
-  const { setSettingsOpen, setSettingsTab, setSidebarTab } = useAppStore()
+  const { setSettingsOpen, setSettingsTab, setSidebarTab, setKeyboardShortcutsOpen } = useAppStore()
   const settings = useSettingsStore((state) => state.settings)
   const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
   const projects = useProjectsStore((state) => state.projects)
@@ -363,6 +363,41 @@ export function ChatView() {
           },
           openUrl: (url) => {
             import('@tauri-apps/plugin-shell').then(({ open }) => open(url))
+          },
+          openHelpDialog: () => {
+            setKeyboardShortcutsOpen(true)
+          },
+          openSessionsPanel: () => {
+            setSidebarTab('sessions')
+          },
+          compactConversation: async (instructions) => {
+            // Send compact request to AI with optional custom instructions
+            const prompt = instructions
+              ? `Please summarize our conversation so far: ${instructions}`
+              : 'Please summarize our conversation so far and compact the context.'
+            await sendMessage(prompt)
+          },
+          generateBugReport: async () => {
+            // Generate bug report URL with session info
+            const version = 'Codex Desktop'
+            const model = settings.model || 'default'
+            const platform = navigator.platform
+            const sessionInfo = activeThread
+              ? `Session: ${activeThread.id}\nTokens: ${tokenUsage.totalTokens}`
+              : 'No active session'
+
+            const params = new URLSearchParams({
+              labels: 'bug',
+              template: 'bug_report.yml',
+              version,
+              model,
+              platform,
+              'session-info': sessionInfo,
+            })
+
+            const url = `https://github.com/anthropics/claude-code/issues/new?${params.toString()}`
+            import('@tauri-apps/plugin-shell').then(({ open }) => open(url))
+            addInfoItem('Bug Report', `Opening GitHub issue form...\n\nIncluded info:\n- Model: ${model}\n- Platform: ${platform}\n- ${sessionInfo}`)
           },
         })
 

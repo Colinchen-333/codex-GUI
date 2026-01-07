@@ -106,25 +106,38 @@ function getBufferSize(): number {
 
 // Schedule a flush - immediate=true for first delta to reduce perceived latency
 function scheduleFlush(flushFn: () => void, immediate = false) {
+  // Capture current threadId to prevent race condition
+  // If thread changes before flush executes, we skip the flush
+  const capturedThreadId = deltaBuffer.threadId
+
+  const wrappedFlush = () => {
+    // Validate threadId hasn't changed before executing flush
+    if (deltaBuffer.threadId !== capturedThreadId) {
+      console.log('[scheduleFlush] Thread changed, skipping flush. Captured:', capturedThreadId, 'Current:', deltaBuffer.threadId)
+      return
+    }
+    flushFn()
+  }
+
   // Check for buffer overflow - force flush if too large
   if (getBufferSize() > MAX_BUFFER_SIZE) {
     if (flushTimer) {
       clearTimeout(flushTimer)
       flushTimer = null
     }
-    flushFn()
+    wrappedFlush()
     return
   }
 
   if (immediate && flushTimer === null) {
     // First delta: flush immediately for instant first-character display
-    flushFn()
+    wrappedFlush()
     return
   }
   if (flushTimer === null) {
     flushTimer = setTimeout(() => {
       flushTimer = null
-      flushFn()
+      wrappedFlush()
     }, FLUSH_INTERVAL_MS)
   }
 }
@@ -867,7 +880,17 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       // Only update error state if we're still on the same thread
       const { activeThread: currentActive } = get()
       if (currentActive?.id === currentThreadId) {
-        set({ turnStatus: 'failed', error: String(error) })
+        // Complete rollback: remove user message and set failed status
+        set((state) => {
+          const newItems = { ...state.items }
+          delete newItems[userMessageId]
+          return {
+            items: newItems,
+            itemOrder: state.itemOrder.filter((id) => id !== userMessageId),
+            turnStatus: 'failed',
+            error: String(error),
+          }
+        })
       } else {
         // Remove orphaned user message if thread changed
         set((state) => {
@@ -1132,7 +1155,11 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
         if (existing && existing.type === 'reasoning') {
           const summary = [...existing.content.summary]
           updates.forEach(({ index, text }) => {
-            summary[index] = (summary[index] || '') + text
+            // Ensure array has sufficient length to avoid sparse array
+            while (summary.length <= index) {
+              summary.push('')
+            }
+            summary[index] = summary[index] + text
           })
           updatedItems[itemId] = {
             ...existing,
@@ -1141,7 +1168,11 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
         } else {
           const summary: string[] = []
           updates.forEach(({ index, text }) => {
-            summary[index] = (summary[index] || '') + text
+            // Ensure array has sufficient length to avoid sparse array
+            while (summary.length <= index) {
+              summary.push('')
+            }
+            summary[index] = summary[index] + text
           })
           const newItem: ReasoningItem = {
             id: itemId,
@@ -1163,7 +1194,11 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
         if (existing && existing.type === 'reasoning') {
           const fullContent = existing.content.fullContent ? [...existing.content.fullContent] : []
           updates.forEach(({ index, text }) => {
-            fullContent[index] = (fullContent[index] || '') + text
+            // Ensure array has sufficient length to avoid sparse array
+            while (fullContent.length <= index) {
+              fullContent.push('')
+            }
+            fullContent[index] = fullContent[index] + text
           })
           updatedItems[itemId] = {
             ...existing,

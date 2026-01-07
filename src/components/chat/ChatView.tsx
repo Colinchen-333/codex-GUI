@@ -1129,6 +1129,8 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
   const [explanation, setExplanation] = useState('')
   const [isExplaining, setIsExplaining] = useState(false)
   const [isApproving, setIsApproving] = useState(false)
+  // Synchronous lock to prevent double-click race condition (state updates are async)
+  const isApprovingRef = useRef(false)
   const outputRef = useRef<HTMLPreElement>(null)
   const feedbackInputRef = useRef<HTMLInputElement>(null)
 
@@ -1152,14 +1154,17 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
   const handleApprove = async (
     decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline'
   ) => {
-    // Prevent double-click race condition
-    if (isApproving || !activeThread) return
+    // Prevent double-click race condition using synchronous ref check
+    // State updates are async, so we use a ref for immediate synchronous check
+    if (isApprovingRef.current || !activeThread) return
+    isApprovingRef.current = true
     setIsApproving(true)
     try {
       await respondToApproval(item.id, decision, {
         execpolicyAmendment: content.proposedExecpolicyAmendment,
       })
     } finally {
+      isApprovingRef.current = false
       setIsApproving(false)
     }
   }
@@ -1521,15 +1526,21 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
   const [isReverting, setIsReverting] = useState(false)
   const [isDeclining, setIsDeclining] = useState(false)
 
+  // Refs for double-click protection (state updates are async, refs are synchronous)
+  const isApplyingRef = useRef(false)
+  const isRevertingRef = useRef(false)
+  const isDecliningRef = useRef(false)
+
   const project = projects.find((p) => p.id === selectedProjectId)
 
   const handleApplyChanges = async (decision: 'accept' | 'acceptForSession' = 'accept') => {
-    if (!activeThread || !project || isApplying) return
+    if (isApplyingRef.current || !activeThread || !project) return
+    isApplyingRef.current = true
+    setIsApplying(true)
 
     // Capture thread ID at start to detect if it changes during async operations
     const threadIdAtStart = activeThread.id
 
-    setIsApplying(true)
     try {
       // Try to create snapshot before applying changes
       let snapshotId: string | undefined
@@ -1559,13 +1570,14 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
       console.error('Failed to apply changes:', error)
       showToast('Failed to apply changes', 'error')
     } finally {
+      isApplyingRef.current = false
       setIsApplying(false)
     }
   }
 
   const handleRevert = async () => {
-    if (!content.snapshotId || !project) return
-
+    if (isRevertingRef.current || !content.snapshotId || !project) return
+    isRevertingRef.current = true
     setIsReverting(true)
     try {
       await revertToSnapshot(content.snapshotId, project.path)
@@ -1574,16 +1586,19 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
       console.error('Failed to revert changes:', error)
       showToast('Failed to revert changes', 'error')
     } finally {
+      isRevertingRef.current = false
       setIsReverting(false)
     }
   }
 
   const handleDecline = async () => {
-    if (!activeThread || isDeclining) return
+    if (isDecliningRef.current || !activeThread) return
+    isDecliningRef.current = true
     setIsDeclining(true)
     try {
       await respondToApproval(item.id, 'decline')
     } finally {
+      isDecliningRef.current = false
       setIsDeclining(false)
     }
   }
@@ -2493,8 +2508,10 @@ function RateLimitWarning() {
 // Input Status Hint - Shows token usage and shortcuts
 function InputStatusHint() {
   const tokenUsage = useThreadStore((state) => state.tokenUsage)
-  const contextWindow = tokenUsage.modelContextWindow || 200000
-  const remainingPercent = Math.round(100 - (tokenUsage.totalTokens / contextWindow) * 100)
+  // Ensure contextWindow is never 0 to prevent NaN/Infinity from division
+  const contextWindow = Math.max(tokenUsage.modelContextWindow || 200000, 1)
+  const usedPercent = Math.min(tokenUsage.totalTokens / contextWindow, 1)
+  const remainingPercent = Math.max(0, Math.round(100 - usedPercent * 100))
 
   return (
     <div id="input-hint" className="mt-2 flex items-center justify-center gap-3 text-[10px] text-muted-foreground/60 select-none">

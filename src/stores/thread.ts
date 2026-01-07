@@ -334,6 +334,14 @@ export interface SessionOverrides {
   sandboxPolicy?: string
 }
 
+// Queued message when turn is running
+export interface QueuedMessage {
+  id: string
+  text: string
+  images?: string[]
+  queuedAt: number
+}
+
 interface ThreadState {
   activeThread: ThreadInfo | null
   // Using Record instead of Map for better serialization and Zustand devtools compatibility
@@ -346,6 +354,7 @@ interface ThreadState {
   tokenUsage: TokenUsage
   turnTiming: TurnTiming
   sessionOverrides: SessionOverrides
+  queuedMessages: QueuedMessage[]
   isLoading: boolean
   error: string | null
 
@@ -660,6 +669,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   tokenUsage: defaultTokenUsage,
   turnTiming: defaultTurnTiming,
   sessionOverrides: {},
+  queuedMessages: [],
   isLoading: false,
   error: null,
 
@@ -766,9 +776,19 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       throw new Error('No active thread')
     }
 
-    // Prevent concurrent sendMessage calls - queue message if turn is running
-    if (turnStatus === 'running') {
-      console.warn('[sendMessage] Turn already running, message will be queued by server')
+    // Track queued message if turn is already running
+    const isQueued = turnStatus === 'running'
+    if (isQueued) {
+      console.log('[sendMessage] Turn already running, tracking queued message')
+      const queuedMsg: QueuedMessage = {
+        id: `queued-${Date.now()}`,
+        text,
+        images,
+        queuedAt: Date.now(),
+      }
+      set((state) => ({
+        queuedMessages: [...state.queuedMessages, queuedMsg],
+      }))
     }
 
     // Save thread ID to verify it doesn't change during send
@@ -789,6 +809,10 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       items: { ...state.items, [userMessageId]: userMessage },
       itemOrder: [...state.itemOrder, userMessageId],
       turnStatus: 'running',
+      // Remove from queue once it's actually being sent
+      queuedMessages: isQueued
+        ? state.queuedMessages.filter((m) => m.text !== text)
+        : state.queuedMessages,
     }))
 
     try {
@@ -1001,6 +1025,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       pendingApprovals: [],
       snapshots: [],
       sessionOverrides: {},
+      queuedMessages: [],
       error: null,
     })
   },

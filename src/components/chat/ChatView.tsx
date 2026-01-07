@@ -10,6 +10,7 @@ import {
   getEffectiveWorkingDirectory,
 } from '../../stores/settings'
 import { useAppStore } from '../../stores/app'
+import { useAccountStore } from '../../stores/account'
 import { Markdown } from '../ui/Markdown'
 import { DiffView, parseDiff, type FileDiff } from '../ui/DiffView'
 import { SlashCommandPopup } from './SlashCommandPopup'
@@ -39,14 +40,20 @@ function formatTimestamp(ts: number): string {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// Truncate output and return truncation info
+// Truncate output preserving head and tail (like CLI)
 function truncateOutput(output: string, maxLines: number = MAX_OUTPUT_LINES): { text: string; truncated: boolean; omittedLines: number } {
   const lines = output.split('\n')
   if (lines.length <= maxLines) {
     return { text: output, truncated: false, omittedLines: 0 }
   }
-  const truncatedText = lines.slice(0, maxLines).join('\n')
-  return { text: truncatedText, truncated: true, omittedLines: lines.length - maxLines }
+  // Keep head (60%) and tail (40%) of max lines
+  const headLines = Math.floor(maxLines * 0.6)
+  const tailLines = maxLines - headLines
+  const omitted = lines.length - maxLines
+  const head = lines.slice(0, headLines).join('\n')
+  const tail = lines.slice(-tailLines).join('\n')
+  const truncatedText = `${head}\n\n... +${omitted} lines omitted ...\n\n${tail}`
+  return { text: truncatedText, truncated: true, omittedLines: omitted }
 }
 
 // Colorize diff output like CLI
@@ -411,11 +418,28 @@ export function ChatView() {
           listMcp: async () => {
             try {
               const response = await serverApi.listMcpServers()
-              const lines = response.data.map((server) => {
-                const toolCount = Object.keys(server.tools || {}).length
-                return `- ${server.name} (${toolCount} tools)`
+              if (response.data.length === 0) {
+                addInfoItem('MCP Servers', 'No MCP servers configured.')
+                return
+              }
+              const sections = response.data.map((server) => {
+                const tools = Object.keys(server.tools || {})
+                const resources = server.resources || []
+                const templates = server.resourceTemplates || []
+                const authStatus = server.authStatus
+                  ? typeof server.authStatus === 'object'
+                    ? JSON.stringify(server.authStatus)
+                    : String(server.authStatus)
+                  : 'none'
+
+                const lines = [`## ${server.name}`]
+                lines.push(`  Auth: ${authStatus}`)
+                lines.push(`  Tools (${tools.length}): ${tools.length > 0 ? tools.slice(0, 5).join(', ') + (tools.length > 5 ? ` +${tools.length - 5} more` : '') : 'none'}`)
+                lines.push(`  Resources: ${resources.length}`)
+                lines.push(`  Templates: ${templates.length}`)
+                return lines.join('\n')
               })
-              addInfoItem('MCP Servers', lines.length ? lines.join('\n') : 'No MCP servers found.')
+              addInfoItem('MCP Servers', sections.join('\n\n'))
             } catch (error) {
               addInfoItem('MCP Servers', `Failed to load MCP servers: ${String(error)}`)
             }
@@ -804,8 +828,14 @@ export function ChatView() {
       {/* Input Area */}
       <div className="p-4 bg-transparent" role="form" aria-label="Message composer">
         <div className="mx-auto max-w-3xl">
+          {/* Rate Limit Warning - Like CLI's "Heads up..." */}
+          <RateLimitWarning />
+
           {/* CLI-style Working Status - Above Input */}
           <WorkingStatusBar />
+
+          {/* Queued Messages Display */}
+          <QueuedMessagesDisplay />
 
           <div
             className={cn(
@@ -2346,6 +2376,110 @@ function WorkingStatusBar() {
             {escapePending ? 'esc again to interrupt' : 'esc esc to interrupt'}
           </span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Queued Messages Display - Shows messages waiting to be processed
+function QueuedMessagesDisplay() {
+  const queuedMessages = useThreadStore((state) => state.queuedMessages)
+  const turnStatus = useThreadStore((state) => state.turnStatus)
+
+  // Only show when there are queued messages and turn is running
+  if (queuedMessages.length === 0 || turnStatus !== 'running') return null
+
+  return (
+    <div className="mb-2 space-y-1.5 animate-in fade-in slide-in-from-bottom-1 duration-150">
+      <div className="text-xs text-muted-foreground px-2">
+        <ListChecks size={12} className="inline mr-1.5" />
+        Queued messages ({queuedMessages.length}):
+      </div>
+      {queuedMessages.map((msg) => (
+        <div
+          key={msg.id}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/60 border border-border/30 text-sm"
+        >
+          <Clock size={14} className="text-muted-foreground shrink-0" />
+          <span className="truncate flex-1">{msg.text}</span>
+          {msg.images && msg.images.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              +{msg.images.length} image{msg.images.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Rate Limit Warning - Shows when approaching quota (like CLI's "Heads up...")
+function RateLimitWarning() {
+  const rateLimits = useAccountStore((state) => state.rateLimits)
+  const refreshRateLimits = useAccountStore((state) => state.refreshRateLimits)
+  const [dismissed, setDismissed] = useState(false)
+
+  // Refresh rate limits periodically when mounted
+  useEffect(() => {
+    refreshRateLimits()
+    const interval = setInterval(refreshRateLimits, 60000) // Every minute
+    return () => clearInterval(interval)
+  }, [refreshRateLimits])
+
+  // Reset dismissed state when limits change significantly
+  useEffect(() => {
+    setDismissed(false)
+  }, [rateLimits?.primary?.usedPercent])
+
+  if (dismissed || !rateLimits) return null
+
+  const primary = rateLimits.primary
+  const secondary = rateLimits.secondary
+
+  // Show warning if primary or secondary is above 70%
+  const primaryHigh = primary && primary.usedPercent >= 70
+  const secondaryHigh = secondary && secondary.usedPercent >= 70
+
+  if (!primaryHigh && !secondaryHigh) return null
+
+  const formatResetTime = (resetsAt?: number | null) => {
+    if (!resetsAt) return null
+    const now = Date.now()
+    const diffMs = resetsAt - now
+    if (diffMs <= 0) return 'soon'
+    const mins = Math.ceil(diffMs / 60000)
+    if (mins < 60) return `${mins}m`
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`
+  }
+
+  const resetTime = formatResetTime(primary?.resetsAt)
+
+  return (
+    <div className="mb-3 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
+      <div className="flex items-start gap-3">
+        <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-amber-600 dark:text-amber-400">
+            Heads up: Approaching rate limit
+          </div>
+          <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+            {primaryHigh && (
+              <div>Primary: {Math.round(primary!.usedPercent)}% used{resetTime && ` • resets in ${resetTime}`}</div>
+            )}
+            {secondaryHigh && (
+              <div>Secondary: {Math.round(secondary!.usedPercent)}% used</div>
+            )}
+            {rateLimits.planType && (
+              <div className="text-muted-foreground/70">Plan: {rateLimits.planType}</div>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-muted-foreground hover:text-foreground shrink-0"
+        >
+          <X size={14} />
+        </button>
       </div>
     </div>
   )

@@ -18,7 +18,7 @@ import { type SlashCommand } from '../../lib/slashCommands'
 import { type FileEntry } from '../../lib/api'
 import { executeCommand } from '../../lib/commandExecutor'
 import { useToast } from '../ui/Toast'
-import { serverApi, projectApi } from '../../lib/api'
+import { serverApi, projectApi, type SkillInput } from '../../lib/api'
 
 // Maximum height for the textarea (in pixels)
 const MAX_TEXTAREA_HEIGHT = 200
@@ -476,6 +476,12 @@ export function ChatView() {
             import('@tauri-apps/plugin-shell').then(({ open }) => open(url))
             addInfoItem('Bug Report', `Opening GitHub issue form...\n\nIncluded info:\n- Model: ${model}\n- Platform: ${platform}\n- ${sessionInfo}`)
           },
+          setModelOverride: (model) => {
+            useThreadStore.getState().setSessionOverride('model', model)
+          },
+          setApprovalOverride: (policy) => {
+            useThreadStore.getState().setSessionOverride('approvalPolicy', policy)
+          },
         })
 
         if (result.handled) {
@@ -512,7 +518,46 @@ export function ChatView() {
     }
 
     try {
-      await sendMessage(text, attachedImages.length > 0 ? attachedImages : undefined)
+      // Detect skill mentions in the text (pattern: $skillName)
+      const skillMentionPattern = /\$([a-zA-Z0-9_-]+)/g
+      const skillMentions: string[] = []
+      let match
+      while ((match = skillMentionPattern.exec(text)) !== null) {
+        skillMentions.push(match[1])
+      }
+
+      // Look up skill metadata if there are mentions
+      let skills: SkillInput[] | undefined
+      if (skillMentions.length > 0 && project) {
+        try {
+          const response = await serverApi.listSkills([project.path])
+          const allSkills = response.data.flatMap((entry) => entry.skills)
+          skills = skillMentions
+            .map((name) => {
+              const skill = allSkills.find(
+                (s) => s.name === name || s.name.toLowerCase() === name.toLowerCase()
+              )
+              if (skill) {
+                return { name: skill.name, path: skill.path }
+              }
+              return null
+            })
+            .filter((s): s is SkillInput => s !== null)
+
+          if (skills.length === 0) {
+            skills = undefined
+          }
+        } catch (error) {
+          console.warn('Failed to load skills for mentions:', error)
+          // Continue without skills
+        }
+      }
+
+      await sendMessage(
+        text,
+        attachedImages.length > 0 ? attachedImages : undefined,
+        skills
+      )
     } catch (error) {
       console.error('Failed to send message:', error)
       showToast('Failed to send message. Please try again.', 'error')

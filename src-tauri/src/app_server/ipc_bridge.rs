@@ -206,6 +206,9 @@ pub enum UserInput {
     Text { text: String },
     #[serde(rename = "localImage")]
     LocalImage { path: String },
+    /// Skill selected by the user (name + path to SKILL.md)
+    #[serde(rename = "skill")]
+    Skill { name: String, path: String },
 }
 
 /// Turn info

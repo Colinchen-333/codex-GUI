@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { threadApi, snapshotApi, type ThreadInfo, type Snapshot } from '../lib/api'
+import { threadApi, snapshotApi, type ThreadInfo, type Snapshot, type SkillInput } from '../lib/api'
 import { parseError } from '../lib/errorUtils'
 import { useSettingsStore } from './settings'
 import {
@@ -327,6 +327,13 @@ export interface TurnTiming {
   completedAt: number | null
 }
 
+// Session-level overrides (like CLI's /model, /approvals)
+export interface SessionOverrides {
+  model?: string
+  approvalPolicy?: string
+  sandboxPolicy?: string
+}
+
 interface ThreadState {
   activeThread: ThreadInfo | null
   // Using Record instead of Map for better serialization and Zustand devtools compatibility
@@ -338,6 +345,7 @@ interface ThreadState {
   snapshots: Snapshot[]
   tokenUsage: TokenUsage
   turnTiming: TurnTiming
+  sessionOverrides: SessionOverrides
   isLoading: boolean
   error: string | null
 
@@ -350,7 +358,7 @@ interface ThreadState {
     approvalPolicy?: string
   ) => Promise<void>
   resumeThread: (threadId: string) => Promise<void>
-  sendMessage: (text: string, images?: string[]) => Promise<void>
+  sendMessage: (text: string, images?: string[], skills?: SkillInput[]) => Promise<void>
   interrupt: () => Promise<void>
   respondToApproval: (
     itemId: string,
@@ -360,6 +368,8 @@ interface ThreadState {
   clearThread: () => void
   addInfoItem: (title: string, details?: string) => void
   flushDeltaBuffer: () => void
+  setSessionOverride: (key: keyof SessionOverrides, value: string | undefined) => void
+  clearSessionOverrides: () => void
 
   // Event handlers
   handleItemStarted: (event: ItemStartedEvent) => void
@@ -649,6 +659,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   snapshots: [],
   tokenUsage: defaultTokenUsage,
   turnTiming: defaultTurnTiming,
+  sessionOverrides: {},
   isLoading: false,
   error: null,
 
@@ -749,7 +760,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     }
   },
 
-  sendMessage: async (text, images) => {
+  sendMessage: async (text, images, skills) => {
     const { activeThread, turnStatus } = get()
     if (!activeThread) {
       throw new Error('No active thread')
@@ -782,16 +793,30 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
 
     try {
       const { settings } = useSettingsStore.getState()
+      const { sessionOverrides } = get()
       const effort = normalizeReasoningEffort(settings.reasoningEffort)
       const summary = normalizeReasoningSummary(settings.reasoningSummary)
-      const options: { effort?: string; summary?: string } = {}
+      const options: {
+        effort?: string
+        summary?: string
+        model?: string
+        approvalPolicy?: string
+        sandboxPolicy?: string
+      } = {}
       if (effort) options.effort = effort
       if (summary) options.summary = summary
+      // Apply session overrides (from /model, /approvals commands)
+      if (sessionOverrides.model) options.model = sessionOverrides.model
+      if (sessionOverrides.approvalPolicy)
+        options.approvalPolicy = sessionOverrides.approvalPolicy
+      if (sessionOverrides.sandboxPolicy)
+        options.sandboxPolicy = sessionOverrides.sandboxPolicy
 
       const response = await threadApi.sendMessage(
         activeThread.id,
         text,
         images,
+        skills,
         Object.keys(options).length ? options : undefined
       )
 
@@ -975,6 +1000,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       currentTurnId: null,
       pendingApprovals: [],
       snapshots: [],
+      sessionOverrides: {},
       error: null,
     })
   },
@@ -1159,6 +1185,19 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       items: { ...state.items, [infoItem.id]: infoItem },
       itemOrder: [...state.itemOrder, infoItem.id],
     }))
+  },
+
+  setSessionOverride: (key, value) => {
+    set((state) => ({
+      sessionOverrides: {
+        ...state.sessionOverrides,
+        [key]: value,
+      },
+    }))
+  },
+
+  clearSessionOverrides: () => {
+    set({ sessionOverrides: {} })
   },
 
   // Event Handlers

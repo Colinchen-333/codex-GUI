@@ -156,6 +156,12 @@ export interface SkillMetadata {
   scope: string
 }
 
+// Skill input for sending with messages
+export interface SkillInput {
+  name: string
+  path: string
+}
+
 export interface SkillsListEntry {
   cwd: string
   skills: SkillMetadata[]
@@ -306,6 +312,7 @@ export const threadApi = {
     threadId: string,
     text: string,
     images?: string[],
+    skills?: SkillInput[],
     options?: {
       effort?: string
       summary?: string
@@ -318,6 +325,7 @@ export const threadApi = {
       threadId,
       text,
       images,
+      skills,
       ...options,
     }),
 

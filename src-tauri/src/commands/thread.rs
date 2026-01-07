@@ -80,6 +80,13 @@ pub async fn resume_thread(
     Ok(response)
 }
 
+/// Skill input for send_message
+#[derive(Debug, serde::Deserialize)]
+pub struct SkillInput {
+    pub name: String,
+    pub path: String,
+}
+
 /// Send a message to start a new turn
 #[tauri::command]
 pub async fn send_message(
@@ -87,6 +94,7 @@ pub async fn send_message(
     thread_id: String,
     text: String,
     images: Option<Vec<String>>,
+    skills: Option<Vec<SkillInput>>,
     effort: Option<String>,
     summary: Option<String>,
     model: Option<String>,
@@ -94,6 +102,16 @@ pub async fn send_message(
     sandbox_policy: Option<String>,
 ) -> Result<TurnStartResponse> {
     let mut input: Vec<UserInput> = vec![UserInput::Text { text }];
+
+    // Add skills if provided (skills should come before images in input)
+    if let Some(skill_data) = skills {
+        for skill in skill_data {
+            input.push(UserInput::Skill {
+                name: skill.name,
+                path: skill.path,
+            });
+        }
+    }
 
     // Add images if provided
     // Images can be either file paths or base64 data URLs

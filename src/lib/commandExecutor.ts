@@ -24,6 +24,10 @@ export interface CommandContext {
   openUrl?: (url: string) => void
   compactConversation?: (instructions?: string) => Promise<void>
   generateBugReport?: () => Promise<void>
+  // Session overrides for /model and /approvals
+  setModelOverride?: (model: string) => void
+  setApprovalOverride?: (policy: string) => void
+  getAvailableModels?: () => Promise<Array<{ id: string; displayName: string }>>
 }
 
 export interface CommandResult {
@@ -189,12 +193,33 @@ export async function executeCommand(
     return { handled: true }
   }
 
-  // Settings commands
+  // Settings commands - support CLI-style inline overrides
   if (command.name === 'model') {
+    if (args.length > 0 && context.setModelOverride) {
+      // /model <model-name> - set model override for this session
+      const modelArg = args.join(' ')
+      context.setModelOverride(modelArg)
+      context.addInfoItem?.('Model Override', `Model set to "${modelArg}" for this session`)
+      return { handled: true }
+    }
+    // No args - open settings to select model
     context.openSettingsTab?.('model')
     return { handled: true }
   }
   if (command.name === 'approvals') {
+    if (args.length > 0 && context.setApprovalOverride) {
+      // /approvals <policy> - set approval policy override for this session
+      const policyArg = args[0].toLowerCase()
+      const validPolicies = ['never', 'on-request', 'on-failure', 'unless-trusted']
+      if (validPolicies.includes(policyArg)) {
+        context.setApprovalOverride(policyArg)
+        context.addInfoItem?.('Approval Override', `Approval policy set to "${policyArg}" for this session`)
+        return { handled: true }
+      }
+      context.showToast?.(`Invalid policy: ${policyArg}. Valid: ${validPolicies.join(', ')}`, 'error')
+      return { handled: true }
+    }
+    // No args - open settings
     context.openSettingsTab?.('safety')
     return { handled: true }
   }

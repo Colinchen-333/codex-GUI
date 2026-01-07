@@ -93,6 +93,8 @@ function App() {
       onTokenUsage: withThreadFilter((event) => useThreadStore.getState().handleTokenUsage(event)),
       // Errors - filtered by threadId
       onStreamError: withThreadFilter((event) => useThreadStore.getState().handleStreamError(event)),
+      // Rate limiting - filtered by threadId
+      onRateLimitExceeded: withThreadFilter((event) => useThreadStore.getState().handleRateLimitExceeded(event)),
       onServerDisconnected: () => {
         console.log('Server disconnected')
         // TODO: Show reconnection UI

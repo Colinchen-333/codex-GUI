@@ -171,6 +171,13 @@ export interface StreamErrorEvent {
   willRetry: boolean
 }
 
+// Rate limit event
+export interface RateLimitExceededEvent {
+  threadId: string
+  turnId: string
+  retryAfterMs?: number
+}
+
 export interface CommandApprovalRequestedEvent {
   itemId: string
   threadId: string
@@ -231,6 +238,9 @@ export type EventHandlers = {
   // Errors
   onStreamError?: (event: StreamErrorEvent) => void
   onServerDisconnected?: (event: ServerDisconnectedEvent) => void
+
+  // Rate limiting
+  onRateLimitExceeded?: (event: RateLimitExceededEvent) => void
 }
 
 // ==================== Setup Event Listeners ====================
@@ -319,6 +329,9 @@ export async function setupEventListeners(
   // Errors
   await addListener('error', handlers.onStreamError, unlisteners)
   await addListener('app-server-disconnected', handlers.onServerDisconnected, unlisteners)
+
+  // Rate limiting
+  await addListener('turn-rateLimitExceeded', handlers.onRateLimitExceeded, unlisteners)
 
   console.log(`[Events] setupEventListeners completed - ${unlisteners.length} listeners registered`)
   return unlisteners

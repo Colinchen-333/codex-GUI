@@ -27,6 +27,7 @@ import type {
   McpToolCallProgressEvent,
   TokenUsageEvent,
   StreamErrorEvent,
+  RateLimitExceededEvent,
 } from '../lib/events'
 
 // ==================== Delta Batching for Smooth Streaming ====================
@@ -413,6 +414,7 @@ interface ThreadState {
   handleMcpToolCallProgress: (event: McpToolCallProgressEvent) => void
   handleTokenUsage: (event: TokenUsageEvent) => void
   handleStreamError: (event: StreamErrorEvent) => void
+  handleRateLimitExceeded: (event: RateLimitExceededEvent) => void
 
   // Snapshot actions
   createSnapshot: (projectPath: string) => Promise<Snapshot>
@@ -1801,6 +1803,24 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       error: event.error.message,
       turnStatus: event.willRetry ? state.turnStatus : 'failed',
     }))
+  },
+
+  // Rate Limit Exceeded Handler
+  handleRateLimitExceeded: (event) => {
+    const { activeThread } = get()
+    if (!activeThread || activeThread.id !== event.threadId) return
+
+    console.warn('[handleRateLimitExceeded] Rate limit exceeded:', event)
+
+    // Set error state with retry information if available
+    const errorMessage = event.retryAfterMs
+      ? `Rate limit exceeded. Retry after ${Math.ceil(event.retryAfterMs / 1000)} seconds.`
+      : 'Rate limit exceeded. Please wait before sending more messages.'
+
+    set({
+      turnStatus: 'failed',
+      error: errorMessage,
+    })
   },
 
   // Snapshot Actions

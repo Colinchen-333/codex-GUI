@@ -35,6 +35,22 @@ export interface ThreadGitInfo {
   originUrl?: string
 }
 
+export interface ThreadSummary {
+  id: string
+  preview: string
+  modelProvider: string
+  createdAt: number
+  cwd: string
+  cliVersion: string
+  source: string
+  gitInfo?: ThreadGitInfo
+}
+
+export interface ThreadListResponse {
+  data: ThreadSummary[]
+  nextCursor: string | null
+}
+
 export interface ThreadInfo {
   id: string
   cwd: string
@@ -305,6 +321,9 @@ export const sessionApi = {
 // ==================== Thread API ====================
 
 export const threadApi = {
+  list: (limit?: number, cursor?: string) =>
+    invoke<ThreadListResponse>('list_threads', { limit, cursor }),
+
   start: (
     projectId: string,
     cwd: string,

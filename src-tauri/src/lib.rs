@@ -84,6 +84,8 @@ pub fn run() {
             // Config commands
             commands::app_server::read_config,
             commands::app_server::write_config,
+            // Account rate limits
+            commands::app_server::get_account_rate_limits,
             // Allowlist commands
             commands::allowlist::get_allowlist,
             commands::allowlist::add_to_allowlist,

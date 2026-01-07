@@ -416,3 +416,25 @@ pub async fn write_config(
 
     Ok(())
 }
+
+// ==================== Account Rate Limits ====================
+
+/// Get account rate limits
+#[tauri::command]
+pub async fn get_account_rate_limits(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value> {
+    // Ensure app-server is running
+    state.start_app_server().await?;
+
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let response: serde_json::Value = server
+        .send_request("account/rateLimits", serde_json::json!({}))
+        .await?;
+
+    Ok(response)
+}

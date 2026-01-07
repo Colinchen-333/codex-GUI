@@ -155,29 +155,70 @@ export function ChatView() {
   }, [])
 
   // Handle file mention selection
-  const handleFileMentionSelect = useCallback((file: FileEntry) => {
-    if (mentionStartPos >= 0) {
-      // Replace @query with @filepath
-      // Calculate the end position of the current query (@ + query text)
-      const queryEndPos = mentionStartPos + 1 + fileMentionQuery.length
-      const before = inputValue.slice(0, mentionStartPos)
-      const after = inputValue.slice(queryEndPos)
-      const newValue = `${before}@${file.path} ${after}`
-      setInputValue(newValue)
+  const handleFileMentionSelect = useCallback(
+    async (file: FileEntry) => {
+      const project = projects.find((p) => p.id === selectedProjectId)
+      if (!project) return
 
-      // Move cursor after the inserted path
-      setTimeout(() => {
-        if (inputRef.current) {
-          const newPos = mentionStartPos + file.path.length + 2 // @ + path + space
-          inputRef.current.setSelectionRange(newPos, newPos)
-          inputRef.current.focus()
+      // Check if file is an image - mount it instead of text mention
+      const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg']
+      const ext = file.path.toLowerCase().slice(file.path.lastIndexOf('.'))
+      if (imageExts.includes(ext)) {
+        // Load image file and add to attached images
+        try {
+          const { readFile } = await import('@tauri-apps/plugin-fs')
+          const fullPath = `${project.path}/${file.path}`
+          const bytes = await readFile(fullPath)
+          const blob = new Blob([bytes], { type: `image/${ext.slice(1)}` })
+          const reader = new FileReader()
+          reader.onload = () => {
+            if (typeof reader.result === 'string') {
+              setAttachedImages((prev) => [...prev, reader.result as string])
+              showToast(`Image attached: ${file.name}`, 'success')
+            }
+          }
+          reader.readAsDataURL(blob)
+        } catch (error) {
+          console.error('Failed to load image:', error)
+          showToast(`Failed to load image: ${file.name}`, 'error')
         }
-      }, 0)
-    }
-    setShowFileMention(false)
-    setFileMentionQuery('')
-    setMentionStartPos(-1)
-  }, [inputValue, mentionStartPos, fileMentionQuery])
+
+        // Remove the @query from input
+        if (mentionStartPos >= 0) {
+          const queryEndPos = mentionStartPos + 1 + fileMentionQuery.length
+          const before = inputValue.slice(0, mentionStartPos)
+          const after = inputValue.slice(queryEndPos)
+          setInputValue(`${before}${after}`.trim())
+        }
+      } else {
+        // Text file - insert as @mention with proper quoting
+        if (mentionStartPos >= 0) {
+          const queryEndPos = mentionStartPos + 1 + fileMentionQuery.length
+          const before = inputValue.slice(0, mentionStartPos)
+          const after = inputValue.slice(queryEndPos)
+
+          // Quote path if it contains spaces or special characters
+          const needsQuotes = /[\s"'`$\\]/.test(file.path)
+          const quotedPath = needsQuotes ? `"${file.path}"` : file.path
+          const newValue = `${before}@${quotedPath} ${after}`
+          setInputValue(newValue)
+
+          // Move cursor after the inserted path
+          setTimeout(() => {
+            if (inputRef.current) {
+              const newPos = mentionStartPos + quotedPath.length + 2 // @ + path + space
+              inputRef.current.setSelectionRange(newPos, newPos)
+              inputRef.current.focus()
+            }
+          }, 0)
+        }
+      }
+      setShowFileMention(false)
+      setFileMentionQuery('')
+      setMentionStartPos(-1)
+    },
+    [inputValue, mentionStartPos, fileMentionQuery, projects, selectedProjectId, showToast]
+  )
 
   // RAF-optimized auto-scroll to bottom when new messages or deltas arrive
   // Use 'instant' during streaming to avoid jitter, 'smooth' otherwise

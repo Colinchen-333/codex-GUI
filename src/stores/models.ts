@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { serverApi, type Model } from '../lib/api'
 
+// Cache TTL for models list
+const MODEL_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
 interface ModelsState {
   models: Model[]
   isLoading: boolean
@@ -20,10 +23,10 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
   lastFetched: null,
 
   fetchModels: async () => {
-    // Don't refetch if we already have models and fetched recently (within 5 minutes)
+    // Don't refetch if we already have models and fetched recently
     const { models, lastFetched } = get()
     const now = Date.now()
-    if (models.length > 0 && lastFetched && now - lastFetched < 5 * 60 * 1000) {
+    if (models.length > 0 && lastFetched && now - lastFetched < MODEL_CACHE_TTL_MS) {
       return
     }
 

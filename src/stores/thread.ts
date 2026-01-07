@@ -321,6 +321,7 @@ export interface PendingApproval {
   type: 'command' | 'fileChange'
   data: CommandApprovalRequestedEvent | FileChangeApprovalRequestedEvent
   requestId: number // JSON-RPC request ID for responding
+  createdAt: number // Timestamp when approval was requested (for timeout tracking)
 }
 
 // ==================== Store State ====================
@@ -1430,6 +1431,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
             type: 'command',
             data: event,
             requestId: event._requestId,
+            createdAt: Date.now(), // Track when approval was requested for timeout
           },
         ],
       }
@@ -1468,6 +1470,7 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
             type: 'fileChange',
             data: event,
             requestId: event._requestId,
+            createdAt: Date.now(), // Track when approval was requested for timeout
           },
         ],
       }
@@ -1516,6 +1519,13 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     }
 
     const status = event.turn.status
+
+    // Validate turn status before mapping
+    const validStatuses = ['completed', 'failed', 'interrupted']
+    if (!validStatuses.includes(status)) {
+      console.warn(`[handleTurnCompleted] Unexpected turn status: ${status}, treating as completed`)
+    }
+
     const nextTurnStatus: TurnStatus =
       status === 'failed'
         ? 'failed'

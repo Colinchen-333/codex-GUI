@@ -28,6 +28,10 @@ const MAX_TEXTAREA_HEIGHT = 200
 // Maximum lines before truncating output
 const MAX_OUTPUT_LINES = 50
 
+// Maximum image size (5MB) and max images count
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const MAX_IMAGES_COUNT = 5
+
 // Format timestamp for display
 function formatTimestamp(ts: number): string {
   const date = new Date(ts)
@@ -173,8 +177,16 @@ export function ChatView() {
       if (imageExts.includes(ext)) {
         // Load image file and add to attached images
         try {
-          const { readFile } = await import('@tauri-apps/plugin-fs')
+          const { readFile, stat } = await import('@tauri-apps/plugin-fs')
           const fullPath = `${project.path}/${file.path}`
+
+          // Pre-check file size before reading to avoid loading large files into memory
+          const fileInfo = await stat(fullPath)
+          if (fileInfo.size > MAX_IMAGE_SIZE) {
+            showToast(`Image too large: ${(fileInfo.size / 1024 / 1024).toFixed(1)}MB (max 5MB)`, 'error')
+            return
+          }
+
           const bytes = await readFile(fullPath)
           const blob = new Blob([bytes], { type: `image/${ext.slice(1)}` })
           const reader = new FileReader()
@@ -644,10 +656,6 @@ export function ChatView() {
       handleSend()
     }
   }
-
-  // Maximum image size (5MB) and max images count
-  const MAX_IMAGE_SIZE = 5 * 1024 * 1024
-  const MAX_IMAGES_COUNT = 5
 
   // Handle image file
   const handleImageFile = useCallback((file: File) => {

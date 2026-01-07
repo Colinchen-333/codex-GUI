@@ -242,14 +242,20 @@ async function addListener<T>(
   unlisteners: UnlistenFn[]
 ) {
   if (handler) {
-    const unlisten = await listen<T>(eventName, (event) => handler(event.payload))
+    console.log(`[Events] Setting up listener for: ${eventName}`)
+    const unlisten = await listen<T>(eventName, (event) => {
+      console.log(`[Events] Received raw event: ${eventName}`, event.payload)
+      handler(event.payload)
+    })
     unlisteners.push(unlisten)
+    console.log(`[Events] Listener registered for: ${eventName}`)
   }
 }
 
 export async function setupEventListeners(
   handlers: EventHandlers
 ): Promise<UnlistenFn[]> {
+  console.log('[Events] setupEventListeners called')
   const unlisteners: UnlistenFn[] = []
 
   // Thread lifecycle
@@ -314,6 +320,7 @@ export async function setupEventListeners(
   await addListener('error', handlers.onStreamError, unlisteners)
   await addListener('app-server-disconnected', handlers.onServerDisconnected, unlisteners)
 
+  console.log(`[Events] setupEventListeners completed - ${unlisteners.length} listeners registered`)
   return unlisteners
 }
 

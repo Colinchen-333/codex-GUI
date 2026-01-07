@@ -362,15 +362,3 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
     </div>
   )
 }
-
-// Check if onboarding is needed
-export function useNeedsOnboarding(): boolean {
-  const [needsOnboarding, setNeedsOnboarding] = useState(false)
-
-  useEffect(() => {
-    const onboarded = localStorage.getItem('codex-desktop-onboarded')
-    setNeedsOnboarding(!onboarded)
-  }, [])
-
-  return needsOnboarding
-}

@@ -5,7 +5,11 @@ import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { useAppStore } from '../../stores/app'
 import { useThreadStore } from '../../stores/thread'
-import { useSettingsStore } from '../../stores/settings'
+import {
+  useSettingsStore,
+  mergeProjectSettings,
+  getEffectiveWorkingDirectory,
+} from '../../stores/settings'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { RenameDialog } from '../ui/RenameDialog'
 import { ProjectSettingsDialog } from '../dialogs/ProjectSettingsDialog'
@@ -227,19 +231,28 @@ export function Sidebar() {
     const project = projects.find((p) => p.id === selectedProjectId)
     if (!project) return
 
+    // Merge project-specific settings with global settings
+    const effectiveSettings = mergeProjectSettings(settings, project.settingsJson)
+    const effectiveCwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
+
     try {
       // Clear any existing thread first
       clearThread()
       // Deselect current session
       selectSession(null)
-      // Start a new thread
+      // Start a new thread with merged settings
       await startThread(
         selectedProjectId,
-        project.path,
-        settings.model,
-        settings.sandboxMode,
-        settings.approvalPolicy
+        effectiveCwd,
+        effectiveSettings.model,
+        effectiveSettings.sandboxMode,
+        effectiveSettings.approvalPolicy
       )
+      // Get the newly created thread from the store and select it as current session
+      const newThread = useThreadStore.getState().activeThread
+      if (newThread) {
+        selectSession(newThread.id)
+      }
       // Refresh sessions list to show the new session
       await fetchSessions(selectedProjectId)
       // Switch to sessions tab to show the new session
@@ -334,7 +347,7 @@ export function Sidebar() {
             onToggleFavorite={async (sessionId, isFavorite) => {
               try {
                 await updateSession(sessionId, { isFavorite: !isFavorite })
-              } catch (error) {
+              } catch {
                 showToast('Failed to update session', 'error')
               }
             }}
@@ -343,7 +356,7 @@ export function Sidebar() {
               try {
                 await deleteSession(sessionId)
                 showToast('Session deleted', 'success')
-              } catch (error) {
+              } catch {
                 showToast('Failed to delete session', 'error')
               }
             }}

@@ -34,7 +34,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     name: 'review',
-    description: 'Review current changes',
+    description: 'Review changes: /review [branch|sha|instructions]',
     category: 'workflow',
     icon: 'eye',
   },

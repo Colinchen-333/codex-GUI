@@ -1,5 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import {
+  normalizeApprovalPolicy,
+  normalizeReasoningEffort,
+  normalizeReasoningSummary,
+  normalizeSandboxMode,
+} from '../lib/normalize'
 
 // Reasoning effort levels supported by Codex (matches API schema)
 export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
@@ -11,7 +17,7 @@ export type ReasoningSummary = 'none' | 'concise' | 'detailed'
 export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
 
 // Approval policies matching Codex CLI
-export type ApprovalPolicy = 'on-request' | 'on-failure' | 'never'
+export type ApprovalPolicy = 'on-request' | 'on-failure' | 'never' | 'untrusted'
 
 export interface Settings {
   model: string
@@ -39,7 +45,7 @@ interface SettingsState {
 
 // Valid values for settings (used for migration)
 const VALID_SANDBOX_MODES = ['read-only', 'workspace-write', 'danger-full-access']
-const VALID_APPROVAL_POLICIES = ['on-request', 'on-failure', 'never']
+const VALID_APPROVAL_POLICIES = ['on-request', 'on-failure', 'never', 'untrusted']
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -58,7 +64,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'codex-desktop-settings',
-      version: 2, // Increment when settings format changes
+      version: 3, // Increment when settings format changes
       migrate: (persistedState, version) => {
         const state = persistedState as { settings: Settings }
 
@@ -78,6 +84,21 @@ export const useSettingsStore = create<SettingsState>()(
           }
         }
 
+        if (version < 3) {
+          state.settings.sandboxMode =
+            (normalizeSandboxMode(state.settings.sandboxMode) as Settings['sandboxMode']) ||
+            defaultSettings.sandboxMode
+          state.settings.approvalPolicy =
+            (normalizeApprovalPolicy(state.settings.approvalPolicy) as Settings['approvalPolicy']) ||
+            defaultSettings.approvalPolicy
+          state.settings.reasoningEffort =
+            (normalizeReasoningEffort(state.settings.reasoningEffort) as Settings['reasoningEffort']) ||
+            defaultSettings.reasoningEffort
+          state.settings.reasoningSummary =
+            (normalizeReasoningSummary(state.settings.reasoningSummary) as Settings['reasoningSummary']) ||
+            defaultSettings.reasoningSummary
+        }
+
         return state
       },
     }
@@ -92,6 +113,61 @@ export function getThreadSettings(settings: Settings) {
     approvalPolicy: settings.approvalPolicy,
     reasoningEffort: settings.reasoningEffort,
     reasoningSummary: settings.reasoningSummary,
+  }
+}
+
+// Project-specific settings interface (stored in project.settingsJson)
+export interface ProjectSettings {
+  cwd?: string
+  envVars?: Record<string, string>
+  model?: string
+  sandboxMode?: string
+  askForApproval?: string // maps to approvalPolicy
+}
+
+// Helper to merge project settings with global settings
+// Project settings override global settings when present
+export function mergeProjectSettings(
+  globalSettings: Settings,
+  projectSettingsJson: string | null
+): Settings {
+  if (!projectSettingsJson) {
+    return globalSettings
+  }
+
+  try {
+    const projectSettings: ProjectSettings = JSON.parse(projectSettingsJson)
+    return {
+      ...globalSettings,
+      // Override with project settings if they exist and are valid
+      model: projectSettings.model || globalSettings.model,
+      sandboxMode:
+        (normalizeSandboxMode(projectSettings.sandboxMode) as SandboxMode) ||
+        globalSettings.sandboxMode,
+      approvalPolicy:
+        (normalizeApprovalPolicy(projectSettings.askForApproval) as ApprovalPolicy) ||
+        globalSettings.approvalPolicy,
+    }
+  } catch {
+    // Invalid JSON, return global settings
+    return globalSettings
+  }
+}
+
+// Helper to get the effective working directory for a project
+export function getEffectiveWorkingDirectory(
+  projectPath: string,
+  projectSettingsJson: string | null
+): string {
+  if (!projectSettingsJson) {
+    return projectPath
+  }
+
+  try {
+    const projectSettings: ProjectSettings = JSON.parse(projectSettingsJson)
+    return projectSettings.cwd || projectPath
+  } catch {
+    return projectPath
   }
 }
 

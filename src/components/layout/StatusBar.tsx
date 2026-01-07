@@ -61,12 +61,15 @@ export function StatusBar() {
 
   // Real-time elapsed time + token rate update when running (50ms for smooth display)
   useEffect(() => {
+    // Only setup interval when running
     if (turnStatus !== 'running' || !turnTiming.startedAt) {
-      setTokenRate(0)
-      prevTokensRef.current = tokenUsage.totalTokens
-      prevTimeRef.current = Date.now()
       return
     }
+
+    // Reset refs when starting
+    prevTokensRef.current = tokenUsage.totalTokens
+    prevTimeRef.current = Date.now()
+
     // Update elapsed time every 50ms for CLI-like smooth display
     const interval = setInterval(() => {
       const now = Date.now()

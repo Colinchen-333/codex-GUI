@@ -78,6 +78,7 @@ pub fn run() {
             commands::app_server::list_skills,
             commands::app_server::list_mcp_servers,
             commands::app_server::start_review,
+            commands::app_server::run_user_shell_command,
             // Config commands
             commands::app_server::read_config,
             commands::app_server::write_config,

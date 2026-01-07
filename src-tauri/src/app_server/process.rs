@@ -256,7 +256,12 @@ impl AppServerProcess {
                 let event_name = method.replace('/', "-");
                 let params = message.params.unwrap_or(JsonValue::Null);
 
-                tracing::debug!("Emitting event: {} with params: {:?}", event_name, params);
+                // Log thread ID for debugging
+                if let Some(thread_id) = params.get("threadId") {
+                    tracing::info!("Emitting event: {} with threadId: {:?}", event_name, thread_id);
+                } else {
+                    tracing::debug!("Emitting event: {} (no threadId)", event_name);
+                }
 
                 if let Err(e) = app_handle.emit(&event_name, params) {
                     tracing::warn!("Failed to emit event {}: {}", event_name, e);

@@ -65,24 +65,26 @@ export function ContextMenu({ items, children, className }: ContextMenuProps) {
 
   // Adjust position if menu would overflow viewport
   useEffect(() => {
-    if (isOpen && menuRef.current) {
-      const rect = menuRef.current.getBoundingClientRect()
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
+    if (!isOpen || !menuRef.current) {
+      return
+    }
 
-      let newX = position.x
-      let newY = position.y
+    const rect = menuRef.current.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
 
-      if (rect.right > viewportWidth) {
-        newX = viewportWidth - rect.width - 8
-      }
-      if (rect.bottom > viewportHeight) {
-        newY = viewportHeight - rect.height - 8
-      }
+    let newX = position.x
+    let newY = position.y
 
-      if (newX !== position.x || newY !== position.y) {
-        setPosition({ x: newX, y: newY })
-      }
+    if (rect.right > viewportWidth) {
+      newX = viewportWidth - rect.width - 8
+    }
+    if (rect.bottom > viewportHeight) {
+      newY = viewportHeight - rect.height - 8
+    }
+
+    if (newX !== position.x || newY !== position.y) {
+      setPosition({ x: newX, y: newY })
     }
   }, [isOpen, position])
 

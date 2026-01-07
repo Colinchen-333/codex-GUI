@@ -43,6 +43,10 @@ export interface ThreadInfo {
   preview?: string
   createdAt?: number
   cliVersion?: string
+  approvalPolicy?: string
+  sandboxPolicy?: SandboxPolicy
+  reasoningEffort?: string
+  reasoningSummary?: string
   gitInfo?: ThreadGitInfo
 }
 
@@ -93,6 +97,29 @@ export interface AccountDetails {
 export interface AccountInfo {
   account: AccountDetails | null
   requiresOpenaiAuth: boolean
+}
+
+export interface RateLimitWindow {
+  usedPercent: number
+  windowDurationMins?: number | null
+  resetsAt?: number | null
+}
+
+export interface CreditsSnapshot {
+  hasCredits: boolean
+  unlimited: boolean
+  balance?: string | null
+}
+
+export interface RateLimitSnapshot {
+  primary?: RateLimitWindow | null
+  secondary?: RateLimitWindow | null
+  credits?: CreditsSnapshot | null
+  planType?: string | null
+}
+
+export interface AccountRateLimitsResponse {
+  rateLimits: RateLimitSnapshot
 }
 
 export interface LoginResponse {
@@ -151,6 +178,13 @@ export interface McpServerStatusResponse {
   data: McpServerStatus[]
   nextCursor: string | null
 }
+
+// Review target types matching CLI presets
+export type ReviewTarget =
+  | { type: 'uncommittedChanges' }
+  | { type: 'baseBranch'; branch: string }
+  | { type: 'commit'; sha: string; title?: string }
+  | { type: 'custom'; instructions: string }
 
 export interface ReviewStartResponse {
   turn: TurnInfo
@@ -328,8 +362,10 @@ export const serverApi = {
 
   getAccountInfo: () => invoke<AccountInfo>('get_account_info'),
 
-  startLogin: (loginType: 'chatgpt' | 'apiKey' = 'chatgpt') =>
-    invoke<LoginResponse>('start_login', { loginType }),
+  getAccountRateLimits: () => invoke<AccountRateLimitsResponse>('get_account_rate_limits'),
+
+  startLogin: (loginType: 'chatgpt' | 'apiKey' = 'chatgpt', apiKey?: string) =>
+    invoke<LoginResponse>('start_login', { loginType, apiKey }),
 
   logout: () => invoke<void>('logout'),
 
@@ -340,8 +376,12 @@ export const serverApi = {
 
   listMcpServers: () => invoke<McpServerStatusResponse>('list_mcp_servers'),
 
-  startReview: (threadId: string) =>
-    invoke<ReviewStartResponse>('start_review', { threadId }),
+  startReview: (threadId: string, target?: ReviewTarget) =>
+    invoke<ReviewStartResponse>('start_review', { threadId, target }),
+
+  // Run a local shell command (like CLI's ! prefix)
+  runUserShellCommand: (threadId: string, command: string) =>
+    invoke<TurnStartResponse>('run_user_shell_command', { threadId, command }),
 }
 
 // ==================== Config API ====================

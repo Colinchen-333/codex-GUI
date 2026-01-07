@@ -3,7 +3,7 @@
 use serde::Serialize;
 use tauri::State;
 
-use crate::app_server::ipc_bridge::AccountInfo;
+use crate::app_server::ipc_bridge::{AccountInfo, TurnStartResponse};
 use crate::state::AppState;
 use crate::Result;
 
@@ -68,7 +68,11 @@ pub struct LoginResponse {
 
 /// Start login flow
 #[tauri::command]
-pub async fn start_login(state: State<'_, AppState>, login_type: String) -> Result<LoginResponse> {
+pub async fn start_login(
+    state: State<'_, AppState>,
+    login_type: String,
+    api_key: Option<String>,
+) -> Result<LoginResponse> {
     // Ensure app-server is running
     state.start_app_server().await?;
 
@@ -77,9 +81,19 @@ pub async fn start_login(state: State<'_, AppState>, login_type: String) -> Resu
         .as_mut()
         .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
 
-    let params = serde_json::json!({
-        "type": login_type,
-    });
+    // Build params based on login type
+    let params = if login_type == "apiKey" {
+        // API key login requires the key
+        serde_json::json!({
+            "type": "apiKey",
+            "apiKey": api_key.unwrap_or_default(),
+        })
+    } else {
+        // ChatGPT OAuth flow
+        serde_json::json!({
+            "type": login_type,
+        })
+    };
 
     let response: LoginResponse = server.send_request("account/login/start", params).await?;
 
@@ -251,10 +265,23 @@ pub struct ReviewStartResponse {
     pub review_thread_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ReviewTarget {
+    /// Review the working tree: staged, unstaged, and untracked files
     UncommittedChanges,
+    /// Review changes between the current branch and the given base branch
+    #[serde(rename_all = "camelCase")]
+    BaseBranch { branch: String },
+    /// Review the changes introduced by a specific commit
+    #[serde(rename_all = "camelCase")]
+    Commit {
+        sha: String,
+        title: Option<String>,
+    },
+    /// Arbitrary instructions, equivalent to the old free-form prompt
+    #[serde(rename_all = "camelCase")]
+    Custom { instructions: String },
 }
 
 #[derive(Debug, Serialize)]
@@ -265,7 +292,11 @@ pub struct ReviewStartParams {
 }
 
 #[tauri::command]
-pub async fn start_review(state: State<'_, AppState>, thread_id: String) -> Result<ReviewStartResponse> {
+pub async fn start_review(
+    state: State<'_, AppState>,
+    thread_id: String,
+    target: Option<ReviewTarget>,
+) -> Result<ReviewStartResponse> {
     state.start_app_server().await?;
     let mut server = state.app_server.write().await;
     let server = server
@@ -274,9 +305,36 @@ pub async fn start_review(state: State<'_, AppState>, thread_id: String) -> Resu
 
     let params = ReviewStartParams {
         thread_id,
-        target: ReviewTarget::UncommittedChanges,
+        target: target.unwrap_or(ReviewTarget::UncommittedChanges),
     };
     let response: ReviewStartResponse = server.send_request("review/start", params).await?;
+    Ok(response)
+}
+
+// ==================== User Shell Command ====================
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserShellCommandParams {
+    pub thread_id: String,
+    pub command: String,
+}
+
+/// Run a local shell command (like CLI's ! prefix)
+#[tauri::command]
+pub async fn run_user_shell_command(
+    state: State<'_, AppState>,
+    thread_id: String,
+    command: String,
+) -> Result<TurnStartResponse> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let params = UserShellCommandParams { thread_id, command };
+    let response: TurnStartResponse = server.send_request("userShellCommand/run", params).await?;
     Ok(response)
 }
 

@@ -19,14 +19,15 @@ export function RenameDialog({
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (isOpen) {
-      setName(currentName)
-      // Focus and select text after dialog opens
-      setTimeout(() => {
-        inputRef.current?.focus()
-        inputRef.current?.select()
-      }, 50)
+    if (!isOpen) {
+      return
     }
+    setName(currentName)
+    // Focus and select text after dialog opens
+    setTimeout(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }, 50)
   }, [isOpen, currentName])
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -4,7 +4,11 @@ import { cn } from '../../lib/utils'
 import { useThreadStore, type AnyThreadItem, type PlanStep } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
-import { useSettingsStore } from '../../stores/settings'
+import {
+  useSettingsStore,
+  mergeProjectSettings,
+  getEffectiveWorkingDirectory,
+} from '../../stores/settings'
 import { useAppStore } from '../../stores/app'
 import { Markdown } from '../ui/Markdown'
 import { DiffView, parseDiff, type FileDiff } from '../ui/DiffView'
@@ -70,10 +74,20 @@ function ColorizedOutput({ text }: { text: string }) {
 }
 
 export function ChatView() {
-  const { items, itemOrder, turnStatus, sendMessage, interrupt, addInfoItem } = useThreadStore()
-  const { shouldFocusInput, clearFocusInput } = useAppStore()
+  // Use individual selectors for better performance (prevents re-render on unrelated state changes)
+  const items = useThreadStore((state) => state.items)
+  const itemOrder = useThreadStore((state) => state.itemOrder)
+  const turnStatus = useThreadStore((state) => state.turnStatus)
+  const sendMessage = useThreadStore((state) => state.sendMessage)
+  const interrupt = useThreadStore((state) => state.interrupt)
+  const addInfoItem = useThreadStore((state) => state.addInfoItem)
+  const shouldFocusInput = useAppStore((state) => state.shouldFocusInput)
+  const clearFocusInput = useAppStore((state) => state.clearFocusInput)
   const { showToast } = useToast()
-  const { setSettingsOpen, setSettingsTab, setSidebarTab, setKeyboardShortcutsOpen } = useAppStore()
+  const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
+  const setSettingsTab = useAppStore((state) => state.setSettingsTab)
+  const setSidebarTab = useAppStore((state) => state.setSidebarTab)
+  const setKeyboardShortcutsOpen = useAppStore((state) => state.setKeyboardShortcutsOpen)
   const settings = useSettingsStore((state) => state.settings)
   const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
   const projects = useProjectsStore((state) => state.projects)
@@ -168,8 +182,9 @@ export function ChatView() {
   // IMPORTANT: Only depend on itemOrder.length, not items object, to prevent RAF stacking
   const scrollRAFRef = useRef<number | null>(null)
   const lastItemId = itemOrder[itemOrder.length - 1] || ''
-  const lastItemText = items[lastItemId]?.type === 'agentMessage'
-    ? (items[lastItemId].content as { text: string }).text.length
+  const lastItem = items[lastItemId]
+  const lastItemText = lastItem?.type === 'agentMessage'
+    ? (lastItem.content as { text: string }).text.length
     : 0
   useEffect(() => {
     if (autoScroll) {
@@ -272,15 +287,24 @@ export function ChatView() {
             const project = projects.find((p) => p.id === selectedProjectId)
             if (!project) return
 
+            // Merge project-specific settings with global settings
+            const effectiveSettings = mergeProjectSettings(settings, project.settingsJson)
+            const effectiveCwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
+
             clearThread()
             selectSession(null)
             await startThread(
               selectedProjectId,
-              project.path,
-              settings.model,
-              settings.sandboxMode,
-              settings.approvalPolicy
+              effectiveCwd,
+              effectiveSettings.model,
+              effectiveSettings.sandboxMode,
+              effectiveSettings.approvalPolicy
             )
+            // Get the newly created thread from the store and select it as current session
+            const newThread = useThreadStore.getState().activeThread
+            if (newThread) {
+              selectSession(newThread.id)
+            }
             await fetchSessions(selectedProjectId)
             setSidebarTab('sessions')
             showToast('New session started', 'success')
@@ -353,13 +377,41 @@ export function ChatView() {
               addInfoItem('MCP Servers', `Failed to load MCP servers: ${String(error)}`)
             }
           },
-          startReview: async () => {
+          startReview: async (args: string[]) => {
             if (!activeThread) {
               showToast('No active session', 'error')
               return
             }
-            await serverApi.startReview(activeThread.id)
-            addInfoItem('Review', 'Review started.')
+
+            // Parse review args to determine target type
+            // Matches CLI behavior: /review [base branch|commit sha|custom instructions]
+            let target: import('../../lib/api').ReviewTarget | undefined
+
+            if (args.length > 0) {
+              const arg = args.join(' ').trim()
+
+              // Check if it looks like a commit SHA (7-40 hex chars)
+              if (/^[a-f0-9]{7,40}$/i.test(arg)) {
+                target = { type: 'commit', sha: arg }
+                addInfoItem('Review', `Starting review of commit ${arg}...`)
+              }
+              // Check if it looks like a branch name (no spaces, common patterns)
+              else if (/^[\w\-./]+$/.test(arg) && !arg.includes(' ')) {
+                target = { type: 'baseBranch', branch: arg }
+                addInfoItem('Review', `Starting review against base branch: ${arg}...`)
+              }
+              // Otherwise treat as custom instructions
+              else {
+                target = { type: 'custom', instructions: arg }
+                addInfoItem('Review', `Starting review with custom instructions...`)
+              }
+            } else {
+              // Default: uncommitted changes
+              target = { type: 'uncommittedChanges' }
+              addInfoItem('Review', 'Starting review of uncommitted changes...')
+            }
+
+            await serverApi.startReview(activeThread.id, target)
           },
           logout: async () => {
             await serverApi.logout()
@@ -433,6 +485,30 @@ export function ChatView() {
         console.error('Failed to execute command:', error)
         showToast('Failed to execute command', 'error')
       }
+    }
+
+    // Handle ! shell command prefix (like CLI)
+    // !<command> runs a local shell command without sending to the model
+    if (text.startsWith('!') && text.length > 1) {
+      const shellCommand = text.slice(1).trim()
+      if (!shellCommand) {
+        showToast('Please provide a command after !', 'error')
+        return
+      }
+
+      if (!activeThread) {
+        showToast('No active session', 'error')
+        return
+      }
+
+      try {
+        addInfoItem('Shell Command', `Running: ${shellCommand}`)
+        await serverApi.runUserShellCommand(activeThread.id, shellCommand)
+      } catch (error) {
+        console.error('Failed to run shell command:', error)
+        showToast('Failed to run shell command', 'error')
+      }
+      return
     }
 
     try {
@@ -901,6 +977,7 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
   const [feedbackText, setFeedbackText] = useState('')
   const [explanation, setExplanation] = useState('')
   const [isExplaining, setIsExplaining] = useState(false)
+  const [isApproving, setIsApproving] = useState(false)
   const outputRef = useRef<HTMLPreElement>(null)
   const feedbackInputRef = useRef<HTMLInputElement>(null)
 
@@ -921,18 +998,30 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
     }
   }, [outputContent, content.isRunning])
 
-  const handleApprove = (
+  const handleApprove = async (
     decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline'
   ) => {
-    if (activeThread) {
-      respondToApproval(item.id, decision, {
+    // Prevent double-click race condition
+    if (isApproving || !activeThread) return
+    setIsApproving(true)
+    try {
+      await respondToApproval(item.id, decision, {
         execpolicyAmendment: content.proposedExecpolicyAmendment,
       })
+    } finally {
+      setIsApproving(false)
     }
   }
 
   // Handle explain request - like CLI's 'x' option
   const handleExplain = async () => {
+    // CRITICAL: Validate thread hasn't changed since component rendered
+    const currentThread = useThreadStore.getState().activeThread
+    if (!currentThread || !activeThread || currentThread.id !== activeThread.id) {
+      console.error('[CommandExecutionCard] Thread changed before explain, aborting')
+      return
+    }
+
     setApprovalMode('explain')
     setIsExplaining(true)
     try {
@@ -948,15 +1037,30 @@ function CommandExecutionCard({ item }: { item: AnyThreadItem }) {
   }
 
   // Handle feedback submission - like CLI's 'e' option
-  const handleFeedbackSubmit = () => {
-    if (feedbackText.trim()) {
-      respondToApproval(item.id, 'decline')
-      sendMessage(feedbackText.trim())
-    } else {
-      respondToApproval(item.id, 'decline')
+  const handleFeedbackSubmit = async () => {
+    // Prevent double submission
+    if (isApproving) return
+
+    // CRITICAL: Validate thread hasn't changed since component rendered
+    const currentThread = useThreadStore.getState().activeThread
+    if (!currentThread || !activeThread || currentThread.id !== activeThread.id) {
+      console.error('[CommandExecutionCard] Thread changed before feedback submit, aborting')
+      setFeedbackText('')
+      setApprovalMode('select')
+      return
     }
-    setFeedbackText('')
-    setApprovalMode('select')
+
+    setIsApproving(true)
+    try {
+      await respondToApproval(item.id, 'decline')
+      if (feedbackText.trim()) {
+        sendMessage(feedbackText.trim())
+      }
+    } finally {
+      setIsApproving(false)
+      setFeedbackText('')
+      setApprovalMode('select')
+    }
   }
 
   return (
@@ -1260,24 +1364,49 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
   const { respondToApproval, activeThread, createSnapshot, revertToSnapshot } = useThreadStore()
   const projects = useProjectsStore((state) => state.projects)
   const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
+  const { showToast } = useToast()
   const [expandedFiles, setExpandedFiles] = useState<Set<number>>(new Set())
   const [isApplying, setIsApplying] = useState(false)
   const [isReverting, setIsReverting] = useState(false)
+  const [isDeclining, setIsDeclining] = useState(false)
 
   const project = projects.find((p) => p.id === selectedProjectId)
 
   const handleApplyChanges = async (decision: 'accept' | 'acceptForSession' = 'accept') => {
     if (!activeThread || !project || isApplying) return
 
+    // Capture thread ID at start to detect if it changes during async operations
+    const threadIdAtStart = activeThread.id
+
     setIsApplying(true)
     try {
-      // Create snapshot before applying changes
-      const snapshot = await createSnapshot(project.path)
+      // Try to create snapshot before applying changes
+      let snapshotId: string | undefined
+      try {
+        const snapshot = await createSnapshot(project.path)
+        snapshotId = snapshot.id
+      } catch (snapshotError) {
+        console.warn('[FileChangeCard] Failed to create snapshot, proceeding without:', snapshotError)
+        showToast('Could not create snapshot (changes will still be applied)', 'warning')
+      }
 
-      // Approve the changes with the specific snapshot ID
-      await respondToApproval(item.id, decision, { snapshotId: snapshot.id })
+      // CRITICAL: Validate thread hasn't changed during snapshot creation
+      const currentThread = useThreadStore.getState().activeThread
+      if (!currentThread || currentThread.id !== threadIdAtStart) {
+        console.error(
+          '[FileChangeCard] Thread changed during apply - threadIdAtStart:',
+          threadIdAtStart,
+          'currentThread:',
+          currentThread?.id
+        )
+        return
+      }
+
+      // Approve the changes (with or without snapshot ID)
+      await respondToApproval(item.id, decision, { snapshotId })
     } catch (error) {
       console.error('Failed to apply changes:', error)
+      showToast('Failed to apply changes', 'error')
     } finally {
       setIsApplying(false)
     }
@@ -1289,16 +1418,22 @@ function FileChangeCard({ item }: { item: AnyThreadItem }) {
     setIsReverting(true)
     try {
       await revertToSnapshot(content.snapshotId, project.path)
+      showToast('Changes reverted successfully', 'success')
     } catch (error) {
       console.error('Failed to revert changes:', error)
+      showToast('Failed to revert changes', 'error')
     } finally {
       setIsReverting(false)
     }
   }
 
-  const handleDecline = () => {
-    if (activeThread) {
-      respondToApproval(item.id, 'decline')
+  const handleDecline = async () => {
+    if (!activeThread || isDeclining) return
+    setIsDeclining(true)
+    try {
+      await respondToApproval(item.id, 'decline')
+    } finally {
+      setIsDeclining(false)
     }
   }
 
@@ -2000,12 +2135,12 @@ function WorkingStatusBar() {
   // Real-time elapsed time update at 50ms for smoother display (like CLI)
   useEffect(() => {
     if (turnStatus !== 'running' || !turnTiming.startedAt) {
-      setElapsedMs(0)
-      setTokenRate(0)
-      prevTokensRef.current = tokenUsage.totalTokens
-      prevTimeRef.current = Date.now()
       return
     }
+
+    // Reset refs when starting
+    prevTokensRef.current = tokenUsage.totalTokens
+    prevTimeRef.current = Date.now()
     const interval = setInterval(() => {
       const now = Date.now()
       setElapsedMs(now - turnTiming.startedAt!)

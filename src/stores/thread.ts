@@ -1,6 +1,13 @@
 import { create } from 'zustand'
 import { threadApi, snapshotApi, type ThreadInfo, type Snapshot } from '../lib/api'
 import { parseError } from '../lib/errorUtils'
+import { useSettingsStore } from './settings'
+import {
+  normalizeApprovalPolicy,
+  normalizeReasoningEffort,
+  normalizeReasoningSummary,
+  normalizeSandboxMode,
+} from '../lib/normalize'
 import type {
   ItemStartedEvent,
   ItemCompletedEvent,
@@ -26,6 +33,9 @@ import type {
 // Accumulates delta updates and flushes at ~20 FPS to reduce re-renders
 
 interface DeltaBuffer {
+  // Track which thread ID and turn ID the current buffer is for
+  threadId: string | null
+  turnId: string | null
   agentMessages: Map<string, string> // itemId -> accumulated text
   commandOutputs: Map<string, string> // itemId -> accumulated output
   fileChangeOutputs: Map<string, string> // itemId -> accumulated output
@@ -35,6 +45,8 @@ interface DeltaBuffer {
 }
 
 const deltaBuffer: DeltaBuffer = {
+  threadId: null,
+  turnId: null,
   agentMessages: new Map(),
   commandOutputs: new Map(),
   fileChangeOutputs: new Map(),
@@ -43,9 +55,36 @@ const deltaBuffer: DeltaBuffer = {
   mcpProgress: new Map(),
 }
 
+// Helper to clear delta buffer and reset thread/turn tracking
+function clearDeltaBuffer() {
+  deltaBuffer.threadId = null
+  deltaBuffer.turnId = null
+  deltaBuffer.agentMessages.clear()
+  deltaBuffer.commandOutputs.clear()
+  deltaBuffer.fileChangeOutputs.clear()
+  deltaBuffer.reasoningSummaries.clear()
+  deltaBuffer.reasoningContents.clear()
+  deltaBuffer.mcpProgress.clear()
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = null
+  }
+}
+
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 const FLUSH_INTERVAL_MS = 50 // 20 FPS
 const MAX_BUFFER_SIZE = 500_000 // 500KB - force flush to prevent memory issues
+
+// Turn timeout - reset turn if no completion received within timeout
+let turnTimeoutTimer: ReturnType<typeof setTimeout> | null = null
+const TURN_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes - generous timeout for long operations
+
+function clearTurnTimeout() {
+  if (turnTimeoutTimer) {
+    clearTimeout(turnTimeoutTimer)
+    turnTimeoutTimer = null
+  }
+}
 
 // Calculate current buffer size for overflow detection
 function getBufferSize(): number {
@@ -265,6 +304,7 @@ export type TurnStatus = 'idle' | 'running' | 'completed' | 'failed' | 'interrup
 
 export interface PendingApproval {
   itemId: string
+  threadId: string // Thread ID this approval belongs to
   type: 'command' | 'fileChange'
   data: CommandApprovalRequestedEvent | FileChangeApprovalRequestedEvent
   requestId: number // JSON-RPC request ID for responding
@@ -614,25 +654,20 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
 
   startThread: async (projectId, cwd, model, sandboxMode, approvalPolicy) => {
     // Clear delta buffer before starting new thread
-    deltaBuffer.agentMessages.clear()
-    deltaBuffer.commandOutputs.clear()
-    deltaBuffer.fileChangeOutputs.clear()
-    deltaBuffer.reasoningSummaries.clear()
-    deltaBuffer.reasoningContents.clear()
-    deltaBuffer.mcpProgress.clear()
-    if (flushTimer) {
-      clearTimeout(flushTimer)
-      flushTimer = null
-    }
+    clearDeltaBuffer()
 
     set({ isLoading: true, error: null })
     try {
+      const safeModel = model?.trim() || undefined
+      const safeSandboxMode = normalizeSandboxMode(sandboxMode)
+      const safeApprovalPolicy = normalizeApprovalPolicy(approvalPolicy)
+
       const response = await threadApi.start(
         projectId,
         cwd,
-        model,
-        sandboxMode,
-        approvalPolicy
+        safeModel,
+        safeSandboxMode,
+        safeApprovalPolicy
       )
       // Reset all state for the new thread
       set({
@@ -655,30 +690,34 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   resumeThread: async (threadId) => {
+    console.log('[resumeThread] Starting resume with threadId:', threadId)
+
     // Clear delta buffer before resuming thread
-    deltaBuffer.agentMessages.clear()
-    deltaBuffer.commandOutputs.clear()
-    deltaBuffer.fileChangeOutputs.clear()
-    deltaBuffer.reasoningSummaries.clear()
-    deltaBuffer.reasoningContents.clear()
-    deltaBuffer.mcpProgress.clear()
-    if (flushTimer) {
-      clearTimeout(flushTimer)
-      flushTimer = null
-    }
+    clearDeltaBuffer()
 
     set({ isLoading: true, error: null })
     try {
       const response = await threadApi.resume(threadId)
+
+      console.log('[resumeThread] Resume response - thread.id:', response.thread.id, 'requested threadId:', threadId)
+      if (response.thread.id !== threadId) {
+        console.warn('[resumeThread] Thread ID mismatch! Requested:', threadId, 'Got:', response.thread.id)
+      }
 
       // Convert items from response to our format
       const items: Record<string, AnyThreadItem> = {}
       const itemOrder: string[] = []
 
       for (const rawItem of response.items) {
-        if (!rawItem || typeof rawItem !== 'object') continue
+        if (!rawItem || typeof rawItem !== 'object') {
+          console.warn('[resumeThread] Skipping invalid item (not an object):', rawItem)
+          continue
+        }
         const item = rawItem as { id?: string; type?: string }
-        if (!item.id || !item.type) continue
+        if (!item.id || !item.type) {
+          console.warn('[resumeThread] Skipping item with missing id or type:', item)
+          continue
+        }
         const threadItem = toThreadItem(rawItem as { id: string; type: string } & Record<string, unknown>)
         items[threadItem.id] = threadItem
         itemOrder.push(threadItem.id)
@@ -697,20 +736,33 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
         isLoading: false,
         error: null,
       })
+
+      console.log('[resumeThread] Resume completed, activeThread.id:', response.thread.id)
     } catch (error) {
-      set({ error: parseError(error), isLoading: false })
+      console.error('[resumeThread] Resume failed:', error)
+      // Only update error state if no other thread became active
+      const { activeThread: currentActive } = get()
+      if (!currentActive || currentActive.id === threadId) {
+        set({ error: parseError(error), isLoading: false })
+      }
       throw error
     }
   },
 
   sendMessage: async (text, images) => {
-    const { activeThread } = get()
+    const { activeThread, turnStatus } = get()
     if (!activeThread) {
       throw new Error('No active thread')
     }
 
+    // Prevent concurrent sendMessage calls - queue message if turn is running
+    if (turnStatus === 'running') {
+      console.warn('[sendMessage] Turn already running, message will be queued by server')
+    }
+
     // Save thread ID to verify it doesn't change during send
     const currentThreadId = activeThread.id
+    console.log('[sendMessage] Sending message to thread:', currentThreadId)
 
     // Add user message to items
     const userMessageId = `user-${Date.now()}`
@@ -729,13 +781,34 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     }))
 
     try {
-      const response = await threadApi.sendMessage(activeThread.id, text, images)
+      const { settings } = useSettingsStore.getState()
+      const effort = normalizeReasoningEffort(settings.reasoningEffort)
+      const summary = normalizeReasoningSummary(settings.reasoningSummary)
+      const options: { effort?: string; summary?: string } = {}
+      if (effort) options.effort = effort
+      if (summary) options.summary = summary
+
+      const response = await threadApi.sendMessage(
+        activeThread.id,
+        text,
+        images,
+        Object.keys(options).length ? options : undefined
+      )
 
       // Verify thread didn't change during the API call
       const { activeThread: currentActive } = get()
       if (!currentActive || currentActive.id !== currentThreadId) {
-        console.warn('[sendMessage] Thread changed during send, response may be routed incorrectly')
-        // Don't update state if thread changed - the response will be ignored by event filters
+        console.warn('[sendMessage] Thread changed during send, removing orphaned user message')
+        // Remove the orphaned user message since it was for a different thread
+        set((state) => {
+          const remainingItems = { ...state.items }
+          delete remainingItems[userMessageId]
+          return {
+            items: remainingItems,
+            itemOrder: state.itemOrder.filter((id) => id !== userMessageId),
+            turnStatus: 'idle',
+          }
+        })
         return
       }
 
@@ -745,6 +818,16 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       const { activeThread: currentActive } = get()
       if (currentActive?.id === currentThreadId) {
         set({ turnStatus: 'failed', error: String(error) })
+      } else {
+        // Remove orphaned user message if thread changed
+        set((state) => {
+          const newItems = { ...state.items }
+          delete newItems[userMessageId]
+          return {
+            items: newItems,
+            itemOrder: state.itemOrder.filter((id) => id !== userMessageId),
+          }
+        })
       }
       throw error
     }
@@ -761,21 +844,13 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       return
     }
 
+    const threadId = activeThread.id
     try {
       // Immediately update UI to show interrupted state
       set({ turnStatus: 'interrupted' })
 
       // Clear delta buffer
-      deltaBuffer.agentMessages.clear()
-      deltaBuffer.commandOutputs.clear()
-      deltaBuffer.fileChangeOutputs.clear()
-      deltaBuffer.reasoningSummaries.clear()
-      deltaBuffer.reasoningContents.clear()
-      deltaBuffer.mcpProgress.clear()
-      if (flushTimer) {
-        clearTimeout(flushTimer)
-        flushTimer = null
-      }
+      clearDeltaBuffer()
 
       // Update turn timing
       set((state) => ({
@@ -786,10 +861,14 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       }))
 
       // Call the API to interrupt the backend
-      await threadApi.interrupt(activeThread.id)
+      await threadApi.interrupt(threadId)
     } catch (error) {
       console.error('[interrupt] Failed to interrupt:', error)
-      set({ error: parseError(error) })
+      // Only update error state if we're still on the same thread
+      const { activeThread: currentActive } = get()
+      if (currentActive?.id === threadId) {
+        set({ error: parseError(error) })
+      }
     }
   },
 
@@ -804,14 +883,37 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       return
     }
 
+    // CRITICAL: Validate that the approval belongs to the current active thread
+    if (pendingApproval.threadId !== activeThread.id) {
+      console.error(
+        '[respondToApproval] Thread mismatch - approval.threadId:',
+        pendingApproval.threadId,
+        'activeThread.id:',
+        activeThread.id
+      )
+      // Remove the stale approval
+      set((state) => ({
+        pendingApprovals: state.pendingApprovals.filter((p) => p.itemId !== itemId),
+      }))
+      return
+    }
+
+    const threadId = activeThread.id
     try {
       await threadApi.respondToApproval(
-        activeThread.id,
+        threadId,
         itemId,
         decision,
         pendingApproval.requestId,
         options?.execpolicyAmendment
       )
+
+      // Validate thread hasn't changed during API call
+      const { activeThread: currentActive } = get()
+      if (!currentActive || currentActive.id !== threadId) {
+        console.warn('[respondToApproval] Thread changed, discarding state update')
+        return
+      }
 
       // Update item status
       set((state) => {
@@ -851,23 +953,19 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
         }
       })
     } catch (error) {
-      set({ error: parseError(error) })
+      // Only update error state if we're still on the same thread
+      const { activeThread: currentActive } = get()
+      if (currentActive?.id === threadId) {
+        set({ error: parseError(error) })
+      }
       throw error
     }
   },
 
   clearThread: () => {
-    // Clear the delta buffer
-    deltaBuffer.agentMessages.clear()
-    deltaBuffer.commandOutputs.clear()
-    deltaBuffer.fileChangeOutputs.clear()
-    deltaBuffer.reasoningSummaries.clear()
-    deltaBuffer.reasoningContents.clear()
-    deltaBuffer.mcpProgress.clear()
-    if (flushTimer) {
-      clearTimeout(flushTimer)
-      flushTimer = null
-    }
+    // Clear the delta buffer and turn timeout
+    clearDeltaBuffer()
+    clearTurnTimeout()
 
     set({
       activeThread: null,
@@ -887,12 +985,15 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     const { activeThread } = get()
     if (!activeThread) {
       // Clear buffers without applying them
-      deltaBuffer.agentMessages.clear()
-      deltaBuffer.commandOutputs.clear()
-      deltaBuffer.fileChangeOutputs.clear()
-      deltaBuffer.reasoningSummaries.clear()
-      deltaBuffer.reasoningContents.clear()
-      deltaBuffer.mcpProgress.clear()
+      clearDeltaBuffer()
+      return
+    }
+
+    // Guard: Don't flush if the buffer's thread ID doesn't match the active thread
+    // This prevents applying deltas from a previous thread to the current thread
+    if (deltaBuffer.threadId !== null && deltaBuffer.threadId !== activeThread.id) {
+      console.warn('[flushDeltaBuffer] Thread ID mismatch, clearing buffer. Buffer:', deltaBuffer.threadId, 'Active:', activeThread.id)
+      clearDeltaBuffer()
       return
     }
 
@@ -1069,6 +1170,19 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     } as AnyThreadItem
 
     set((state) => {
+      // Check if item already exists (e.g., ItemCompleted arrived first due to race)
+      const existing = state.items[item.id]
+      if (existing) {
+        // Item already exists - don't overwrite with inProgress version
+        // Just ensure it's in itemOrder
+        return {
+          items: state.items,
+          itemOrder: state.itemOrder.includes(item.id)
+            ? state.itemOrder
+            : [...state.itemOrder, item.id],
+        }
+      }
+
       let isDuplicateUserMessage = false
       if (inProgressItem.type === 'userMessage') {
         // Check if we already have a user message with the same text
@@ -1160,9 +1274,23 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleAgentMessageDelta: (event) => {
-    // Buffer the delta instead of updating state immediately
+    // Log first delta to confirm events are arriving
     const current = deltaBuffer.agentMessages.get(event.itemId) || ''
     const isFirstDelta = current === '' // First character should show immediately
+    if (isFirstDelta) {
+      console.log('[handleAgentMessageDelta] First delta for item:', event.itemId, 'threadId:', event.threadId)
+    }
+
+    // Track the thread ID for this buffer - if it changes, we should clear
+    if (deltaBuffer.threadId === null) {
+      deltaBuffer.threadId = event.threadId
+    } else if (deltaBuffer.threadId !== event.threadId) {
+      console.warn('[handleAgentMessageDelta] Thread ID changed, clearing buffer. Old:', deltaBuffer.threadId, 'New:', event.threadId)
+      clearDeltaBuffer()
+      deltaBuffer.threadId = event.threadId
+    }
+
+    // Buffer the delta instead of updating state immediately
     deltaBuffer.agentMessages.set(event.itemId, current + event.delta)
     scheduleFlush(() => get().flushDeltaBuffer(), isFirstDelta)
   },
@@ -1196,7 +1324,13 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
           : [...state.itemOrder, event.itemId],
         pendingApprovals: [
           ...state.pendingApprovals,
-          { itemId: event.itemId, type: 'command', data: event, requestId: event._requestId },
+          {
+            itemId: event.itemId,
+            threadId: event.threadId, // Track which thread this approval belongs to
+            type: 'command',
+            data: event,
+            requestId: event._requestId,
+          },
         ],
       }
     })
@@ -1228,13 +1362,37 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
           : [...state.itemOrder, event.itemId],
         pendingApprovals: [
           ...state.pendingApprovals,
-          { itemId: event.itemId, type: 'fileChange', data: event, requestId: event._requestId },
+          {
+            itemId: event.itemId,
+            threadId: event.threadId, // Track which thread this approval belongs to
+            type: 'fileChange',
+            data: event,
+            requestId: event._requestId,
+          },
         ],
       }
     })
   },
 
   handleTurnStarted: (event) => {
+    console.log('[handleTurnStarted] Turn started - threadId:', event.threadId, 'turnId:', event.turn.id)
+
+    // Clear any existing turn timeout
+    clearTurnTimeout()
+
+    // Set turn timeout to recover from server crashes
+    const turnId = event.turn.id
+    turnTimeoutTimer = setTimeout(() => {
+      const { currentTurnId, turnStatus } = useThreadStore.getState()
+      if (currentTurnId === turnId && turnStatus === 'running') {
+        console.error('[handleTurnStarted] Turn timeout - no completion received for turnId:', turnId)
+        useThreadStore.setState({
+          turnStatus: 'failed',
+          error: 'Turn timed out - server may have disconnected',
+        })
+      }
+    }, TURN_TIMEOUT_MS)
+
     set({
       turnStatus: 'running',
       currentTurnId: event.turn.id,
@@ -1247,6 +1405,9 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleTurnCompleted: (event) => {
+    // Clear turn timeout since we received completion
+    clearTurnTimeout()
+
     // Flush any pending deltas before completing the turn
     get().flushDeltaBuffer()
     if (flushTimer) {
@@ -1379,6 +1540,14 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleCommandExecutionOutputDelta: (event) => {
+    // Track the thread ID for this buffer
+    if (deltaBuffer.threadId === null) {
+      deltaBuffer.threadId = event.threadId
+    } else if (deltaBuffer.threadId !== event.threadId) {
+      clearDeltaBuffer()
+      deltaBuffer.threadId = event.threadId
+    }
+
     // Buffer the delta instead of updating state immediately
     const current = deltaBuffer.commandOutputs.get(event.itemId) || ''
     const isFirstDelta = current === ''
@@ -1387,6 +1556,14 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleFileChangeOutputDelta: (event) => {
+    // Track the thread ID for this buffer
+    if (deltaBuffer.threadId === null) {
+      deltaBuffer.threadId = event.threadId
+    } else if (deltaBuffer.threadId !== event.threadId) {
+      clearDeltaBuffer()
+      deltaBuffer.threadId = event.threadId
+    }
+
     // Buffer the delta instead of updating state immediately
     const current = deltaBuffer.fileChangeOutputs.get(event.itemId) || ''
     const isFirstDelta = current === ''
@@ -1395,6 +1572,14 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleReasoningSummaryTextDelta: (event) => {
+    // Track the thread ID for this buffer
+    if (deltaBuffer.threadId === null) {
+      deltaBuffer.threadId = event.threadId
+    } else if (deltaBuffer.threadId !== event.threadId) {
+      clearDeltaBuffer()
+      deltaBuffer.threadId = event.threadId
+    }
+
     // Buffer the delta instead of updating state immediately
     const index = event.summaryIndex ?? 0
     const updates = deltaBuffer.reasoningSummaries.get(event.itemId) || []
@@ -1409,12 +1594,20 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     scheduleFlush(() => get().flushDeltaBuffer(), isFirstDelta)
   },
 
-  handleReasoningSummaryPartAdded: (_event) => {
+  handleReasoningSummaryPartAdded: () => {
     // This just initializes a slot, the actual text comes from TextDelta
     // No state update needed - the slot will be created when text arrives
   },
 
   handleReasoningTextDelta: (event) => {
+    // Track the thread ID for this buffer
+    if (deltaBuffer.threadId === null) {
+      deltaBuffer.threadId = event.threadId
+    } else if (deltaBuffer.threadId !== event.threadId) {
+      clearDeltaBuffer()
+      deltaBuffer.threadId = event.threadId
+    }
+
     // Buffer the delta instead of updating state immediately
     const index = event.contentIndex ?? 0
     const updates = deltaBuffer.reasoningContents.get(event.itemId) || []
@@ -1430,6 +1623,14 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
   },
 
   handleMcpToolCallProgress: (event) => {
+    // Track the thread ID for this buffer
+    if (deltaBuffer.threadId === null) {
+      deltaBuffer.threadId = event.threadId
+    } else if (deltaBuffer.threadId !== event.threadId) {
+      clearDeltaBuffer()
+      deltaBuffer.threadId = event.threadId
+    }
+
     // Buffer the progress message instead of updating state immediately
     const messages = deltaBuffer.mcpProgress.get(event.itemId) || []
     const isFirstMessage = messages.length === 0
@@ -1499,7 +1700,16 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
       throw new Error('No active thread')
     }
 
-    const snapshot = await snapshotApi.create(activeThread.id, projectPath)
+    const threadId = activeThread.id
+    const snapshot = await snapshotApi.create(threadId, projectPath)
+
+    // Validate thread hasn't changed during API call
+    const { activeThread: currentActive } = get()
+    if (!currentActive || currentActive.id !== threadId) {
+      console.warn('[createSnapshot] Thread changed, discarding snapshot update')
+      return snapshot
+    }
+
     set((state) => ({
       snapshots: [snapshot, ...state.snapshots],
     }))
@@ -1514,8 +1724,17 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     const { activeThread } = get()
     if (!activeThread) return
 
+    const threadId = activeThread.id
     try {
-      const snapshots = await snapshotApi.list(activeThread.id)
+      const snapshots = await snapshotApi.list(threadId)
+
+      // Validate thread hasn't changed during API call
+      const { activeThread: currentActive } = get()
+      if (!currentActive || currentActive.id !== threadId) {
+        console.warn('[fetchSnapshots] Thread changed, discarding snapshot list')
+        return
+      }
+
       set({ snapshots })
     } catch (error) {
       console.error('Failed to fetch snapshots:', error)

@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 import { Sidebar } from './components/layout/Sidebar'
 import { MainArea } from './components/layout/MainArea'
 import { StatusBar } from './components/layout/StatusBar'
-import { OnboardingFlow, useNeedsOnboarding } from './components/onboarding/OnboardingFlow'
+import { OnboardingFlow } from './components/onboarding/OnboardingFlow'
+import { useNeedsOnboarding } from './components/onboarding/useNeedsOnboarding'
 import { ToastProvider } from './components/ui/Toast'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { ConnectionStatus } from './components/ui/ConnectionStatus'
@@ -17,13 +18,13 @@ function withThreadFilter<T extends { threadId: string }>(
   handler: (event: T) => void
 ): (event: T) => void {
   return (event: T) => {
-    const activeThread = useThreadStore.getState().activeThread
+    const state = useThreadStore.getState()
+    const activeThread = state.activeThread
+
     if (!activeThread) {
-      console.debug('[EventFilter] No active thread, ignoring event')
       return
     }
     if (event.threadId !== activeThread.id) {
-      console.debug('[EventFilter] Thread mismatch, ignoring event:', event.threadId, 'vs', activeThread.id)
       return
     }
     handler(event)
@@ -109,6 +110,8 @@ function App() {
       })
       .catch((error) => {
         console.error('Failed to setup event listeners:', error)
+        // Reset flag so setup can be retried on next mount
+        listenersSetupRef.current = false
       })
 
     return () => {

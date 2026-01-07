@@ -439,6 +439,9 @@ function AccountSettings({
 }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false)
+  const [apiKey, setApiKey] = useState('')
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -495,6 +498,27 @@ function AccountSettings({
     }
   }
 
+  const handleApiKeyLogin = async () => {
+    if (!apiKey.trim()) {
+      setApiKeyError('Please enter an API key')
+      return
+    }
+
+    setIsLoggingIn(true)
+    setApiKeyError(null)
+    try {
+      await serverApi.startLogin('apiKey', apiKey.trim())
+      await onRefresh()
+      setApiKey('')
+      setShowApiKeyInput(false)
+    } catch (error) {
+      console.error('API key login failed:', error)
+      setApiKeyError('Invalid API key or login failed')
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }
+
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
@@ -537,18 +561,76 @@ function AccountSettings({
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-border p-4">
-          <p className="mb-4 text-muted-foreground">
+        <div className="rounded-lg border border-border p-4 space-y-4">
+          <p className="text-muted-foreground">
             Log in to use Codex with your account.
           </p>
+
+          {/* Browser OAuth Login */}
           <button
             className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             onClick={handleLogin}
             disabled={isLoggingIn}
           >
-            {isLoggingIn ? 'Opening browser...' : 'Log In with Browser'}
+            {isLoggingIn && !showApiKeyInput ? 'Opening browser...' : 'Log In with Browser'}
           </button>
-          <p className="mt-3 text-center text-xs text-muted-foreground">
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          {/* API Key Login */}
+          {showApiKeyInput ? (
+            <div className="space-y-3">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleApiKeyLogin()}
+                placeholder="Enter your API key"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                autoFocus
+              />
+              {apiKeyError && (
+                <p className="text-xs text-destructive">{apiKeyError}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  onClick={handleApiKeyLogin}
+                  disabled={isLoggingIn || !apiKey.trim()}
+                >
+                  {isLoggingIn ? 'Verifying...' : 'Login with API Key'}
+                </button>
+                <button
+                  className="rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+                  onClick={() => {
+                    setShowApiKeyInput(false)
+                    setApiKey('')
+                    setApiKeyError(null)
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              onClick={() => setShowApiKeyInput(true)}
+              disabled={isLoggingIn}
+            >
+              Use API Key
+            </button>
+          )}
+
+          <p className="text-center text-xs text-muted-foreground">
             Or use terminal: <code className="rounded bg-secondary px-1.5 py-0.5">codex login</code>
           </p>
         </div>

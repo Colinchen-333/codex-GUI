@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
-import { useSettingsStore } from '../../stores/settings'
+import {
+  useSettingsStore,
+  mergeProjectSettings,
+  getEffectiveWorkingDirectory,
+} from '../../stores/settings'
 import { ChatView } from '../chat/ChatView'
 import { parseError } from '../../lib/errorUtils'
 
@@ -37,43 +41,53 @@ export function MainArea() {
   useEffect(() => {
     // Skip if no session selected
     if (!selectedSessionId) {
+      // Only clear thread if we're transitioning FROM a selected session TO no selection
+      // This prevents clearing a newly created thread before its session ID is set
+      const wasSelected = prevSessionIdRef.current !== null
       prevSessionIdRef.current = null
       targetSessionIdRef.current = null
-      // Clear thread if we had one
-      if (activeThread) {
+      // Clear thread only if we had a previously selected session
+      if (wasSelected && activeThread) {
         clearThread()
       }
       return
     }
 
-    // Check if session changed
-    const sessionChanged = prevSessionIdRef.current !== selectedSessionId
+    // Update refs for session tracking
     prevSessionIdRef.current = selectedSessionId
     targetSessionIdRef.current = selectedSessionId
 
-    // Skip if already resuming the same session
+    // Check if activeThread doesn't match selected session
+    const threadMismatch = activeThread && activeThread.id !== selectedSessionId
+
+    // Skip if already resuming - but update target for when resume completes
     if (isResumingRef.current) {
+      // Target is already updated above, so when current resume finishes,
+      // the effect will re-run if activeThread changes
       return
     }
 
-    // If session changed and we have an active thread for a different session, clear it first
-    if (sessionChanged && activeThread && activeThread.id !== selectedSessionId) {
+    // If we have a thread for a different session, clear and resume new one
+    if (threadMismatch) {
       clearThread()
+      // CRITICAL: Set flag BEFORE queueMicrotask to prevent race with overlapping calls
+      isResumingRef.current = true
       // Use microtask to let event queue clear before resuming new thread
       // This prevents events from old thread being applied to new thread
       queueMicrotask(() => {
         // Validate that the session hasn't changed again during the microtask delay
         const currentTargetId = targetSessionIdRef.current
-        if (!currentTargetId || isResumingRef.current) {
+        if (!currentTargetId) {
+          isResumingRef.current = false
           return
         }
         // Double-check we still want to resume this session
         const currentSelectedId = useSessionsStore.getState().selectedSessionId
         if (currentSelectedId !== currentTargetId) {
           console.debug('[MainArea] Session changed during microtask, skipping resume')
+          isResumingRef.current = false
           return
         }
-        isResumingRef.current = true
         resumeThread(currentTargetId)
           .catch((error) => {
             console.error('Failed to resume session:', error)
@@ -154,6 +168,12 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
   const project = projects.find((p) => p.id === projectId)
   const info = gitInfo[projectId]
 
+  // Compute effective settings for display (merged with project overrides)
+  const effectiveSettings = useMemo(
+    () => mergeProjectSettings(settings, project?.settingsJson ?? null),
+    [settings, project?.settingsJson]
+  )
+
   // Check server status on mount
   useEffect(() => {
     const checkServer = async () => {
@@ -177,21 +197,26 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
 
   const handleStartSession = async () => {
     setLocalError(null)
+
+    // Get effective working directory (may be overridden in project settings)
+    const effectiveCwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
+
     console.log('[StartSession] Starting session with:', {
       projectId,
-      path: project.path,
-      model: settings.model,
-      sandboxMode: settings.sandboxMode,
-      approvalPolicy: settings.approvalPolicy,
+      path: effectiveCwd,
+      model: effectiveSettings.model,
+      sandboxMode: effectiveSettings.sandboxMode,
+      approvalPolicy: effectiveSettings.approvalPolicy,
+      hasProjectOverrides: project.settingsJson !== null,
     })
 
     try {
       await startThread(
         projectId,
-        project.path,
-        settings.model,
-        settings.sandboxMode,
-        settings.approvalPolicy
+        effectiveCwd,
+        effectiveSettings.model,
+        effectiveSettings.sandboxMode,
+        effectiveSettings.approvalPolicy
       )
       console.log('[StartSession] Session started successfully')
     } catch (error) {
@@ -294,9 +319,12 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
 
         {/* Model Info */}
         <div className="mt-4 text-xs text-muted-foreground">
-          Model: <span className="font-medium">{settings.model}</span>
+          Model: <span className="font-medium">{effectiveSettings.model || 'default'}</span>
           {' • '}
-          Sandbox: <span className="font-medium">{settings.sandboxMode}</span>
+          Sandbox: <span className="font-medium">{effectiveSettings.sandboxMode}</span>
+          {project?.settingsJson && (
+            <span className="text-blue-500 ml-2">(project settings active)</span>
+          )}
         </div>
       </div>
     </div>

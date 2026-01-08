@@ -182,6 +182,7 @@ export const SANDBOX_MODE_OPTIONS: { value: SandboxMode; label: string; descript
 export const APPROVAL_POLICY_OPTIONS: { value: ApprovalPolicy; label: string; description: string }[] = [
   { value: 'on-request', label: 'On Request', description: 'Ask before any changes (Safest)' },
   { value: 'on-failure', label: 'On Failure', description: 'Auto-apply, ask only on failures' },
+  { value: 'untrusted', label: 'Unless Trusted', description: 'Auto-apply only for trusted projects' },
   { value: 'never', label: 'Never', description: 'Apply all changes automatically (Risky)' },
 ]
 

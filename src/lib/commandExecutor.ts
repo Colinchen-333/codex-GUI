@@ -221,7 +221,10 @@ export async function executeCommand(
         context.addInfoItem?.('Approval Override', `Approval policy set to "${normalized}" for this session`)
         return { handled: true }
       }
-      context.showToast?.(`Invalid policy: ${policyArg}. Valid: never, on-request, on-failure, unless-trusted`, 'error')
+      context.showToast?.(
+        `Invalid policy: ${policyArg}. Valid: never, on-request, on-failure, unless-trusted (untrusted)`,
+        'error'
+      )
       return { handled: true }
     }
     // No args - open settings

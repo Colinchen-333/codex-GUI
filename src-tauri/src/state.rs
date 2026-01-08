@@ -1,7 +1,7 @@
 //! Application state management
 
 use std::sync::Arc;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::RwLock;
 
 use crate::app_server::AppServerProcess;
@@ -60,15 +60,35 @@ impl AppState {
     pub async fn stop_app_server(&self) -> Result<()> {
         let mut server = self.app_server.write().await;
         if let Some(mut process) = server.take() {
-            process.shutdown().await?;
-            tracing::info!("App server stopped");
+            // Check if process is still running before trying to shutdown
+            if process.is_running() {
+                tracing::info!("Stopping running app server...");
+                process.shutdown().await?;
+                tracing::info!("App server stopped");
+            } else {
+                tracing::info!("App server already stopped, cleaning up...");
+                // Process already exited, just clean up
+            }
         }
         Ok(())
     }
 
     /// Restart the app server process
     pub async fn restart_app_server(&self) -> Result<()> {
+        tracing::info!("Restarting app server...");
         self.stop_app_server().await?;
-        self.start_app_server().await
+
+        // Small delay to ensure process cleanup
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+        self.start_app_server().await?;
+
+        // Emit reconnected event
+        if let Err(e) = self.app_handle.emit("app-server-reconnected", ()) {
+            tracing::warn!("Failed to emit reconnected event: {}", e);
+        }
+
+        tracing::info!("App server restarted successfully");
+        Ok(())
     }
 }

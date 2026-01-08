@@ -266,75 +266,64 @@ export async function setupEventListeners(
   handlers: EventHandlers
 ): Promise<UnlistenFn[]> {
   console.log('[Events] setupEventListeners called')
-  const unlisteners: UnlistenFn[] = []
 
-  // Thread lifecycle
-  await addListener('thread-started', handlers.onThreadStarted, unlisteners)
-  await addListener('turn-started', handlers.onTurnStarted, unlisteners)
-  await addListener('turn-completed', handlers.onTurnCompleted, unlisteners)
-  await addListener('turn-diff-updated', handlers.onTurnDiffUpdated, unlisteners)
-  await addListener('turn-plan-updated', handlers.onTurnPlanUpdated, unlisteners)
-  await addListener('thread-compacted', handlers.onThreadCompacted, unlisteners)
+  // Define all event-handler pairs for parallel registration
+  const eventHandlerPairs: Array<[string, EventHandlers[keyof EventHandlers]]> = [
+    // Thread lifecycle
+    ['thread-started', handlers.onThreadStarted],
+    ['turn-started', handlers.onTurnStarted],
+    ['turn-completed', handlers.onTurnCompleted],
+    ['turn-diff-updated', handlers.onTurnDiffUpdated],
+    ['turn-plan-updated', handlers.onTurnPlanUpdated],
+    ['thread-compacted', handlers.onThreadCompacted],
+    // Item lifecycle
+    ['item-started', handlers.onItemStarted],
+    ['item-completed', handlers.onItemCompleted],
+    // Agent message
+    ['item-agentMessage-delta', handlers.onAgentMessageDelta],
+    // Reasoning
+    ['item-reasoning-summaryTextDelta', handlers.onReasoningSummaryTextDelta],
+    ['item-reasoning-summaryPartAdded', handlers.onReasoningSummaryPartAdded],
+    ['item-reasoning-textDelta', handlers.onReasoningTextDelta],
+    // Command execution + file change output
+    ['item-commandExecution-outputDelta', handlers.onCommandExecutionOutputDelta],
+    ['item-fileChange-outputDelta', handlers.onFileChangeOutputDelta],
+    // MCP tools
+    ['item-mcpToolCall-progress', handlers.onMcpToolCallProgress],
+    // Token usage
+    ['thread-tokenUsage-updated', handlers.onTokenUsage],
+    // Approvals
+    ['item-commandExecution-requestApproval', handlers.onCommandApprovalRequested],
+    ['item-fileChange-requestApproval', handlers.onFileChangeApprovalRequested],
+    // Errors
+    ['error', handlers.onStreamError],
+    ['app-server-disconnected', handlers.onServerDisconnected],
+    // Rate limiting
+    ['turn-rateLimitExceeded', handlers.onRateLimitExceeded],
+  ]
 
-  // Item lifecycle
-  await addListener('item-started', handlers.onItemStarted, unlisteners)
-  await addListener('item-completed', handlers.onItemCompleted, unlisteners)
-
-  // Agent message (event name: item/agentMessage/delta -> item-agentMessage-delta)
-  await addListener('item-agentMessage-delta', handlers.onAgentMessageDelta, unlisteners)
-
-  // Reasoning (event name: item/reasoning/summaryTextDelta -> item-reasoning-summaryTextDelta)
-  await addListener(
-    'item-reasoning-summaryTextDelta',
-    handlers.onReasoningSummaryTextDelta,
-    unlisteners
-  )
-  await addListener(
-    'item-reasoning-summaryPartAdded',
-    handlers.onReasoningSummaryPartAdded,
-    unlisteners
-  )
-  await addListener('item-reasoning-textDelta', handlers.onReasoningTextDelta, unlisteners)
-
-  // Command execution + file change output
-  await addListener(
-    'item-commandExecution-outputDelta',
-    handlers.onCommandExecutionOutputDelta,
-    unlisteners
-  )
-  await addListener(
-    'item-fileChange-outputDelta',
-    handlers.onFileChangeOutputDelta,
-    unlisteners
-  )
-
-  // MCP tools
-  await addListener('item-mcpToolCall-progress', handlers.onMcpToolCallProgress, unlisteners)
-
-  // Token usage
-  await addListener('thread-tokenUsage-updated', handlers.onTokenUsage, unlisteners)
-
-  // Approvals
-  await addListener(
-    'item-commandExecution-requestApproval',
-    handlers.onCommandApprovalRequested,
-    unlisteners
-  )
-  await addListener(
-    'item-fileChange-requestApproval',
-    handlers.onFileChangeApprovalRequested,
-    unlisteners
+  // Register all listeners in parallel for faster startup
+  const unlisteners = await Promise.all(
+    eventHandlerPairs.map(async ([eventName, handler]) => {
+      if (!handler) return null
+      try {
+        const unlisten = await listen(eventName, (event) => {
+          handler(event.payload as never)
+        })
+        console.log(`[Events] Listener registered for: ${eventName}`)
+        return unlisten
+      } catch (error) {
+        console.error(`[Events] Failed to register listener for ${eventName}:`, error)
+        return null
+      }
+    })
   )
 
-  // Errors
-  await addListener('error', handlers.onStreamError, unlisteners)
-  await addListener('app-server-disconnected', handlers.onServerDisconnected, unlisteners)
+  // Filter out nulls (failed or skipped handlers)
+  const validUnlisteners = unlisteners.filter((u): u is UnlistenFn => u !== null)
 
-  // Rate limiting
-  await addListener('turn-rateLimitExceeded', handlers.onRateLimitExceeded, unlisteners)
-
-  console.log(`[Events] setupEventListeners completed - ${unlisteners.length} listeners registered`)
-  return unlisteners
+  console.log(`[Events] setupEventListeners completed - ${validUnlisteners.length} listeners registered`)
+  return validUnlisteners
 }
 
 // Cleanup all listeners with error handling

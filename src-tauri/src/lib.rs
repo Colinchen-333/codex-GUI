@@ -17,6 +17,50 @@ pub use state::AppState;
 
 use tauri::Manager;
 
+/// Clean up old temp image files from previous sessions
+fn cleanup_temp_images() {
+    let temp_dir = std::env::temp_dir();
+
+    if let Ok(entries) = std::fs::read_dir(&temp_dir) {
+        let current_pid = std::process::id();
+        let mut cleaned = 0;
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                // Match codex_image_<pid>_<timestamp>.<ext> pattern
+                if name.starts_with("codex_image_") {
+                    // Extract PID from filename
+                    let parts: Vec<&str> = name.split('_').collect();
+                    if parts.len() >= 3 {
+                        if let Ok(pid) = parts[2].parse::<u32>() {
+                            // Only clean files from other PIDs (not current session)
+                            if pid != current_pid {
+                                if let Ok(metadata) = std::fs::metadata(&path) {
+                                    // Only delete files older than 1 hour
+                                    if let Ok(modified) = metadata.modified() {
+                                        if let Ok(age) = std::time::SystemTime::now().duration_since(modified) {
+                                            if age.as_secs() > 3600 {
+                                                if std::fs::remove_file(&path).is_ok() {
+                                                    cleaned += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if cleaned > 0 {
+            tracing::info!("Cleaned up {} old temp image files", cleaned);
+        }
+    }
+}
+
 /// Initialize and run the Tauri application
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,6 +72,9 @@ pub fn run() {
         .init();
 
     tracing::info!("Starting Codex Desktop");
+
+    // Clean up old temp images from previous sessions
+    cleanup_temp_images();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())

@@ -102,10 +102,13 @@ impl AppServerProcess {
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
 
+            let disconnect_reason: Option<String>;
+
             loop {
                 tokio::select! {
                     _ = shutdown_rx.recv() => {
                         tracing::debug!("Stdout reader received shutdown signal");
+                        disconnect_reason = None; // Graceful shutdown, don't notify
                         break;
                     }
                     line = lines.next_line() => {
@@ -115,17 +118,35 @@ impl AppServerProcess {
                             }
                             Ok(None) => {
                                 tracing::info!("App server stdout closed (EOF)");
-                                // Emit disconnected event
-                                let _ = app_handle_clone.emit("app-server-disconnected", ());
+                                disconnect_reason = Some("App server process exited".to_string());
                                 break;
                             }
                             Err(e) => {
                                 tracing::error!("Error reading from app-server stdout: {}", e);
+                                disconnect_reason = Some(format!("IO error: {}", e));
                                 break;
                             }
                         }
                     }
                 }
+            }
+
+            // Clean up all pending requests with error
+            if let Some(reason) = &disconnect_reason {
+                let mut pending = pending_clone.lock().await;
+                let count = pending.len();
+                if count > 0 {
+                    tracing::warn!("Cleaning up {} pending requests due to disconnect", count);
+                    for (id, sender) in pending.drain() {
+                        let _ = sender.send(Err(Error::AppServer(format!(
+                            "Request {} failed: {}",
+                            id, reason
+                        ))));
+                    }
+                }
+
+                // Emit disconnected event
+                let _ = app_handle_clone.emit("app-server-disconnected", ());
             }
         });
 

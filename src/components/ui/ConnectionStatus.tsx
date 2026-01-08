@@ -15,15 +15,29 @@ export function ConnectionStatus() {
   const attemptReconnect = useCallback(async () => {
     if (!isMountedRef.current) return
 
+    console.log('[ConnectionStatus] Starting reconnection attempts...')
     setIsReconnecting(true)
     let attempts = 0
     const maxAttempts = 5
 
     while (attempts < maxAttempts && isMountedRef.current) {
+      attempts++
+      console.log(`[ConnectionStatus] Reconnect attempt ${attempts}/${maxAttempts}`)
+
+      if (isMountedRef.current) {
+        setRetryCount(attempts)
+      }
+
       try {
+        console.log('[ConnectionStatus] Calling serverApi.restart()...')
         await serverApi.restart()
+        console.log('[ConnectionStatus] Restart call completed, checking status...')
+
         const status = await serverApi.getStatus()
+        console.log('[ConnectionStatus] Server status:', status)
+
         if (status.isRunning) {
+          console.log('[ConnectionStatus] Server is running, reconnection successful!')
           if (isMountedRef.current) {
             setIsConnected(true)
             setIsReconnecting(false)
@@ -32,16 +46,16 @@ export function ConnectionStatus() {
           return
         }
       } catch (error) {
-        console.error('Reconnect attempt failed:', error)
+        console.error(`[ConnectionStatus] Reconnect attempt ${attempts} failed:`, error)
       }
 
-      attempts++
-      if (isMountedRef.current) {
-        setRetryCount(attempts)
-      }
-      await new Promise((resolve) => setTimeout(resolve, 2000 * attempts))
+      // Wait before next attempt (exponential backoff)
+      const waitTime = Math.min(2000 * attempts, 10000)
+      console.log(`[ConnectionStatus] Waiting ${waitTime}ms before next attempt...`)
+      await new Promise((resolve) => setTimeout(resolve, waitTime))
     }
 
+    console.log('[ConnectionStatus] All reconnection attempts failed')
     if (isMountedRef.current) {
       setIsReconnecting(false)
     }
@@ -50,21 +64,35 @@ export function ConnectionStatus() {
   useEffect(() => {
     isMountedRef.current = true
 
-    // Listen for server disconnection
-    const setupListener = async () => {
-      const unlisten = await listen('app-server-disconnected', () => {
+    // Listen for server disconnection and reconnection
+    const setupListeners = async () => {
+      const unlistenDisconnected = await listen('app-server-disconnected', () => {
+        console.log('[ConnectionStatus] Server disconnected event received')
         if (isMountedRef.current) {
           setIsConnected(false)
           attemptReconnect()
         }
       })
-      return unlisten
+
+      const unlistenReconnected = await listen('app-server-reconnected', () => {
+        console.log('[ConnectionStatus] Server reconnected event received')
+        if (isMountedRef.current) {
+          setIsConnected(true)
+          setIsReconnecting(false)
+          setRetryCount(0)
+        }
+      })
+
+      return () => {
+        unlistenDisconnected()
+        unlistenReconnected()
+      }
     }
 
-    const unlistenPromise = setupListener()
+    const cleanupPromise = setupListeners()
     return () => {
       isMountedRef.current = false
-      unlistenPromise.then((unlisten) => unlisten())
+      cleanupPromise.then((cleanup) => cleanup())
     }
   }, [attemptReconnect])
 

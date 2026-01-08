@@ -59,6 +59,12 @@ export function MainArea() {
   }, [])
 
   // Resume thread when session is selected or switched
+  // Note: Use refs to avoid dependency issues with functions
+  const resumeThreadRef = useRef(resumeThread)
+  resumeThreadRef.current = resumeThread
+  const canAddSessionRef = useRef(canAddSession)
+  canAddSessionRef.current = canAddSession
+
   useEffect(() => {
     // Skip if no session selected
     if (!selectedSessionId) {
@@ -67,11 +73,20 @@ export function MainArea() {
       return
     }
 
+    // Check if session changed
+    if (prevSessionIdRef.current === selectedSessionId) {
+      // Same session, no need to do anything
+      return
+    }
+
     // Check if this session is already loaded in threads
-    if (threads[selectedSessionId]) {
+    const threadState = useThreadStore.getState()
+    const isLoaded = !!threadState.threads[selectedSessionId]
+
+    if (isLoaded) {
       // Session already loaded, just switch to it
-      if (focusedThreadId !== selectedSessionId) {
-        useThreadStore.getState().switchThread(selectedSessionId)
+      if (threadState.focusedThreadId !== selectedSessionId) {
+        threadState.switchThread(selectedSessionId)
       }
       prevSessionIdRef.current = selectedSessionId
       targetSessionIdRef.current = selectedSessionId
@@ -88,7 +103,7 @@ export function MainArea() {
     }
 
     // Check if we can add more sessions
-    if (!canAddSession()) {
+    if (!canAddSessionRef.current()) {
       console.warn('[MainArea] Maximum sessions reached, cannot resume:', selectedSessionId)
       return
     }
@@ -112,7 +127,7 @@ export function MainArea() {
         }
       }, RESUME_TIMEOUT_MS)
 
-      resumeThread(sessionId)
+      resumeThreadRef.current(sessionId)
         .catch((error) => {
           console.error('Failed to resume session:', error)
         })
@@ -127,7 +142,7 @@ export function MainArea() {
 
     // Resume the selected session
     startResumeWithTimeout(selectedSessionId)
-  }, [selectedSessionId, threads, focusedThreadId, canAddSession, resumeThread])
+  }, [selectedSessionId]) // Only depend on selectedSessionId to prevent loops
 
   // Callback for creating a new session from SessionTabs
   const handleNewSession = useCallback(() => {

@@ -30,9 +30,9 @@ export interface GitInfo {
 }
 
 export interface ThreadGitInfo {
-  sha?: string
-  branch?: string
-  originUrl?: string
+  sha?: string | null
+  branch?: string | null
+  originUrl?: string | null
 }
 
 export interface ThreadSummary {

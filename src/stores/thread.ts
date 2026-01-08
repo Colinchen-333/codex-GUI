@@ -564,6 +564,7 @@ interface ThreadState {
   // Multi-session actions
   switchThread: (threadId: string) => void
   closeThread: (threadId: string) => void
+  closeAllThreads: () => void
   getActiveThreadIds: () => string[]
   canAddSession: () => boolean
 
@@ -999,6 +1000,26 @@ export const useThreadStore = create<ThreadState>((set, get) => ({
     if (Object.keys(updatedThreads).length === 0) {
       stopApprovalCleanupTimer()
     }
+  },
+
+  closeAllThreads: () => {
+    const { threads } = get()
+
+    // Clean up all thread-specific resources
+    Object.keys(threads).forEach((threadId) => {
+      clearDeltaBuffer(threadId)
+      clearTurnTimeout(threadId)
+      deltaBuffers.delete(threadId)
+    })
+
+    // Clear all threads
+    set({
+      threads: {},
+      focusedThreadId: null,
+    })
+
+    // Stop approval cleanup timer
+    stopApprovalCleanupTimer()
   },
 
   getActiveThreadIds: () => {

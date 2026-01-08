@@ -65,7 +65,7 @@ export function Sidebar() {
     searchSessions,
     clearSearch,
   } = useSessionsStore()
-  const { startThread, clearThread } = useThreadStore()
+  const { startThread, closeAllThreads } = useThreadStore()
   const settings = useSettingsStore((state) => state.settings)
   const { showToast } = useToast()
 
@@ -82,17 +82,17 @@ export function Sidebar() {
       if (!projectId) return
       // If selecting a different project, clean up all related state first
       if (projectId !== selectedProjectId) {
-        // Clear session selection (this will trigger MainArea to clear thread)
+        // Clear session selection
         selectSession(null)
-        // Clear thread state immediately to avoid race conditions
-        clearThread()
+        // Close ALL threads when switching projects (not just the focused one)
+        closeAllThreads()
       }
       // Then select the new project
       selectProject(projectId)
       // Switch to sessions tab to show the new project's sessions
       setActiveTab('sessions')
     },
-    [selectedProjectId, selectProject, selectSession, clearThread, setActiveTab]
+    [selectedProjectId, selectProject, selectSession, closeAllThreads, setActiveTab]
   )
 
   // Rename dialog state
@@ -247,9 +247,11 @@ export function Sidebar() {
     const effectiveCwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
 
     try {
-      // Clear any existing thread first
-      clearThread()
-      // Deselect current session
+      // NOTE: Do NOT call clearThread() here!
+      // We want to keep existing sessions running in parallel.
+      // startThread() will add the new session to threads map while preserving others.
+
+      // Deselect current session (will be replaced by the new one)
       selectSession(null)
       // Start a new thread with merged settings
       await startThread(

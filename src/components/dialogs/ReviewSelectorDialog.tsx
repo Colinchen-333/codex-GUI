@@ -26,25 +26,24 @@ export function ReviewSelectorDialog({
 
   useEffect(() => {
     if (isOpen && projectPath) {
+      const loadGitData = async () => {
+        setLoading(true)
+        try {
+          const [branchData, commitData] = await Promise.all([
+            projectApi.getGitBranches(projectPath),
+            projectApi.getGitCommits(projectPath, 20),
+          ])
+          setBranches(branchData)
+          setCommits(commitData)
+        } catch (error) {
+          console.error('Failed to load git data:', error)
+        } finally {
+          setLoading(false)
+        }
+      }
       loadGitData()
     }
   }, [isOpen, projectPath])
-
-  const loadGitData = async () => {
-    setLoading(true)
-    try {
-      const [branchData, commitData] = await Promise.all([
-        projectApi.getGitBranches(projectPath),
-        projectApi.getGitCommits(projectPath, 20),
-      ])
-      setBranches(branchData)
-      setCommits(commitData)
-    } catch (error) {
-      console.error('Failed to load git data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSelect = () => {
     let target: ReviewTarget

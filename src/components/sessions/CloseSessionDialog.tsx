@@ -13,10 +13,10 @@ interface CloseSessionDialogProps {
 
 export function CloseSessionDialog({ isOpen, threadId, onClose }: CloseSessionDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
-  const closeThread = useThreadStore((state) => state.closeThread)
   const threads = useThreadStore((state) => state.threads)
   const projects = useProjectsStore((state) => state.projects)
   const sessions = useSessionsStore((state) => state.sessions)
+  // closeThread is called via getState() to avoid dependency issues
 
   // Get thread info
   const threadState = threadId ? threads[threadId] : null
@@ -28,6 +28,13 @@ export function CloseSessionDialog({ isOpen, threadId, onClose }: CloseSessionDi
   const project = thread ? projects.find((p) => thread.cwd?.startsWith(p.path)) : null
   const sessionLabel = sessionMeta?.title || project?.displayName || thread?.cwd?.split('/').pop() || 'Session'
 
+  const handleConfirm = () => {
+    if (threadId) {
+      useThreadStore.getState().closeThread(threadId)
+    }
+    onClose()
+  }
+
   // Handle escape key
   useEffect(() => {
     if (!isOpen) return
@@ -36,13 +43,17 @@ export function CloseSessionDialog({ isOpen, threadId, onClose }: CloseSessionDi
       if (e.key === 'Escape') {
         onClose()
       } else if (e.key === 'Enter') {
-        handleConfirm()
+        // Call handleConfirm inline to avoid dependency issues
+        if (threadId) {
+          useThreadStore.getState().closeThread(threadId)
+        }
+        onClose()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, threadId])
+  }, [isOpen, threadId, onClose]) // Include onClose - parent should memoize if needed
 
   // Focus dialog when opened
   useEffect(() => {
@@ -50,13 +61,6 @@ export function CloseSessionDialog({ isOpen, threadId, onClose }: CloseSessionDi
       dialogRef.current.focus()
     }
   }, [isOpen])
-
-  const handleConfirm = () => {
-    if (threadId) {
-      closeThread(threadId)
-    }
-    onClose()
-  }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {

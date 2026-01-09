@@ -61,8 +61,7 @@ export function Sidebar() {
     searchQuery: storeSearchQuery,
     searchResults,
     isSearching,
-    searchSessions,
-    clearSearch,
+    // searchSessions, clearSearch are called via getState() to avoid dependency issues
   } = useSessionsStore()
   // startThread, closeAllThreads, selectProject, fetchSessions, selectSession are called via getState()
   const { showToast } = useToast()
@@ -118,7 +117,7 @@ export function Sidebar() {
   const [localSearchQuery, setLocalSearchQuery] = useState('')
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Debounced search
+  // Debounced search - use getState() to avoid function reference dependencies
   const handleSearchChange = useCallback(
     (query: string) => {
       setLocalSearchQuery(query)
@@ -133,13 +132,13 @@ export function Sidebar() {
       searchTimeoutRef.current = setTimeout(() => {
         searchTimeoutRef.current = null
         if (query.trim()) {
-          searchSessions(query)
+          useSessionsStore.getState().searchSessions(query)
         } else {
-          clearSearch()
+          useSessionsStore.getState().clearSearch()
         }
       }, 300)
     },
-    [searchSessions, clearSearch]
+    [] // No dependencies - store functions called via getState()
   )
 
   // Clear search timeout on unmount and when switching tabs/projects
@@ -329,7 +328,7 @@ export function Sidebar() {
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setLocalSearchQuery('')
-                  clearSearch()
+                  useSessionsStore.getState().clearSearch()
                 }}
               >
                 ✕

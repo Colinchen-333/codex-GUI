@@ -456,13 +456,25 @@ export function useAutoScroll(
   messagesEndRef: React.RefObject<HTMLDivElement | null>,
   itemOrder: string[],
   _items: Record<string, AnyThreadItem>,
-  turnStatus: string
+  turnStatus: string,
+  threadId?: string | null
 ) {
   const scrollRAFRef = useRef<number | null>(null)
   const [autoScroll, setAutoScroll] = useState(true)
   const lastScrollPositionRef = useRef<number>(0)
   const lastScrolledIndexRef = useRef<number>(-1)
   const lastScrollTimeRef = useRef<number>(0)
+  const lastThreadIdRef = useRef<string | null | undefined>(threadId)
+
+  // Reset scroll state when thread changes
+  useEffect(() => {
+    if (threadId !== lastThreadIdRef.current) {
+      lastThreadIdRef.current = threadId
+      lastScrolledIndexRef.current = -1
+      lastScrollTimeRef.current = 0
+      setAutoScroll(true) // Re-enable auto-scroll when switching threads
+    }
+  }, [threadId])
 
   // Stable item count ref to use in RAF callback
   const itemCountRef = useRef(itemOrder.length)

@@ -98,6 +98,7 @@ export default memo(function ChatMessageList({
   const focusedThread = useThreadStore(selectFocusedThread)
 
   // Extract data from focused thread state
+  const threadId = focusedThread?.thread?.id ?? null
   const items = focusedThread?.items ?? {}
   const itemOrder = focusedThread?.itemOrder ?? []
   const turnStatus = focusedThread?.turnStatus ?? 'idle'
@@ -130,19 +131,20 @@ export default memo(function ChatMessageList({
   // This properly notifies the List when heights change, fixing the overlap issue
   const dynamicHeight = useDynamicRowHeight({
     defaultRowHeight: DEFAULT_ITEM_HEIGHT * 3, // Same as defaultHeight prop
-    key: focusedThread?.thread?.id, // Reset when thread changes
+    key: threadId ?? undefined, // Reset when thread changes
   })
 
   // Keep useItemSizeCache for warmup cache and performance metrics only
   const { warmupCache } = useItemSizeCache(items, filteredItemOrder)
 
-  // Auto-scroll behavior
+  // Auto-scroll behavior - pass threadId to reset state on thread switch
   const { setAutoScroll, trackScrollPosition } = useAutoScroll(
     virtualListRef,
     messagesEndRef,
     filteredItemOrder,
     items,
-    turnStatus
+    turnStatus,
+    threadId
   )
 
   // Scroll handling
@@ -203,6 +205,7 @@ export default memo(function ChatMessageList({
       <div className="mx-auto max-w-3xl h-full">
         {filteredItemOrder.length > 0 ? (
           <List<VirtualizedRowCustomProps & { dynamicHeight?: DynamicRowHeight }>
+            key={threadId ?? 'no-thread'}
             listRef={virtualListRef}
             rowCount={filteredItemOrder.length}
             rowHeight={dynamicHeight}

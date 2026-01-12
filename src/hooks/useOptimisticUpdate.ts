@@ -178,15 +178,30 @@ class RollbackStackManager {
   }
 }
 
-const rollbackStacks = new Map<string, RollbackStackManager>()
+interface RollbackStackEntry {
+  stack: RollbackStackManager
+  refs: number
+}
 
-function getRollbackStack(scopeId: string): RollbackStackManager {
-  let stack = rollbackStacks.get(scopeId)
-  if (!stack) {
-    stack = new RollbackStackManager()
-    rollbackStacks.set(scopeId, stack)
+const rollbackStacks = new Map<string, RollbackStackEntry>()
+
+function acquireRollbackStack(scopeId: string): RollbackStackManager {
+  let entry = rollbackStacks.get(scopeId)
+  if (!entry) {
+    entry = { stack: new RollbackStackManager(), refs: 0 }
+    rollbackStacks.set(scopeId, entry)
   }
-  return stack
+  entry.refs += 1
+  return entry.stack
+}
+
+function releaseRollbackStack(scopeId: string): void {
+  const entry = rollbackStacks.get(scopeId)
+  if (!entry) return
+  entry.refs -= 1
+  if (entry.refs <= 0) {
+    rollbackStacks.delete(scopeId)
+  }
 }
 
 export function clearGlobalRollbackStack(): void {
@@ -240,7 +255,7 @@ export function useOptimisticUpdate<T, R>(
   const localRollbackStackRef = useRef<RollbackEntry<T>[]>([])
 
   if (!rollbackStackRef.current) {
-    rollbackStackRef.current = getRollbackStack(scopeIdRef.current)
+    rollbackStackRef.current = acquireRollbackStack(scopeIdRef.current)
   }
 
   useEffect(() => {
@@ -253,6 +268,7 @@ export function useOptimisticUpdate<T, R>(
         }
         localRollbackStackRef.current = []
       }
+      releaseRollbackStack(scopeIdRef.current)
     }
   }, [])
 

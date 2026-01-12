@@ -549,7 +549,7 @@ export const serverApi = {
   listSkills: (cwds: string[], forceReload = false, projectId?: string) => {
     // 使用 cwds 和 projectId 作为缓存键的一部分，确保不同项目使用不同缓存
     const scope = projectId ?? 'global'
-    const cacheKey = `${CACHE_KEYS.SKILLS}:${scope}:${cwds.sort().join(',')}`
+    const cacheKey = `${CACHE_KEYS.SKILLS}:${scope}:${[...cwds].sort().join(',')}`
     if (forceReload) {
       clearCache(cacheKey)
     }

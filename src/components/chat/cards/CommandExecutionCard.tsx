@@ -8,6 +8,7 @@
  * - item.content changes meaningfully (shallow comparison)
  */
 import { memo, useState, useEffect, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { Terminal } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { isCommandExecutionContent } from '../../../lib/typeGuards'
@@ -30,10 +31,13 @@ import type { MessageItemProps } from '../types'
 export const CommandExecutionCard = memo(
   function CommandExecutionCard({ item }: MessageItemProps) {
   // Use selector to avoid infinite re-render loops from getter-based state access
-  const focusedThread = useThreadStore(selectFocusedThread)
-  const activeThread = focusedThread?.thread ?? null
-  const respondToApproval = useThreadStore((state: ThreadState) => state.respondToApproval)
-  const sendMessage = useThreadStore((state: ThreadState) => state.sendMessage)
+  const { activeThread, respondToApproval, sendMessage } = useThreadStore(
+    useShallow((state: ThreadState) => ({
+      activeThread: selectFocusedThread(state)?.thread ?? null,
+      respondToApproval: state.respondToApproval,
+      sendMessage: state.sendMessage,
+    }))
+  )
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [isExpanded, setIsExpanded] = useState(true)
   const [showFullOutput, setShowFullOutput] = useState(false)

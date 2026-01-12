@@ -136,6 +136,34 @@ const lockWaitQueue: LockRequest[] = []
 let lockRequestIdCounter = 0  // P0 Fix: Counter for unique request IDs
 const MAX_LOCK_REQUEST_ID = Number.MAX_SAFE_INTEGER - 1
 
+function nextLockRequestId(): number {
+  if (lockRequestIdCounter >= MAX_LOCK_REQUEST_ID) {
+    log.warn('[acquireThreadSwitchLock] Lock request ID counter reset to avoid overflow', 'delta-buffer')
+    lockRequestIdCounter = 0
+  }
+
+  let candidate = ++lockRequestIdCounter
+  if (lockWaitQueue.length === 0) {
+    return candidate
+  }
+
+  const maxAttempts = Math.max(MAX_LOCK_QUEUE_SIZE, 1) + 1
+  let attempts = 0
+  while (lockWaitQueue.some((req) => req.id === candidate)) {
+    if (lockRequestIdCounter >= MAX_LOCK_REQUEST_ID) {
+      log.warn('[acquireThreadSwitchLock] Lock request ID counter reset to avoid overflow', 'delta-buffer')
+      lockRequestIdCounter = 0
+    }
+    candidate = ++lockRequestIdCounter
+    attempts += 1
+    if (attempts > maxAttempts) {
+      throw new Error('Lock request id collision overflow; lock queue may be stuck')
+    }
+  }
+
+  return candidate
+}
+
 /**
  * Process the next request in the lock wait queue.
  * Called when the current lock is released.
@@ -202,11 +230,7 @@ export async function acquireThreadSwitchLock(): Promise<void> {
   // Slow path: add to queue and wait
   return new Promise<void>((resolve, reject) => {
     // P0 Fix: Generate unique ID for reliable lookup
-    if (lockRequestIdCounter >= MAX_LOCK_REQUEST_ID) {
-      log.warn('[acquireThreadSwitchLock] Lock request ID counter reset to avoid overflow', 'delta-buffer')
-      lockRequestIdCounter = 0
-    }
-    const requestId = ++lockRequestIdCounter
+    const requestId = nextLockRequestId()
 
     const timeoutId = setTimeout(() => {
       // P0 Fix: Remove from queue using unique ID instead of function reference
@@ -359,7 +383,7 @@ let closingThreadLockToken = 0
  * P2 Fix: Maximum wait time for closing thread lock (5 seconds)
  */
 const MAX_CLOSING_LOCK_WAIT_MS = 5000
-const MAX_CLOSING_THREAD_AGE_MS = 60000
+const MAX_CLOSING_THREAD_AGE_MS = 5000
 
 async function waitForClosingLock(lockPromise: Promise<void>, timeoutMs: number): Promise<boolean> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -508,6 +532,19 @@ let idleCallbackId: number | null = null
  * Cleanup keys are automatically removed after a short delay.
  */
 const recentCleanups = new Set<string>()
+const MAX_RECENT_CLEANUPS = 1000
+
+function trimRecentCleanups(): void {
+  if (recentCleanups.size < MAX_RECENT_CLEANUPS) return
+  const overflow = recentCleanups.size - MAX_RECENT_CLEANUPS + 1
+  let removed = 0
+  for (const key of recentCleanups) {
+    recentCleanups.delete(key)
+    removed += 1
+    if (removed >= overflow) break
+  }
+  log.warn(`[delta-buffer] Trimmed ${removed} recent cleanup entries`, 'delta-buffer')
+}
 
 /**
  * Check if requestIdleCallback is available (browser environment).
@@ -1017,6 +1054,7 @@ export function performFullTurnCleanup(threadId: string): void {
   }
 
   // Mark as recently cleaned up
+  trimRecentCleanups()
   recentCleanups.add(cleanupKey)
 
   // Execute cleanup operations

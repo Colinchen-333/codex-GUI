@@ -23,6 +23,7 @@ import {
   acquireThreadSwitchLock,
   releaseThreadSwitchLock,
   closingThreads,
+  markThreadAsClosing,
   performFullTurnCleanup,
 } from '../delta-buffer'
 import {
@@ -191,6 +192,15 @@ export function createResumeThread(
       focusedThreadId: get().focusedThreadId,
     }
 
+    const rollbackToInitialState = () => {
+      set((state) => {
+        state.isLoading = initialState.isLoading
+        state.globalError = initialState.globalError
+        state.focusedThreadId = initialState.focusedThreadId
+        return state
+      })
+    }
+
     // Acquire thread switch lock to prevent concurrent operations
     await acquireThreadSwitchLock()
 
@@ -206,11 +216,7 @@ export function createResumeThread(
           `[resumeThread] Another operation started, rolling back state for threadId: ${threadId}`,
           'thread-actions'
         )
-        set((state) => {
-          state.isLoading = initialState.isLoading
-          state.globalError = initialState.globalError
-          return state
-        })
+        rollbackToInitialState()
         stopCleanupTimersIfIdle(get, 'resumeThread')
         return
       }
@@ -221,11 +227,7 @@ export function createResumeThread(
           `[resumeThread] Thread ${response.thread.id} is being closed, rolling back state`,
           'thread-actions'
         )
-        set((state) => {
-          state.isLoading = initialState.isLoading
-          state.globalError = initialState.globalError
-          return state
-        })
+        rollbackToInitialState()
         stopCleanupTimersIfIdle(get, 'resumeThread')
         return
       }
@@ -268,6 +270,8 @@ export function createResumeThread(
       // Final validation before state update
       if (!isOperationValid(threadId, opSeq)) {
         log.warn(`[resumeThread] Operation became stale before state update`, 'thread-actions')
+        rollbackToInitialState()
+        stopCleanupTimersIfIdle(get, 'resumeThread')
         return
       }
 
@@ -356,7 +360,10 @@ export function createCloseThread(
 
     // Mark thread as closing IMMEDIATELY to prevent any new operations
     // This must happen before any async operations or state changes
-    closingThreads.add(threadId)
+    const releasePromise = markThreadAsClosing(threadId).catch((error) => {
+      log.warn(`[closeThread] Failed to mark thread as closing: ${error}`, 'thread-actions')
+      return () => {}
+    })
     log.debug(`[closeThread] Marked thread ${threadId} as closing`, 'thread-actions')
 
     // Perform comprehensive immediate cleanup of all thread resources
@@ -384,8 +391,7 @@ export function createCloseThread(
     if (Object.keys(updatedThreads).length === 0) {
       stopApprovalCleanupTimer()
       stopTimerCleanupInterval()
-      // Clear closing threads set when no threads remain
-      closingThreads.clear()
+      void releasePromise.then((release) => release())
       log.debug('[closeThread] All threads closed, cleared closingThreads set', 'thread-actions')
     } else {
       // Start periodic cleanup if there are still threads
@@ -393,10 +399,12 @@ export function createCloseThread(
 
       // Remove from closing set after a short delay to ensure all pending events are handled
       // This allows any in-flight events to be properly rejected
-      setTimeout(() => {
-        closingThreads.delete(threadId)
-        log.debug(`[closeThread] Removed thread ${threadId} from closing set`, 'thread-actions')
-      }, CLOSING_THREAD_CLEANUP_DELAY_MS)
+      void releasePromise.then((release) => {
+        setTimeout(() => {
+          release()
+          log.debug(`[closeThread] Removed thread ${threadId} from closing set`, 'thread-actions')
+        }, CLOSING_THREAD_CLEANUP_DELAY_MS)
+      })
     }
   }
 }
@@ -411,11 +419,18 @@ export function createCloseAllThreads(
     const { threads } = get()
     const threadIds = Object.keys(threads)
 
-    // Mark all threads as closing first to prevent race conditions
-    threadIds.forEach((threadId) => {
-      closingThreads.add(threadId)
-    })
+    if (threadIds.length === 0) {
+      stopApprovalCleanupTimer()
+      stopTimerCleanupInterval()
+      return
+    }
 
+    const releasePromises = threadIds.map((threadId) =>
+      markThreadAsClosing(threadId).catch((error) => {
+        log.warn(`[closeAllThreads] Failed to mark thread as closing: ${error}`, 'thread-actions')
+        return () => {}
+      })
+    )
     log.debug(`[closeAllThreads] Marked ${threadIds.length} threads as closing`, 'thread-actions')
 
     // Clean up all thread-specific resources using comprehensive cleanup
@@ -434,9 +449,10 @@ export function createCloseAllThreads(
     stopApprovalCleanupTimer()
     stopTimerCleanupInterval()
 
-    // Clear the closing threads set since all threads are gone
-    closingThreads.clear()
-    log.debug('[closeAllThreads] Cleared closingThreads set', 'thread-actions')
+    void Promise.all(releasePromises).then((releases) => {
+      releases.forEach((release) => release())
+      log.debug('[closeAllThreads] Cleared closingThreads set', 'thread-actions')
+    })
   }
 }
 

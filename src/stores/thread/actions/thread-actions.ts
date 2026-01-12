@@ -39,6 +39,14 @@ import {
   performImmediateThreadCleanup,
 } from '../utils/timer-cleanup'
 
+function stopCleanupTimersIfIdle(get: () => ThreadState, context: string): void {
+  if (Object.keys(get().threads).length === 0) {
+    stopApprovalCleanupTimer()
+    stopTimerCleanupInterval()
+    log.debug(`[${context}] No threads remaining, stopped cleanup timers`, 'thread-actions')
+  }
+}
+
 // ==================== Start Thread Action ====================
 
 export function createStartThread(
@@ -104,6 +112,7 @@ export function createStartThread(
           state.isLoading = false
           return state
         })
+        stopCleanupTimersIfIdle(get, 'startThread')
         return
       }
 
@@ -123,10 +132,7 @@ export function createStartThread(
         state.isLoading = false
         return state
       })
-      if (Object.keys(get().threads).length === 0) {
-        stopApprovalCleanupTimer()
-        stopTimerCleanupInterval()
-      }
+      stopCleanupTimersIfIdle(get, 'startThread')
       log.error(`[startThread] Failed with opSeq mismatch check: ${currentOpSeq}`, 'thread-actions')
       throw error
     } finally {
@@ -204,6 +210,7 @@ export function createResumeThread(
           state.globalError = initialState.globalError
           return state
         })
+        stopCleanupTimersIfIdle(get, 'resumeThread')
         return
       }
 
@@ -218,6 +225,7 @@ export function createResumeThread(
           state.globalError = initialState.globalError
           return state
         })
+        stopCleanupTimersIfIdle(get, 'resumeThread')
         return
       }
 
@@ -296,11 +304,7 @@ export function createResumeThread(
       })
 
       // P1 Fix: Stop cleanup timers if no threads remain
-      if (Object.keys(get().threads).length === 0) {
-        stopApprovalCleanupTimer()
-        stopTimerCleanupInterval()
-        log.debug('[resumeThread] No threads remaining, stopped cleanup timers', 'thread-actions')
-      }
+      stopCleanupTimersIfIdle(get, 'resumeThread')
 
       throw error
     } finally {

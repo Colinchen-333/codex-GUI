@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { useProjectsStore } from '../../stores/projects'
-import { useThreadStore } from '../../stores/thread'
+import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
 import {
   useSettingsStore,
@@ -27,7 +27,9 @@ export function MainArea() {
 
   // Multi-session state - only subscribe to what we need for rendering
   const threads = useThreadStore((state) => state.threads)
-  const activeThread = useThreadStore((state) => state.activeThread)
+  // Use proper selector instead of getter to avoid potential re-render loops
+  const focusedThreadState = useThreadStore(selectFocusedThread)
+  const activeThread = focusedThreadState?.thread ?? null
 
   const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
 

@@ -756,6 +756,10 @@ export function getDeltaBuffer(threadId: string): DeltaBuffer | null {
     // P0 Fix: Pass threadId to create buffer with correct sequence
     buffer = createEmptyDeltaBuffer(threadId)
     deltaBuffers.set(threadId, buffer)
+    if (closingThreads.has(threadId)) {
+      deltaBuffers.delete(threadId)
+      return null
+    }
   }
   return buffer
 }

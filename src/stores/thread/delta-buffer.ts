@@ -136,6 +136,49 @@ const lockWaitQueue: LockRequest[] = []
 let lockRequestIdCounter = 0  // P0 Fix: Counter for unique request IDs
 const MAX_LOCK_REQUEST_ID = Number.MAX_SAFE_INTEGER - 1
 
+// ==================== Lock Wait Telemetry ====================
+
+interface LockWaitMetrics {
+  totalWaitMs: number
+  maxWaitMs: number
+  waitCount: number
+  queueWaitCount: number
+  timeoutCount: number
+}
+
+const lockWaitMetrics: LockWaitMetrics = {
+  totalWaitMs: 0,
+  maxWaitMs: 0,
+  waitCount: 0,
+  queueWaitCount: 0,
+  timeoutCount: 0,
+}
+
+const LOCK_WAIT_WARN_THRESHOLD_MS = 1000
+
+function recordLockWait(waitMs: number, fromQueue: boolean): void {
+  lockWaitMetrics.totalWaitMs += waitMs
+  lockWaitMetrics.waitCount += 1
+  if (fromQueue) {
+    lockWaitMetrics.queueWaitCount += 1
+  }
+  if (waitMs > lockWaitMetrics.maxWaitMs) {
+    lockWaitMetrics.maxWaitMs = waitMs
+  }
+
+  if (waitMs >= LOCK_WAIT_WARN_THRESHOLD_MS) {
+    log.warn(`[acquireThreadSwitchLock] Slow lock wait: ${waitMs}ms`, 'delta-buffer')
+  }
+}
+
+function recordLockTimeout(): void {
+  lockWaitMetrics.timeoutCount += 1
+}
+
+export function getLockWaitMetrics(): LockWaitMetrics {
+  return { ...lockWaitMetrics }
+}
+
 function nextLockRequestId(): number {
   if (lockRequestIdCounter >= MAX_LOCK_REQUEST_ID) {
     log.warn('[acquireThreadSwitchLock] Lock request ID counter reset to avoid overflow', 'delta-buffer')
@@ -182,6 +225,7 @@ function processNextLockRequest(): void {
     nextRequest.resolve()
 
     const waitTime = Date.now() - nextRequest.requestedAt
+    recordLockWait(waitTime, true)
     log.debug(
       `[processNextLockRequest] Processed queued request after ${waitTime}ms wait`,
       'delta-buffer'
@@ -223,6 +267,7 @@ export async function acquireThreadSwitchLock(): Promise<void> {
     threadSwitchLock = new Promise<void>((resolve) => {
       pendingLockResolve = resolve
     })
+    recordLockWait(0, false)
     log.debug('[acquireThreadSwitchLock] Lock acquired immediately', 'delta-buffer')
     return
   }
@@ -244,6 +289,7 @@ export async function acquireThreadSwitchLock(): Promise<void> {
         `Thread switch lock timeout after ${THREAD_SWITCH_LOCK_TIMEOUT_MS}ms ` +
         `(${lockWaitQueue.length} requests still in queue)`
       )
+      recordLockTimeout()
       log.error(
         `[acquireThreadSwitchLock] ${error.message}`,
         'delta-buffer'

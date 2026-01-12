@@ -211,9 +211,10 @@ export async function acquireThreadSwitchLock(): Promise<void> {
     const timeoutId = setTimeout(() => {
       // P0 Fix: Remove from queue using unique ID instead of function reference
       const index = lockWaitQueue.findIndex(req => req.id === requestId)
-      if (index >= 0) {
-        lockWaitQueue.splice(index, 1)
+      if (index < 0) {
+        return
       }
+      lockWaitQueue.splice(index, 1)
 
       const error = new Error(
         `Thread switch lock timeout after ${THREAD_SWITCH_LOCK_TIMEOUT_MS}ms ` +
@@ -358,6 +359,7 @@ let closingThreadLockToken = 0
  * P2 Fix: Maximum wait time for closing thread lock (5 seconds)
  */
 const MAX_CLOSING_LOCK_WAIT_MS = 5000
+const MAX_CLOSING_THREAD_AGE_MS = 60000
 
 async function waitForClosingLock(lockPromise: Promise<void>, timeoutMs: number): Promise<boolean> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -461,6 +463,26 @@ export async function clearAllClosingThreads(): Promise<void> {
   // Clear the set
   closingThreads.clear()
   closingThreadsLock.clear()
+}
+
+export function cleanupStaleClosingThreads(maxAgeMs: number = MAX_CLOSING_THREAD_AGE_MS): number {
+  const now = Date.now()
+  let cleaned = 0
+  for (const [threadId, entry] of closingThreadsLock.entries()) {
+    if (now - entry.createdAt <= maxAgeMs) continue
+    if (deltaBuffers.has(threadId) || flushTimers.has(threadId) || turnTimeoutTimers.has(threadId)) {
+      continue
+    }
+    log.warn(
+      `[cleanupStaleClosingThreads] Removing stale closing entry for thread ${threadId} after ${now - entry.createdAt}ms`,
+      'delta-buffer'
+    )
+    closingThreads.delete(threadId)
+    closingThreadsLock.delete(threadId)
+    entry.resolve()
+    cleaned++
+  }
+  return cleaned
 }
 
 // ==================== Batch Flush Queue ====================

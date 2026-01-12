@@ -87,9 +87,14 @@ export interface UseOptimisticUpdateOptions<T, R> {
   ignoreOnUnmount?: boolean
 
   /**
-   * 操作的唯一标识，用于嵌套回滚
-   */
+ * 操作的唯一标识，用于嵌套回滚
+ */
   operationId?: string
+
+  /**
+   * 回滚栈作用域标识，用于组件隔离
+   */
+  scopeId?: string
 }
 
 /**
@@ -173,11 +178,19 @@ class RollbackStackManager {
   }
 }
 
-// 全局回滚栈实例
-const globalRollbackStack = new RollbackStackManager()
+const rollbackStacks = new Map<string, RollbackStackManager>()
+
+function getRollbackStack(scopeId: string): RollbackStackManager {
+  let stack = rollbackStacks.get(scopeId)
+  if (!stack) {
+    stack = new RollbackStackManager()
+    rollbackStacks.set(scopeId, stack)
+  }
+  return stack
+}
 
 export function clearGlobalRollbackStack(): void {
-  globalRollbackStack.clear()
+  rollbackStacks.clear()
 }
 
 /**
@@ -211,6 +224,7 @@ export function useOptimisticUpdate<T, R>(
     autoRollback = true,
     ignoreOnUnmount = true,
     operationId: customOperationId,
+    scopeId,
   } = options
 
   const [isLoading, setIsLoading] = useState(false)
@@ -220,8 +234,14 @@ export function useOptimisticUpdate<T, R>(
   const isMountedRef = useRef(true)
   // 当前操作的 ID
   const currentOperationIdRef = useRef<string | null>(null)
+  const scopeIdRef = useRef(scopeId ?? generateId())
+  const rollbackStackRef = useRef<RollbackStackManager | null>(null)
   // 本地回滚栈（用于组件级别的回滚）
   const localRollbackStackRef = useRef<RollbackEntry<T>[]>([])
+
+  if (!rollbackStackRef.current) {
+    rollbackStackRef.current = getRollbackStack(scopeIdRef.current)
+  }
 
   useEffect(() => {
     isMountedRef.current = true
@@ -229,7 +249,7 @@ export function useOptimisticUpdate<T, R>(
       isMountedRef.current = false
       if (localRollbackStackRef.current.length > 0) {
         for (const entry of localRollbackStackRef.current) {
-          globalRollbackStack.removeById(entry.id)
+          rollbackStackRef.current?.removeById(entry.id)
         }
         localRollbackStackRef.current = []
       }
@@ -256,12 +276,12 @@ export function useOptimisticUpdate<T, R>(
     const localEntry = localRollbackStackRef.current.pop()
     if (localEntry) {
       executeRollback(localEntry)
-      globalRollbackStack.removeById(localEntry.id)
+      rollbackStackRef.current?.removeById(localEntry.id)
       return
     }
 
     // 如果本地栈为空，从全局栈回滚
-    const globalEntry = globalRollbackStack.pop<T>()
+    const globalEntry = rollbackStackRef.current?.pop<T>()
     if (globalEntry && rollbackFn) {
       rollbackFn(globalEntry.previousState)
     }
@@ -272,7 +292,7 @@ export function useOptimisticUpdate<T, R>(
    */
   const rollbackTo = useCallback(
     (targetOperationId: string) => {
-      const entries = globalRollbackStack.rollbackTo<T>(targetOperationId)
+      const entries = rollbackStackRef.current?.rollbackTo<T>(targetOperationId) ?? []
       entries.forEach((entry) => {
         if (rollbackFn) {
           rollbackFn(entry.previousState)
@@ -292,14 +312,14 @@ export function useOptimisticUpdate<T, R>(
    */
   const clearRollbackHistory = useCallback(() => {
     localRollbackStackRef.current = []
-    globalRollbackStack.clear()
+    rollbackStackRef.current?.clear()
   }, [])
 
   /**
    * 获取回滚历史记录
    */
   const getRollbackHistory = useCallback(() => {
-    return globalRollbackStack.getHistory()
+    return rollbackStackRef.current?.getHistory() ?? []
   }, [])
 
   /**
@@ -333,7 +353,7 @@ export function useOptimisticUpdate<T, R>(
 
     // 添加到回滚栈
     localRollbackStackRef.current.push(rollbackEntry)
-    globalRollbackStack.push(rollbackEntry)
+    rollbackStackRef.current?.push(rollbackEntry)
 
     try {
       // 3. 执行实际的异步操作
@@ -348,7 +368,7 @@ export function useOptimisticUpdate<T, R>(
         localRollbackStackRef.current = localRollbackStackRef.current.filter(
           (entry) => entry.id !== operationId
         )
-        globalRollbackStack.removeById(operationId)
+        rollbackStackRef.current?.removeById(operationId)
 
         onSuccess?.(result)
       }
@@ -371,7 +391,7 @@ export function useOptimisticUpdate<T, R>(
             localRollbackStackRef.current = localRollbackStackRef.current.filter(
               (e) => e.id !== operationId
             )
-            globalRollbackStack.removeById(operationId)
+            rollbackStackRef.current?.removeById(operationId)
           }
         }
 
@@ -385,7 +405,7 @@ export function useOptimisticUpdate<T, R>(
             localRollbackStackRef.current = localRollbackStackRef.current.filter(
               (e) => e.id !== operationId
             )
-            globalRollbackStack.removeById(operationId)
+            rollbackStackRef.current?.removeById(operationId)
           }
         }
 
@@ -411,7 +431,7 @@ export function useOptimisticUpdate<T, R>(
    * 使用函数形式避免在渲染期间访问 ref
    */
   const getCanRollback = useCallback(() => {
-    return localRollbackStackRef.current.length > 0 || globalRollbackStack.size > 0
+    return localRollbackStackRef.current.length > 0 || (rollbackStackRef.current?.size ?? 0) > 0
   }, [])
 
   return {

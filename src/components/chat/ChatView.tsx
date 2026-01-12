@@ -165,7 +165,7 @@ export function ChatView() {
       let skills: SkillInput[] | undefined
       if (skillMentions.length > 0 && project) {
         try {
-          const response = await serverApi.listSkills([project.path])
+          const response = await serverApi.listSkills([project.path], false, selectedProjectId)
           const allSkills = response.data.flatMap((entry) => entry.skills)
           skills = skillMentions
             .map((name) => {

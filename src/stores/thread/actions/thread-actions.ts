@@ -39,6 +39,23 @@ import {
   performImmediateThreadCleanup,
 } from '../utils/timer-cleanup'
 
+function beginThreadOperation(
+  set: (fn: (state: WritableDraft<ThreadState>) => ThreadState | void) => void,
+  getThreadStore: () => ThreadState,
+  cleanupStaleApprovals: () => Promise<void>,
+  opKey: string
+): number {
+  const opSeq = getNextOperationSequence(opKey)
+  startApprovalCleanupTimer(cleanupStaleApprovals, 60000)
+  startTimerCleanupInterval(() => new Set(Object.keys(getThreadStore().threads)))
+  set((state) => {
+    state.isLoading = true
+    state.globalError = null
+    return state
+  })
+  return opSeq
+}
+
 function stopCleanupTimersIfIdle(get: () => ThreadState, context: string): void {
   if (Object.keys(get().threads).length === 0) {
     stopApprovalCleanupTimer()
@@ -75,15 +92,7 @@ export function createStartThread(
 
       // Use projectId as temporary threadId for operation sequencing
       // This prevents concurrent startThread for the same project
-      const opSeq = getNextOperationSequence(projectId)
-      startApprovalCleanupTimer(cleanupStaleApprovals, 60000)
-      startTimerCleanupInterval(() => new Set(Object.keys(getThreadStore().threads)))
-
-      set((state) => {
-        state.isLoading = true
-        state.globalError = null
-        return state
-      })
+      const opSeq = beginThreadOperation(set, getThreadStore, cleanupStaleApprovals, projectId)
 
       const safeModel = model?.trim() || undefined
       const safeSandboxMode = normalizeSandboxMode(sandboxMode)
@@ -187,15 +196,7 @@ export function createResumeThread(
 
     try {
       // Use threadId for operation sequencing
-      const opSeq = getNextOperationSequence(threadId)
-      startApprovalCleanupTimer(cleanupStaleApprovals, 60000)
-      startTimerCleanupInterval(() => new Set(Object.keys(getThreadStore().threads)))
-
-      set((state) => {
-        state.isLoading = true
-        state.globalError = null
-        return state
-      })
+      const opSeq = beginThreadOperation(set, getThreadStore, cleanupStaleApprovals, threadId)
 
       const response = await threadApi.resume(threadId)
 

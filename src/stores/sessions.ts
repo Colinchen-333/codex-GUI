@@ -545,3 +545,9 @@ export const useSessionsStore = create<SessionsState>((set, get) => {
   },
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    useSessionsStore.getState().cleanup()
+  })
+}

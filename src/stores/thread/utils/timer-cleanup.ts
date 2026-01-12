@@ -19,6 +19,7 @@ import {
   clearAllOperationSequences,
   clearAllFlushMetrics,
   clearThreadSwitchLockQueue,
+  cleanupStaleClosingThreads,
 } from '../delta-buffer'
 import { TIMER_CLEANUP_INTERVAL_MS } from '../constants'
 
@@ -159,6 +160,8 @@ export function cleanupStaleTimers(activeThreadIds: Set<string>): void {
       closingCleanups++
     }
   }
+
+  closingCleanups += cleanupStaleClosingThreads()
 
   const totalCleanups = flushCleanups + timeoutCleanups + bufferCleanups + closingCleanups
   if (totalCleanups > 0) {

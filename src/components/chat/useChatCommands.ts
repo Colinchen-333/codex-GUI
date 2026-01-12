@@ -144,7 +144,7 @@ export function useChatCommands({
       const project = projects.find((p) => p.id === selectedProjectId)
       if (!project) return
       try {
-        const response = await serverApi.listSkills([project.path])
+        const response = await serverApi.listSkills([project.path], false, selectedProjectId)
         const lines = response.data.flatMap((entry) =>
           entry.skills.map((skill) => `- ${skill.name}: ${skill.description}`)
         )

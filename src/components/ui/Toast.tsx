@@ -249,4 +249,5 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 }
 
 // Re-export useToast for convenience
+// eslint-disable-next-line react-refresh/only-export-components
 export { useToast } from './useToast'

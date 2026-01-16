@@ -25,6 +25,7 @@ export interface ChatImageUploadProps extends ImageUploadState, ImageUploadActio
  * Hook for image file handling logic
  * Can be used independently or with ChatImageUpload component
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useImageUpload(
   setAttachedImages: React.Dispatch<React.SetStateAction<string[]>>
 ) {
@@ -123,6 +124,7 @@ export function useImageUpload(
 /**
  * Hook for drag and drop handling
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDragAndDrop(
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>,
   handleImageFile: (file: File) => void
@@ -217,6 +219,7 @@ export const DragOverlay = memo(function DragOverlay({
 /**
  * Combined hook for all image upload functionality
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useChatImageUpload(
   setAttachedImages: React.Dispatch<React.SetStateAction<string[]>>,
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>

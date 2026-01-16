@@ -44,7 +44,8 @@ export function markThreadAsAgent(
  * Unmark a thread as an agent thread
  */
 export function unmarkThreadAsAgent(agentMapping: AgentMapping, threadId: string): AgentMapping {
-  const { [threadId]: _, ...rest } = agentMapping
+  const { [threadId]: _removed, ...rest } = agentMapping
+  void _removed // Explicitly ignore the removed value
   return rest
 }
 

@@ -271,7 +271,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         })
 
         // Start thread asynchronously
-        ;(async () => {
+        void (async () => {
           try {
             // Check dependencies before starting
             if (dependencies.length > 0) {

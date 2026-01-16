@@ -190,6 +190,7 @@ export function StatusIcon({ status, size = 'md', className }: StatusIconProps) 
   return null
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getStatusLabel(status: SessionStatus): string {
   const config = statusConfig[status]
   return config ? config.labelCn : '未知'

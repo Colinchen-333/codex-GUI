@@ -89,7 +89,7 @@ export function extractAgentOutput(threadState: SingleThreadState | undefined, l
         output.push(`$ ${content.command}`)
       }
     } else if (item.type === 'fileChange') {
-      const content = item.content as Record<string, any>
+      const content = item.content as Record<string, unknown>
       if (content.path) {
         output.push(`${content.operation || 'Modified'}: ${content.path}`)
       }

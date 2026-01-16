@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils'
 import { parseDiff, type HunkAction, type DiffHunk, type DiffLine, type FileDiff } from './DiffView.utils'
 
 // Re-export types and utilities for external use
+// eslint-disable-next-line react-refresh/only-export-components
 export { parseDiff, type FileDiff, type DiffHunk, type DiffLine, type HunkAction }
 
 // 单行高度（px）

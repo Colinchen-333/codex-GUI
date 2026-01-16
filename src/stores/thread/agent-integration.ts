@@ -36,7 +36,7 @@ export function notifyAgentStore(
         )
         break
 
-      case 'turnCompleted':
+      case 'turnCompleted': {
         // Check if this is the final completion
         const turnData = data as { status?: string } | undefined
         if (turnData?.status === 'error') {
@@ -54,8 +54,9 @@ export function notifyAgentStore(
           'agent-integration'
         )
         break
+      }
 
-      case 'messageDelta':
+      case 'messageDelta': {
         // Agent is actively working, update progress description
         const deltaData = data as { text?: string } | undefined
         if (deltaData?.text) {
@@ -66,8 +67,9 @@ export function notifyAgentStore(
           })
         }
         break
+      }
 
-      case 'error':
+      case 'error': {
         // Agent encountered an error
         const errorData = data as { message?: string; code?: string } | undefined
         store.updateAgentStatus(agentId, 'error', {
@@ -80,6 +82,7 @@ export function notifyAgentStore(
           'agent-integration'
         )
         break
+      }
     }
   }).catch((err) => {
     log.error(`[notifyAgentStore] Failed to import multi-agent store: ${err}`, 'agent-integration')

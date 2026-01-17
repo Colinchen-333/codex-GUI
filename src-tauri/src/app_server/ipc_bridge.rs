@@ -112,6 +112,12 @@ pub struct ThreadInfo {
 #[serde(rename_all = "camelCase")]
 pub struct ThreadResumeParams {
     pub thread_id: String,
+    /// Maximum number of items to return per page (default: 50)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    /// Pagination cursor for fetching next page
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
 }
 
 /// Thread resume response
@@ -122,6 +128,12 @@ pub struct ThreadResumeResponse {
     /// Items in the thread (may be missing for new/empty threads)
     #[serde(default)]
     pub items: Vec<JsonValue>,
+    /// Cursor for fetching the next page of items
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+    /// Whether there are more items to fetch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub has_more: Option<bool>,
 }
 
 /// Thread list parameters

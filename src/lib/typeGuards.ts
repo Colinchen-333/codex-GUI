@@ -140,18 +140,51 @@ export function isPlanContent(value: unknown): value is PlanContent {
 }
 
 /**
- * Check if item is a thread item
+ * Check if item is a thread item with deep content validation
  */
 export function isThreadItem(item: unknown): item is AnyThreadItem {
-  return (
-    typeof item === 'object' &&
-    item !== null &&
-    'id' in item &&
-    'type' in item &&
-    'status' in item &&
-    'content' in item &&
-    'createdAt' in item
-  )
+  if (
+    typeof item !== 'object' ||
+    item === null ||
+    !('id' in item) ||
+    !('type' in item) ||
+    !('status' in item) ||
+    !('content' in item) ||
+    !('createdAt' in item)
+  ) {
+    return false
+  }
+
+  const threadItem = item as Record<string, unknown>
+  const type = threadItem.type
+
+  switch (type) {
+    case 'userMessage':
+      return isUserMessageContent(threadItem.content)
+    case 'agentMessage':
+      return isAgentMessageContent(threadItem.content)
+    case 'commandExecution':
+      return isCommandExecutionContent(threadItem.content)
+    case 'fileChange':
+      return isFileChangeContent(threadItem.content)
+    case 'reasoning':
+      return isReasoningContent(threadItem.content)
+    case 'mcpTool':
+      return isMcpToolContent(threadItem.content)
+    case 'webSearch':
+      return isWebSearchContent(threadItem.content)
+    case 'review':
+      return isReviewContent(threadItem.content)
+    case 'info':
+      return isInfoContent(threadItem.content)
+    case 'error':
+      return isErrorContent(threadItem.content)
+    case 'plan':
+      return isPlanContent(threadItem.content)
+    default:
+      // Unknown type
+      return false
+  }
 }
 
 /**

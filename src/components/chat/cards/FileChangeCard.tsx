@@ -6,26 +6,140 @@
  * - item.id changes (different message)
  * - item.status changes (status update)
  * - item.content changes meaningfully (shallow comparison)
+ *
+ * Architecture:
+ * - Uses BaseCard for consistent layout and styling
+ * - Business logic is extracted to useFileChangeApproval hook
+ * - UI rendering logic is kept in this component
  */
-import { memo, useState, useRef, useCallback } from 'react'
+import { memo, useState } from 'react'
 import { FileCode } from 'lucide-react'
-import { cn } from '../../../lib/utils'
-import { useThreadStore, selectFocusedThread, type ThreadState } from '../../../stores/thread'
-import { useProjectsStore } from '../../../stores/projects'
-import { useToast } from '../../ui/Toast'
+import { BaseCard, CardActions } from './BaseCard'
 import { DiffView, parseDiff, type FileDiff } from '../../ui/DiffView'
-import { log } from '../../../lib/logger'
 import { formatTimestamp, shallowContentEqual } from '../utils'
-import { useOptimisticUpdate } from '../../../hooks/useOptimisticUpdate'
+import { useFileChangeApproval } from '../../../hooks/useFileChangeApproval'
 import type { MessageItemProps, FileChangeContentType } from '../types'
 
-/**
- * 乐观更新状态类型
- */
-interface ApplyChangesOptimisticState {
-  snapshotId?: string
-  previousApprovalState: boolean
+// -----------------------------------------------------------------------------
+// Sub-components
+// -----------------------------------------------------------------------------
+
+interface FileStatsProps {
+  addCount: number
+  modifyCount: number
+  deleteCount: number
 }
+
+/**
+ * Display file change statistics (added, modified, deleted counts)
+ */
+const FileStats = memo(function FileStats({ addCount, modifyCount, deleteCount }: FileStatsProps) {
+  return (
+    <div className="flex items-center gap-3 text-[10px] font-medium">
+      {addCount > 0 && (
+        <span className="text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
+          +{addCount} added
+        </span>
+      )}
+      {modifyCount > 0 && (
+        <span className="text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded">
+          ~{modifyCount} modified
+        </span>
+      )}
+      {deleteCount > 0 && (
+        <span className="text-red-600 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">
+          -{deleteCount} deleted
+        </span>
+      )}
+    </div>
+  )
+})
+
+interface ApprovalActionsProps {
+  reason?: string
+  isApplying: boolean
+  onApply: (decision: 'accept' | 'acceptForSession') => void
+  onDecline: () => void
+}
+
+/**
+ * Approval action buttons (Apply, Allow for Session, Decline)
+ */
+const ApprovalActions = memo(function ApprovalActions({
+  reason,
+  isApplying,
+  onApply,
+  onDecline,
+}: ApprovalActionsProps) {
+  return (
+    <div>
+      {reason && <div className="mb-3 text-xs text-muted-foreground">Reason: {reason}</div>}
+      <CardActions>
+        <button
+          className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+          onClick={() => onApply('accept')}
+          disabled={isApplying}
+        >
+          {isApplying ? 'Applying...' : 'Apply Changes'}
+        </button>
+        <button
+          className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
+          onClick={() => onApply('acceptForSession')}
+          disabled={isApplying}
+        >
+          Allow for Session
+        </button>
+        <button
+          className="rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+          onClick={onDecline}
+        >
+          Decline
+        </button>
+      </CardActions>
+    </div>
+  )
+})
+
+interface AppliedStatusProps {
+  snapshotId?: string
+  isReverting: boolean
+  onRevert: () => void
+}
+
+/**
+ * Applied status indicator with revert option
+ */
+const AppliedStatus = memo(function AppliedStatus({
+  snapshotId,
+  isReverting,
+  onRevert,
+}: AppliedStatusProps) {
+  return (
+    <div className="bg-green-50/50 dark:bg-green-900/10 p-3 border-t border-green-100 dark:border-green-900/30">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-medium text-green-700 dark:text-green-400">
+          <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+            <span className="text-[10px]">✓</span>
+          </div>
+          <span>Changes applied</span>
+        </div>
+        {snapshotId && (
+          <button
+            className="rounded-md bg-background/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors border border-transparent hover:border-destructive/20 disabled:opacity-50"
+            onClick={onRevert}
+            disabled={isReverting}
+          >
+            {isReverting ? 'Reverting...' : 'Revert Changes'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+})
+
+// -----------------------------------------------------------------------------
+// Main Component
+// -----------------------------------------------------------------------------
 
 /**
  * FileChangeCard Component
@@ -38,307 +152,103 @@ interface ApplyChangesOptimisticState {
  */
 export const FileChangeCard = memo(
   function FileChangeCard({ item }: MessageItemProps) {
-  const content = item.content as FileChangeContentType
-  // Use selector to avoid infinite re-render loops from getter-based state access
-  const focusedThread = useThreadStore(selectFocusedThread)
-  const activeThread = focusedThread?.thread ?? null
-  const respondToApproval = useThreadStore((state: ThreadState) => state.respondToApproval)
-  const createSnapshot = useThreadStore((state: ThreadState) => state.createSnapshot)
-  const revertToSnapshot = useThreadStore((state: ThreadState) => state.revertToSnapshot)
-  const projects = useProjectsStore((state) => state.projects)
-  const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
-  const { showToast } = useToast()
-  const [expandedFiles, setExpandedFiles] = useState<Set<number>>(new Set())
-  const [isReverting, setIsReverting] = useState(false)
-  const [, setIsDeclining] = useState(false)
+    const content = item.content as FileChangeContentType
+    const [expandedFiles, setExpandedFiles] = useState<Set<number>>(new Set())
 
-  // Refs for double-click protection (state updates are async, refs are synchronous)
-  const isRevertingRef = useRef(false)
-  const isDecliningRef = useRef(false)
+    // Use the file change approval hook for all business logic
+    const { isApplying, isReverting, handleApplyChanges, handleRevert, handleDecline } =
+      useFileChangeApproval({
+        itemId: item.id,
+        content,
+      })
 
-  // 保存决定类型的 ref，供乐观更新使用
-  const currentDecisionRef = useRef<'accept' | 'acceptForSession'>('accept')
-  // 保存 snapshotId 的 ref，供回滚使用
-  const pendingSnapshotIdRef = useRef<string | undefined>(undefined)
+    // Calculate file change statistics
+    const addCount = content.changes.filter((c) => c.kind === 'add').length
+    const modifyCount = content.changes.filter(
+      (c) => c.kind === 'modify' || c.kind === 'rename'
+    ).length
+    const deleteCount = content.changes.filter((c) => c.kind === 'delete').length
 
-  const project = projects.find((p) => p.id === selectedProjectId)
+    // Convert changes to FileDiff format
+    const fileDiffs: FileDiff[] = content.changes.map((change) => ({
+      path: change.path,
+      kind: change.kind as 'add' | 'modify' | 'delete' | 'rename',
+      oldPath: change.oldPath,
+      hunks: change.diff ? parseDiff(change.diff) : [],
+      raw: change.diff,
+    }))
 
-  /**
-   * 乐观更新回滚函数
-   * 当 approval 失败时，恢复到之前的状态
-   */
-  const rollbackApplyChanges = useCallback(
-    (previousState: ApplyChangesOptimisticState) => {
-      log.info(
-        `Rolling back apply changes, snapshotId: ${previousState.snapshotId}`,
-        'FileChangeCard'
-      )
-
-      // 如果之前创建了 snapshot 且需要回滚，可以尝试 revert
-      // 注意：这里只是恢复 UI 状态，实际的文件回滚需要通过 revertToSnapshot
-      const snapshotIdToRevert = previousState.snapshotId ?? pendingSnapshotIdRef.current
-      if (snapshotIdToRevert && project) {
-        revertToSnapshot(snapshotIdToRevert, project.path).catch((err) => {
-          log.error(`Failed to revert snapshot during rollback: ${err}`, 'FileChangeCard')
-        })
-      }
-    },
-    [project, revertToSnapshot]
-  )
-
-  /**
-   * 使用乐观更新 Hook 管理应用更改的状态
-   */
-  const {
-    execute: executeApplyChanges,
-    isLoading: isApplying,
-    rollback: manualRollback,
-  } = useOptimisticUpdate<ApplyChangesOptimisticState, void>({
-    execute: async () => {
-      if (!activeThread || !project) {
-        throw new Error('No active thread or project')
-      }
-
-      // Capture thread ID at start to detect if it changes during async operations
-      const threadIdAtStart = activeThread.id
-
-      // Try to create snapshot before applying changes
-      let snapshotId: string | undefined
-      try {
-        const snapshot = await createSnapshot(project.path)
-        snapshotId = snapshot.id
-        pendingSnapshotIdRef.current = snapshotId
-      } catch (snapshotError) {
-        log.warn(
-          `Failed to create snapshot, proceeding without: ${snapshotError}`,
-          'FileChangeCard'
-        )
-        showToast('Could not create snapshot (changes will still be applied)', 'warning')
-      }
-
-      // CRITICAL: Validate thread hasn't changed during snapshot creation
-      const currentThread = useThreadStore.getState().activeThread
-      if (!currentThread || currentThread.id !== threadIdAtStart) {
-        log.error(
-          `Thread changed during apply - threadIdAtStart: ${threadIdAtStart}, currentThread: ${currentThread?.id}`,
-          'FileChangeCard'
-        )
-        throw new Error('Thread changed during apply operation')
-      }
-
-      // Approve the changes (with or without snapshot ID)
-      await respondToApproval(item.id, currentDecisionRef.current, { snapshotId })
-    },
-    optimisticUpdate: () => {
-      // 保存之前的状态用于回滚
-      const previousState: ApplyChangesOptimisticState = {
-        snapshotId: pendingSnapshotIdRef.current,
-        previousApprovalState: content.needsApproval ?? true,
-      }
-      return previousState
-    },
-    rollbackFn: rollbackApplyChanges,
-    onSuccess: () => {
-      log.info('Changes applied successfully', 'FileChangeCard')
-    },
-    onError: (error, rollback) => {
-      log.error(`Failed to apply changes: ${error}`, 'FileChangeCard')
-      showToast('Failed to apply changes, rolling back...', 'error')
-      // 如果自动回滚失败，可以手动触发
-      rollback()
-    },
-    autoRollback: true,
-    operationId: `apply-changes-${item.id}`,
-  })
-
-  /**
-   * 处理应用更改
-   */
-  const handleApplyChanges = useCallback(
-    async (decision: 'accept' | 'acceptForSession' = 'accept') => {
-      if (isApplying || !activeThread || !project) return
-
-      // 保存决定类型
-      currentDecisionRef.current = decision
-      pendingSnapshotIdRef.current = undefined
-
-      await executeApplyChanges()
-    },
-    [isApplying, activeThread, project, executeApplyChanges]
-  )
-
-  // Manual rollback handler - exposed for external use via manualRollback from useApplyChanges
-  const handleManualRollback = useCallback(() => {
-    manualRollback()
-    showToast('Changes rolled back', 'info')
-  }, [manualRollback, showToast])
-
-  // Prevent unused variable warning - this is intentionally exposed for external access
-  void handleManualRollback
-
-  const handleRevert = async () => {
-    if (isRevertingRef.current || !content.snapshotId || !project) return
-    isRevertingRef.current = true
-    setIsReverting(true)
-    try {
-      await revertToSnapshot(content.snapshotId, project.path)
-      showToast('Changes reverted successfully', 'success')
-    } catch (error) {
-      log.error(`Failed to revert changes: ${error}`, 'FileChangeCard')
-      showToast('Failed to revert changes', 'error')
-    } finally {
-      isRevertingRef.current = false
-      setIsReverting(false)
+    // Toggle file expansion
+    const toggleFile = (index: number) => {
+      setExpandedFiles((prev) => {
+        const next = new Set(prev)
+        if (next.has(index)) {
+          next.delete(index)
+        } else {
+          next.add(index)
+        }
+        return next
+      })
     }
-  }
 
-  const handleDecline = async () => {
-    if (isDecliningRef.current || !activeThread) return
-    isDecliningRef.current = true
-    setIsDeclining(true)
-    try {
-      await respondToApproval(item.id, 'decline')
-    } finally {
-      isDecliningRef.current = false
-      setIsDeclining(false)
-    }
-  }
+    // Build header actions with file stats and timestamp
+    const headerActions = (
+      <>
+        <FileStats addCount={addCount} modifyCount={modifyCount} deleteCount={deleteCount} />
+        <span className="text-muted-foreground/60 font-normal text-[10px]">
+          {formatTimestamp(item.createdAt)}
+        </span>
+      </>
+    )
 
-  const toggleFile = (index: number) => {
-    setExpandedFiles((prev) => {
-      const next = new Set(prev)
-      if (next.has(index)) {
-        next.delete(index)
-      } else {
-        next.add(index)
-      }
-      return next
-    })
-  }
+    // Build footer actions based on state
+    const footerActions = content.needsApproval ? (
+      <ApprovalActions
+        reason={content.reason}
+        isApplying={isApplying}
+        onApply={handleApplyChanges}
+        onDecline={handleDecline}
+      />
+    ) : undefined
 
-  const addCount = content.changes.filter((c) => c.kind === 'add').length
-  const modifyCount = content.changes.filter(
-    (c) => c.kind === 'modify' || c.kind === 'rename'
-  ).length
-  const deleteCount = content.changes.filter((c) => c.kind === 'delete').length
-
-  // Convert changes to FileDiff format
-  const fileDiffs: FileDiff[] = content.changes.map((change) => ({
-    path: change.path,
-    kind: change.kind as 'add' | 'modify' | 'delete' | 'rename',
-    oldPath: change.oldPath,
-    hunks: change.diff ? parseDiff(change.diff) : [],
-    raw: change.diff,
-  }))
-
-  return (
-    <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
-      <div
-        className={cn(
-          'w-full max-w-3xl overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
+    return (
+      <BaseCard
+        icon={<FileCode size={14} />}
+        title="Proposed Changes"
+        status={content.needsApproval ? 'pending' : undefined}
+        borderColor={
           content.needsApproval
             ? 'border-l-4 border-l-blue-500 border-y-border/50 border-r-border/50'
-            : 'border-border/50'
-        )}
+            : undefined
+        }
+        headerActions={headerActions}
+        actions={footerActions}
+        expandable={false}
+        maxWidthClass="max-w-3xl"
+        contentPaddingClass="p-0"
       >
-        <div className="flex items-center justify-between border-b border-border/40 bg-secondary/30 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <div className="rounded-md bg-background p-1 text-muted-foreground shadow-sm">
-              <FileCode size={14} />
-            </div>
-            <span className="text-xs font-medium text-foreground">Proposed Changes</span>
-          </div>
-          <div className="flex items-center gap-3 text-[10px] font-medium">
-            {addCount > 0 && (
-              <span className="text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
-                +{addCount} added
-              </span>
-            )}
-            {modifyCount > 0 && (
-              <span className="text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded">
-                ~{modifyCount} modified
-              </span>
-            )}
-            {deleteCount > 0 && (
-              <span className="text-red-600 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">
-                -{deleteCount} deleted
-              </span>
-            )}
-            {/* Timestamp */}
-            <span className="text-muted-foreground/60 font-normal">
-              {formatTimestamp(item.createdAt)}
-            </span>
-          </div>
+        {/* Diff content */}
+        <div className="divide-y divide-border/30">
+          {fileDiffs.map((diff, i) => (
+            <DiffView
+              key={i}
+              diff={diff}
+              collapsed={!expandedFiles.has(i)}
+              onToggleCollapse={() => toggleFile(i)}
+            />
+          ))}
         </div>
 
-        <div className="p-0">
-          <div className="divide-y divide-border/30">
-            {fileDiffs.map((diff, i) => (
-              <DiffView
-                key={i}
-                diff={diff}
-                collapsed={!expandedFiles.has(i)}
-                onToggleCollapse={() => toggleFile(i)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {content.needsApproval && (
-          <div className="bg-secondary/10 p-4 border-t border-border/40">
-            {content.reason && (
-              <div className="mb-3 text-xs text-muted-foreground">Reason: {content.reason}</div>
-            )}
-            {/* Primary Actions */}
-            <div className="flex gap-2">
-              <button
-                className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
-                onClick={() => handleApplyChanges('accept')}
-                disabled={isApplying}
-              >
-                {isApplying ? 'Applying...' : 'Apply Changes'}
-              </button>
-              <button
-                className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
-                onClick={() => handleApplyChanges('acceptForSession')}
-                disabled={isApplying}
-              >
-                Allow for Session
-              </button>
-              <button
-                className="rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
-                onClick={handleDecline}
-              >
-                Decline
-              </button>
-            </div>
-          </div>
-        )}
-
+        {/* Applied status (rendered after content, outside BaseCard footer) */}
         {content.applied && (
-          <div className="bg-green-50/50 dark:bg-green-900/10 p-3 border-t border-green-100 dark:border-green-900/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-medium text-green-700 dark:text-green-400">
-                <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                  <span className="text-[10px]">✓</span>
-                </div>
-                <span>Changes applied</span>
-              </div>
-              {content.snapshotId && (
-                <button
-                  className="rounded-md bg-background/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors border border-transparent hover:border-destructive/20 disabled:opacity-50"
-                  onClick={handleRevert}
-                  disabled={isReverting}
-                >
-                  {isReverting ? 'Reverting...' : 'Revert Changes'}
-                </button>
-              )}
-            </div>
-          </div>
+          <AppliedStatus
+            snapshotId={content.snapshotId}
+            isReverting={isReverting}
+            onRevert={handleRevert}
+          />
         )}
-      </div>
-    </div>
-  )
+      </BaseCard>
+    )
   },
   // Custom comparison function for React.memo
   // Returns true if props are equal (skip re-render), false if different (trigger re-render)

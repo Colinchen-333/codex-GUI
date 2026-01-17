@@ -91,17 +91,20 @@ export const ProjectList = memo(function ProjectList({
           <ContextMenu key={project.id} items={contextMenuItems}>
             <button
               className={cn(
-                'w-full rounded-lg px-3 py-2.5 text-left transition-all mb-1',
+                'group w-full rounded-lg px-3 py-2.5 text-left transition-all mb-1 relative overflow-hidden',
                 isSelected
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-sm font-medium'
+                  : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground hover:shadow-sm'
               )}
               onClick={() => onSelect(project.id)}
               role="option"
               aria-selected={isSelected}
             >
-              <div className="truncate text-sm font-medium">{displayName}</div>
-              <div className="truncate text-xs text-muted-foreground">
+              <div className="truncate text-sm">{displayName}</div>
+              <div className={cn(
+                "truncate text-xs transition-colors",
+                isSelected ? "text-primary-foreground/70" : "text-muted-foreground/70 group-hover:text-muted-foreground"
+              )}>
                 {project.path}
               </div>
             </button>

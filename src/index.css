@@ -92,6 +92,16 @@
   #root {
     min-height: 100vh;
   }
+  
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-black/70 backdrop-blur-md border border-white/20 dark:border-white/10;
+  }
 }
 
 /* Custom scrollbar */

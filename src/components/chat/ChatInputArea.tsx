@@ -129,6 +129,8 @@ export default memo(function ChatInputArea({
   const focusedThread = useThreadStore(selectFocusedThread)
   const interrupt = useThreadStore((state) => state.interrupt)
 
+  const [isFocused, setIsFocused] = React.useState(false)
+
   const turnStatus = focusedThread?.turnStatus ?? 'idle'
 
   const {
@@ -215,6 +217,7 @@ export default memo(function ChatInputArea({
   // P0 Enhancement: Focus loss detection and logging
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLTextAreaElement>) => {
+      setIsFocused(false)
       // Log focus loss for debugging
       const relatedTarget = e.relatedTarget as HTMLElement | null
       const targetDescription = relatedTarget
@@ -247,6 +250,8 @@ export default memo(function ChatInputArea({
     []
   )
 
+  const handleFocus = useCallback(() => setIsFocused(true), [])
+
   const canSend = inputValue.trim() || attachedImages.length > 0
 
   return (
@@ -258,8 +263,9 @@ export default memo(function ChatInputArea({
 
         <div
           className={cn(
-            'relative rounded-2xl bg-card shadow-lg border border-border/40 p-2.5 transition-all duration-150',
+            'relative rounded-2xl bg-card/80 backdrop-blur-md shadow-lg border border-border/40 p-2.5 transition-all duration-200',
             'hover:shadow-xl hover:border-border/60',
+            isFocused && 'ring-2 ring-primary/20 border-primary/30 shadow-xl',
             isDragging && 'scale-[1.02] ring-2 ring-primary ring-offset-2'
           )}
         >
@@ -320,6 +326,7 @@ export default memo(function ChatInputArea({
               onKeyDown={handleKeyDown}
               onPaste={onPaste}
               onBlur={handleBlur}
+              onFocus={handleFocus}
               rows={1}
               aria-label="Message input"
               aria-describedby="input-hint"

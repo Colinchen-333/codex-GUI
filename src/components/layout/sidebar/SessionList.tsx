@@ -117,10 +117,10 @@ function SessionRowInner({
       <ContextMenu items={contextMenuItems}>
         <button
           className={cn(
-            'w-full rounded-lg px-3 py-2.5 text-left transition-all',
+            'group w-full rounded-lg px-3 py-2.5 text-left transition-all relative overflow-hidden',
             isSelected
               ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-foreground hover:bg-secondary/50',
+              : 'text-foreground hover:bg-secondary/80 hover:shadow-sm',
             isRunning &&
               !isSelected &&
               'border border-blue-400/30 bg-blue-50/10 dark:bg-blue-950/20'
@@ -135,14 +135,14 @@ function SessionRowInner({
             {session.isFavorite && (
               <Star size={12} className="text-yellow-500 flex-shrink-0 fill-yellow-500" />
             )}
-            <span className="truncate text-sm font-medium flex-1">{displayName}</span>
+            <span className={cn("truncate text-sm flex-1", isSelected ? "font-medium" : "font-normal")}>{displayName}</span>
             <TaskProgressIndicator tasksJson={session.tasksJson} status={session.status} />
           </div>
           {/* Second row: Status label + Timestamp + Project name */}
           <div className="flex items-center gap-1.5 mt-1 text-xs">
             <span
               className={cn(
-                'text-muted-foreground',
+                'text-muted-foreground transition-colors',
                 isSelected && 'text-primary-foreground/70'
               )}
             >
@@ -334,10 +334,10 @@ export const SessionList = memo(function SessionList({
             <ContextMenu key={session.sessionId} items={contextMenuItems}>
               <button
                 className={cn(
-                  'w-full rounded-lg px-3 py-2.5 text-left transition-all mb-1',
+                  'group w-full rounded-lg px-3 py-2.5 text-left transition-all mb-1 relative overflow-hidden',
                   isSelected
                     ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-foreground hover:bg-secondary/50',
+                    : 'text-foreground hover:bg-secondary/80 hover:shadow-sm',
                   isRunning &&
                     !isSelected &&
                     'border border-blue-400/30 bg-blue-50/10 dark:bg-blue-950/20'
@@ -360,7 +360,7 @@ export const SessionList = memo(function SessionList({
                       className="text-yellow-500 flex-shrink-0 fill-yellow-500"
                     />
                   )}
-                  <span className="truncate text-sm font-medium flex-1">
+                  <span className={cn("truncate text-sm flex-1", isSelected ? "font-medium" : "font-normal")}>
                     {displayName}
                   </span>
                   {/* Task progress indicator */}
@@ -373,7 +373,7 @@ export const SessionList = memo(function SessionList({
                 <div className="flex items-center gap-1.5 mt-1 text-xs">
                   <span
                     className={cn(
-                      'text-muted-foreground',
+                      'text-muted-foreground transition-colors',
                       isSelected && 'text-primary-foreground/70'
                     )}
                   >

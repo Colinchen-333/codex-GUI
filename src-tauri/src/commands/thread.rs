@@ -14,6 +14,17 @@ use crate::database::SessionMetadata;
 use crate::state::AppState;
 use crate::{Error, Result};
 
+/// Helper macro to get a mutable reference to the app server.
+/// Returns an error if the server is not running.
+macro_rules! get_server {
+    ($state:expr) => {{
+        let mut guard = $state.app_server.write().await;
+        guard
+            .as_mut()
+            .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?
+    }};
+}
+
 fn parse_sandbox_policy(policy: Option<String>) -> Option<SandboxPolicy> {
     match policy.as_deref() {
         Some("read-only") => Some(SandboxPolicy::ReadOnly),
@@ -58,11 +69,7 @@ pub async fn start_thread(
         config,
     };
 
-    let mut server = state.app_server.write().await;
-    let server = server
-        .as_mut()
-        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
-
+    let server = get_server!(state);
     let response: ThreadStartResponse = server.send_request("thread/start", params).await?;
 
     // Create session metadata
@@ -78,24 +85,35 @@ pub async fn start_thread(
 }
 
 /// Resume an existing thread
+///
+/// Supports pagination for large threads:
+/// - `limit`: Maximum number of items to return per page (default: 50)
+/// - `cursor`: Pagination cursor for fetching subsequent pages
 #[tauri::command]
 pub async fn resume_thread(
     state: State<'_, AppState>,
     thread_id: String,
+    limit: Option<u32>,
+    cursor: Option<String>,
 ) -> Result<ThreadResumeResponse> {
     // Ensure app-server is running
     state.start_app_server().await?;
 
-    let params = ThreadResumeParams { thread_id };
+    let params = ThreadResumeParams {
+        thread_id,
+        limit,
+        cursor,
+    };
 
-    let mut server = state.app_server.write().await;
-    let server = server
-        .as_mut()
-        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
-
+    let server = get_server!(state);
     let response: ThreadResumeResponse = server.send_request("thread/resume", params).await?;
 
-    tracing::info!("Resumed thread: {}", response.thread.id);
+    tracing::info!(
+        "Resumed thread: {}, items: {}, has_more: {:?}",
+        response.thread.id,
+        response.items.len(),
+        response.has_more
+    );
 
     Ok(response)
 }
@@ -159,11 +177,7 @@ pub async fn send_message(
         model,
     };
 
-    let mut server = state.app_server.write().await;
-    let server = server
-        .as_mut()
-        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
-
+    let server = get_server!(state);
     let response: TurnStartResponse = server.send_request("turn/start", params).await?;
 
     tracing::info!("Started turn: {}", response.turn.id);
@@ -176,11 +190,7 @@ pub async fn send_message(
 pub async fn interrupt_turn(state: State<'_, AppState>, thread_id: String) -> Result<()> {
     let params = TurnInterruptParams { thread_id, turn_id: None };
 
-    let mut server = state.app_server.write().await;
-    let server = server
-        .as_mut()
-        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
-
+    let server = get_server!(state);
     let _: JsonValue = server.send_request("turn/interrupt", params).await?;
 
     tracing::info!("Interrupted turn");
@@ -220,11 +230,7 @@ pub async fn respond_to_approval(
 
     let result = ApprovalResponseResult { decision };
 
-    let mut server = state.app_server.write().await;
-    let server = server
-        .as_mut()
-        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
-
+    let server = get_server!(state);
     // Send JSON-RPC response with the original request ID
     server.send_response(request_id, result).await?;
 
@@ -249,11 +255,7 @@ pub async fn list_threads(
         model_providers: None,
     };
 
-    let mut server = state.app_server.write().await;
-    let server = server
-        .as_mut()
-        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
-
+    let server = get_server!(state);
     let response: ThreadListResponse = server.send_request("thread/list", params).await?;
 
     Ok(response)

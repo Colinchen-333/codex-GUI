@@ -10,7 +10,7 @@
  * - Quick start dialogs for workflow/agent creation
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { X, Plus, Play, Bot, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2 } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
@@ -189,9 +189,9 @@ export function MultiAgentView() {
     setTimeout(() => workflowInputRef.current?.focus(), 100)
   }
 
-  const handleConfirmRestart = () => {
+  const handleConfirmRestart = async () => {
     // Clear existing workflow and agents before starting new one
-    clearAgents()
+    await clearAgents()
     clearWorkflow()
     setShowConfirmRestartDialog(false)
     openWorkflowDialogDirectly()
@@ -206,13 +206,13 @@ export function MultiAgentView() {
     setWorkflowTask('')
   }
 
-  const handleStartWorkflow = () => {
+  const handleStartWorkflow = async () => {
     if (!workflowTask.trim()) return
 
     // Clean up any existing agents before starting new workflow
     // This ensures a fresh state even if there are leftover agents from previous workflows
     if (agents.length > 0) {
-      clearAgents()
+      await clearAgents()
     }
     if (workflow) {
       clearWorkflow()
@@ -290,7 +290,7 @@ export function MultiAgentView() {
                 return agent ? (
                   <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      代理：{agent.name}
+                      代理：{AGENT_TYPE_OPTIONS.find(opt => opt.type === agent.type)?.name ?? agent.type}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
                       {agent.task}
@@ -370,7 +370,7 @@ export function MultiAgentView() {
                 取消
               </button>
               <button
-                onClick={handleConfirmRestart}
+                onClick={() => void handleConfirmRestart()}
                 className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 shadow-md hover:shadow-lg transition-all"
               >
                 确认重启
@@ -414,7 +414,7 @@ export function MultiAgentView() {
                 className="w-full h-32 px-4 py-3 border dark:border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.metaKey) {
-                    handleStartWorkflow()
+                    void handleStartWorkflow()
                   }
                 }}
               />
@@ -430,7 +430,7 @@ export function MultiAgentView() {
                 取消
               </button>
               <button
-                onClick={handleStartWorkflow}
+                onClick={() => void handleStartWorkflow()}
                 disabled={!workflowTask.trim()}
                 className={cn(
                   "px-6 py-2 rounded-lg font-medium transition-all",

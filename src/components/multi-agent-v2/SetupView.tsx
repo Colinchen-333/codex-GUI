@@ -123,7 +123,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
     }
   }
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!workingDir) {
       setError('请选择工作目录')
       return
@@ -136,7 +136,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
     } else {
       // Custom mode - clear old state first, then apply config and complete
       clearWorkflow()
-      clearAgents()
+      await clearAgents()
       setConfig({
         model: globalConfig.model,
         approvalPolicy: globalConfig.approvalPolicy,
@@ -160,7 +160,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
     try {
       // Clear old state before starting new workflow
       clearWorkflow()
-      clearAgents()
+      await clearAgents()
 
       // Apply global config and working directory
       setConfig({
@@ -528,7 +528,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
         {/* Action Buttons */}
         <div className="mt-8 flex items-center justify-end space-x-4">
           <button
-            onClick={handleStart}
+            onClick={() => void handleStart()}
             disabled={!workingDir || isStarting || isValidatingDir || !!dirError}
             className={cn(
               'px-6 py-3 rounded-lg font-semibold transition-all flex items-center space-x-2',

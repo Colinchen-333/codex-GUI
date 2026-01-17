@@ -868,9 +868,10 @@ export const useMultiAgentStore = create<MultiAgentState>()(
     clearAgents: async () => {
       const agents = Object.values(get().agents)
 
-      // First, interrupt all running threads
+      // Interrupt all threads that have a threadId (not just running ones)
+      // This ensures pending agents with threads are also properly cleaned up
       for (const agent of agents) {
-        if (agent.threadId && agent.status === 'running') {
+        if (agent.threadId) {
           try {
             await threadApi.interrupt(agent.threadId)
           } catch (error) {
@@ -1112,35 +1113,42 @@ export const useMultiAgentStore = create<MultiAgentState>()(
       const nextPhase = workflow.phases[phaseIndex + 1]
       const hasNextPhase = !!nextPhase
 
-      // Atomic state update: mark phase completed and update workflow state in one operation
-      set((s) => {
-        if (!s.workflow) return
+      try {
+        // Atomic state update: mark phase completed and update workflow state in one operation
+        set((s) => {
+          if (!s.workflow) return
 
-        // Mark current phase as completed
-        const p = s.workflow.phases[phaseIndex]
-        if (p) {
-          p.status = 'completed'
-          p.completedAt = p.completedAt ?? new Date()
-        }
+          // Mark current phase as completed
+          const p = s.workflow.phases[phaseIndex]
+          if (p) {
+            p.status = 'completed'
+            p.completedAt = p.completedAt ?? new Date()
+          }
 
-        // Update workflow state based on whether there's a next phase
+          // Update workflow state based on whether there's a next phase
+          if (hasNextPhase) {
+            s.workflow.currentPhaseIndex = phaseIndex + 1
+          } else {
+            // Workflow completed - no more phases
+            s.workflow.status = 'completed'
+            s.workflow.completedAt = new Date()
+          }
+        })
+
+        // Execute next phase after atomic state update (if applicable)
         if (hasNextPhase) {
-          s.workflow.currentPhaseIndex = phaseIndex + 1
-        } else {
-          // Workflow completed - no more phases
-          s.workflow.status = 'completed'
-          s.workflow.completedAt = new Date()
+          await get()._executePhase(nextPhase)
         }
-      })
 
-      // Execute next phase after atomic state update (if applicable)
-      if (hasNextPhase) {
-        await get()._executePhase(nextPhase)
+        // Note: WorkflowEngine is now a pure state container.
+        // All execution logic is handled by this store.
+        // The engine.approvePhase() method has been removed to avoid double-execution.
+      } finally {
+        // Always reset phaseCompletionInFlight after approvePhase completes
+        set((s) => {
+          s.phaseCompletionInFlight = null
+        })
       }
-
-      // Note: WorkflowEngine is now a pure state container.
-      // All execution logic is handled by this store.
-      // The engine.approvePhase() method has been removed to avoid double-execution.
     },
 
     /**
@@ -1184,6 +1192,8 @@ export const useMultiAgentStore = create<MultiAgentState>()(
           state.workflow.status = 'cancelled'
           state.workflow.completedAt = new Date()
         }
+        // Reset phaseCompletionInFlight when workflow is cancelled
+        state.phaseCompletionInFlight = null
       })
     },
 

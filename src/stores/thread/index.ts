@@ -101,6 +101,9 @@ import {
   startTimerCleanupInterval,
 } from './utils'
 
+// Import agent integration utilities
+import { cleanupEventVersion } from './agent-integration'
+
 // ==================== Store Creation ====================
 
 export const useThreadStore: UseBoundStore<StoreApi<ThreadState>> = create<ThreadState>()(
@@ -225,16 +228,26 @@ export const useThreadStore: UseBoundStore<StoreApi<ThreadState>> = create<Threa
         startApprovalCleanupTimer(cleanupStaleApprovals, 60000)
         startTimerCleanupInterval(() => new Set(Object.keys(getThreadStore().threads)))
 
+        // P1 Fix: Always reset event version when registering a thread
+        // This ensures that if a thread ID is reused, old event versions don't block new events
+        cleanupEventVersion(thread.id)
+
         set((state) => {
           safeClosingThreadsOperation(thread.id, 'delete')
 
           if (!state.threads[thread.id]) {
             state.threads[thread.id] = createEmptyThreadState(thread)
           } else {
+            // Thread is being reused - reset the thread state while preserving the thread info
             state.threads[thread.id].thread = {
               ...state.threads[thread.id].thread,
               ...thread,
             }
+            // P1 Fix: Reset turn-related state when thread is reused
+            state.threads[thread.id].turnStatus = 'idle'
+            state.threads[thread.id].currentTurnId = null
+            state.threads[thread.id].pendingApprovals = []
+            state.threads[thread.id].error = null
           }
 
           // Note: agentMapping is maintained in multi-agent-v2 store as the single source of truth
@@ -244,9 +257,11 @@ export const useThreadStore: UseBoundStore<StoreApi<ThreadState>> = create<Threa
           }
         })
       },
-      unregisterAgentThread: (_threadId) => {
+      unregisterAgentThread: (threadId) => {
         // Note: agentMapping cleanup is handled by multi-agent-v2 store
-        // This function is kept for API compatibility but no longer modifies thread store state
+        // P1 Fix: Clean up event version tracking when unregistering a thread
+        // This prevents memory leaks and ensures proper event version reset on re-registration
+        cleanupEventVersion(threadId)
       },
       sendMessage: createSendMessage(typedSet, get, enqueueQueuedMessage, dispatchNextQueuedMessage),
       interrupt: createInterrupt(typedSet, get),

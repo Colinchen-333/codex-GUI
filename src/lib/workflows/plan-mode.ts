@@ -126,10 +126,15 @@ export function generatePhaseAgentTasks(
   const agentTypes = metadata.agentTypes as AgentType[]
   const tasks = metadata.tasks as string[]
 
+  const lastRejectionReason = metadata.lastRejectionReason as string | undefined
+
   return agentTypes.map((type, index) => {
     let task = tasks[index] || tasks[0]
 
-    // Append previous phase output as context if available
+    if (lastRejectionReason && index === 0) {
+      task = `## ⚠️ 上次审批被拒绝，必须优先修正以下问题：\n${lastRejectionReason}\n\n---\n\n${task}`
+    }
+
     if (previousPhaseOutput && index === 0) {
       task += `\n\n## 前一阶段的输出：\n${previousPhaseOutput}`
     }

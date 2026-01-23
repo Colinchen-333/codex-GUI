@@ -58,12 +58,8 @@ export function MultiAgentView() {
   const minPanelWidth = 400
   const maxPanelWidth = 900
 
-  // Track agent operation state (for cancel/pause/resume feedback)
-  const [operatingAgentId, setOperatingAgentId] = useState<string | null>(null)
+  const [operatingAgentIds, setOperatingAgentIds] = useState<Set<string>>(new Set())
   const [confirmCancelAgentId, setConfirmCancelAgentId] = useState<string | null>(null)
-
-  // Ref to track if an operation is in flight (for debounce protection)
-  const operationInFlightRef = useRef<boolean>(false)
 
   // Track approval dialog - dismissed phase IDs to prevent re-showing
   const [dismissedApprovalPhaseIds, setDismissedApprovalPhaseIds] = useState<Set<string>>(new Set())
@@ -136,57 +132,56 @@ export function MultiAgentView() {
     setConfirmCancelAgentId(agentId)
   }
 
-  // Actually cancel the agent after confirmation
-  // P0-008: Added debounce protection using operationInFlightRef
   const handleConfirmCancel = useCallback(async () => {
     if (!confirmCancelAgentId) return
-    // Debounce protection: prevent double-click
-    if (operationInFlightRef.current) return
-    operationInFlightRef.current = true
+    if (operatingAgentIds.has(confirmCancelAgentId)) return
 
-    setOperatingAgentId(confirmCancelAgentId)
+    setOperatingAgentIds((prev) => new Set([...prev, confirmCancelAgentId]))
     try {
       await cancelAgent(confirmCancelAgentId)
     } finally {
-      setOperatingAgentId(null)
+      setOperatingAgentIds((prev) => {
+        const next = new Set(prev)
+        next.delete(confirmCancelAgentId)
+        return next
+      })
       setConfirmCancelAgentId(null)
-      operationInFlightRef.current = false
     }
-  }, [confirmCancelAgentId, cancelAgent])
+  }, [confirmCancelAgentId, cancelAgent, operatingAgentIds])
 
   const handleCancelCancelDialog = () => {
     setConfirmCancelAgentId(null)
   }
 
-  // P0-008: Added debounce protection using operationInFlightRef
   const handlePause = useCallback(async (agentId: string) => {
-    // Debounce protection: prevent double-click
-    if (operationInFlightRef.current) return
-    operationInFlightRef.current = true
+    if (operatingAgentIds.has(agentId)) return
 
-    setOperatingAgentId(agentId)
+    setOperatingAgentIds((prev) => new Set([...prev, agentId]))
     try {
       await pauseAgent(agentId)
     } finally {
-      setOperatingAgentId(null)
-      operationInFlightRef.current = false
+      setOperatingAgentIds((prev) => {
+        const next = new Set(prev)
+        next.delete(agentId)
+        return next
+      })
     }
-  }, [pauseAgent])
+  }, [pauseAgent, operatingAgentIds])
 
-  // P0-008: Added debounce protection using operationInFlightRef
   const handleResume = useCallback(async (agentId: string) => {
-    // Debounce protection: prevent double-click
-    if (operationInFlightRef.current) return
-    operationInFlightRef.current = true
+    if (operatingAgentIds.has(agentId)) return
 
-    setOperatingAgentId(agentId)
+    setOperatingAgentIds((prev) => new Set([...prev, agentId]))
     try {
       await resumeAgent(agentId)
     } finally {
-      setOperatingAgentId(null)
-      operationInFlightRef.current = false
+      setOperatingAgentIds((prev) => {
+        const next = new Set(prev)
+        next.delete(agentId)
+        return next
+      })
     }
-  }, [resumeAgent])
+  }, [resumeAgent, operatingAgentIds])
 
   const handleApproval = () => {
     if (pendingApprovalPhase) {
@@ -207,25 +202,24 @@ export function MultiAgentView() {
   const handleRejectAndRetry = useCallback(async (reason: string) => {
     if (!pendingApprovalPhase) return
     
-    setDismissedApprovalPhaseIds((prev) => new Set([...prev, pendingApprovalPhase.id]))
     rejectPhase(pendingApprovalPhase.id, reason)
     await retryPhase(pendingApprovalPhase.id)
   }, [pendingApprovalPhase, rejectPhase, retryPhase])
 
-  // P0-008: Added debounce protection using operationInFlightRef
   const handleRetry = useCallback(async (agentId: string) => {
-    // Debounce protection: prevent double-click
-    if (operationInFlightRef.current) return
-    operationInFlightRef.current = true
+    if (operatingAgentIds.has(agentId)) return
 
-    setOperatingAgentId(agentId)
+    setOperatingAgentIds((prev) => new Set([...prev, agentId]))
     try {
       await retryAgent(agentId)
     } finally {
-      setOperatingAgentId(null)
-      operationInFlightRef.current = false
+      setOperatingAgentIds((prev) => {
+        const next = new Set(prev)
+        next.delete(agentId)
+        return next
+      })
     }
-  }, [retryAgent])
+  }, [retryAgent, operatingAgentIds])
 
   // Workflow dialog handlers
   const handleOpenWorkflowDialog = () => {
@@ -359,17 +353,17 @@ export function MultiAgentView() {
             <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
               <button
                 onClick={handleCancelCancelDialog}
-                disabled={operatingAgentId === confirmCancelAgentId}
+                disabled={!!confirmCancelAgentId && operatingAgentIds.has(confirmCancelAgentId)}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 返回
               </button>
               <button
                 onClick={() => void handleConfirmCancel()}
-                disabled={operatingAgentId === confirmCancelAgentId}
+                disabled={!!confirmCancelAgentId && operatingAgentIds.has(confirmCancelAgentId)}
                 className="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 shadow-md hover:shadow-lg transition-all disabled:opacity-50 flex items-center space-x-2"
               >
-                {operatingAgentId === confirmCancelAgentId ? (
+                {confirmCancelAgentId && operatingAgentIds.has(confirmCancelAgentId) ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>取消中...</span>
@@ -668,7 +662,7 @@ export function MultiAgentView() {
                   onPause={(id) => void handlePause(id)}
                   onResume={(id) => void handleResume(id)}
                   onRetry={(id) => void handleRetry(id)}
-                  operatingAgentId={operatingAgentId}
+                  operatingAgentIds={operatingAgentIds}
                 />
               )}
             </div>

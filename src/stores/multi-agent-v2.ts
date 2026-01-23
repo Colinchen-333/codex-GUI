@@ -1608,11 +1608,9 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         const hasError = phaseAgents.some((a) => a.status === 'error')
         const phaseOutput = buildPhaseOutput(latestPhase, phaseAgents)
 
-        if (hasError) {
-          // Phase failed
+        if (hasError && !latestPhase.requiresApproval) {
           set((s) => {
             if (!s.workflow) return
-            // Double-check we're still on the same phase
             if (s.workflow.currentPhaseIndex !== phaseIndex) return
             const p = s.workflow.phases[s.workflow.currentPhaseIndex]
             if (p && p.id === phaseId) {
@@ -1625,10 +1623,8 @@ export const useMultiAgentStore = create<MultiAgentState>()(
           return
         }
 
-        // Phase completed successfully
-        log.info(`[checkPhaseCompletion] Phase completed: ${latestPhase.name}`, 'multi-agent')
+        log.info(`[checkPhaseCompletion] Phase completed: ${latestPhase.name}${hasError ? ' (with errors)' : ''}`, 'multi-agent')
 
-        // Check if approval is required
         if (latestPhase.requiresApproval) {
           log.info(
             `[checkPhaseCompletion] Approval required for phase: ${latestPhase.name}`,

@@ -21,8 +21,7 @@ interface AgentGridViewProps {
   onPause?: (agentId: string) => void
   onResume?: (agentId: string) => void
   onRetry?: (agentId: string) => void
-  /** Agent ID currently being operated on (for showing loading state) */
-  operatingAgentId?: string | null
+  operatingAgentIds?: Set<string>
 }
 
 // Status group display config
@@ -64,7 +63,7 @@ function AgentGridViewComponent({
   onPause,
   onResume,
   onRetry,
-  operatingAgentId,
+  operatingAgentIds,
 }: AgentGridViewProps) {
   const groupedAgents = useMemo(() => groupAgentsByStatus(agents), [agents])
 
@@ -137,7 +136,7 @@ function AgentGridViewComponent({
                     onPause={onPause}
                     onResume={onResume}
                     onRetry={onRetry}
-                    isOperating={operatingAgentId === agent.id}
+                    isOperating={operatingAgentIds?.has(agent.id) ?? false}
                   />
                 ))}
               </div>

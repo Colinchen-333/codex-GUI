@@ -17,6 +17,7 @@ import { cn } from '../../lib/utils'
 interface WorkflowStageHeaderProps {
   workflow: Workflow
   onRetryWorkflow?: () => void
+  onRecoverTimeout?: (phaseId: string) => void
 }
 
 // Phase icons mapping
@@ -27,7 +28,7 @@ const PHASE_ICONS: Record<string, React.ReactNode> = {
   implement: <Code className="w-4 h-4" />,
 }
 
-function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow }: WorkflowStageHeaderProps) {
+function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTimeout }: WorkflowStageHeaderProps) {
   const { phases, currentPhaseIndex } = workflow
 
   const getPhaseIcon = (phase: WorkflowPhase, index: number) => {
@@ -178,9 +179,20 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow }: WorkflowSta
                     {phase.requiresApproval &&
                       (phase.status === 'awaiting_approval' || phase.status === 'approval_timeout') &&
                       index === currentPhaseIndex && (
-                        <span className="mt-2 inline-block px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                          {phase.status === 'approval_timeout' ? '审批超时' : '等待审批'}
-                        </span>
+                        <div className="mt-2 flex flex-col items-center gap-1">
+                          <span className="inline-block px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                            {phase.status === 'approval_timeout' ? '审批超时' : '等待审批'}
+                          </span>
+                          {phase.status === 'approval_timeout' && onRecoverTimeout && (
+                            <button
+                              onClick={() => onRecoverTimeout(phase.id)}
+                              className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded transition-colors"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              恢复审批
+                            </button>
+                          )}
+                        </div>
                       )}
                   </div>
                 </div>

@@ -5,7 +5,7 @@
  * Supports dark mode and provides retry functionality
  */
 
-import { useState, useCallback, useEffect, useRef, memo } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { ChevronDown, ChevronUp, X, Eye, Pause, Play, AlertCircle, RotateCcw, Loader2, Bell } from 'lucide-react'
 import type { AgentDescriptor } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
@@ -38,53 +38,25 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
   const [isTaskExpanded, setIsTaskExpanded] = useState(false)
   const threadState = useThreadStore((state) => state.threads[agent.threadId])
 
-  const [localOperationInFlight, setLocalOperationInFlight] = useState(false)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-      }
-    }
-  }, [])
-
-  const isButtonDisabled = isOperating || localOperationInFlight
-
-  const resetOperationState = useCallback(() => {
-    timeoutRef.current = setTimeout(() => {
-      setLocalOperationInFlight(false)
-      timeoutRef.current = null
-    }, 300)
-  }, [])
-
   const handlePause = useCallback(() => {
-    if (localOperationInFlight || isOperating) return
-    setLocalOperationInFlight(true)
+    if (isOperating) return
     onPause?.(agent.id)
-    resetOperationState()
-  }, [agent.id, onPause, isOperating, localOperationInFlight, resetOperationState])
+  }, [agent.id, onPause, isOperating])
 
   const handleResume = useCallback(() => {
-    if (localOperationInFlight || isOperating) return
-    setLocalOperationInFlight(true)
+    if (isOperating) return
     onResume?.(agent.id)
-    resetOperationState()
-  }, [agent.id, onResume, isOperating, localOperationInFlight, resetOperationState])
+  }, [agent.id, onResume, isOperating])
 
   const handleCancel = useCallback(() => {
-    if (localOperationInFlight || isOperating) return
-    setLocalOperationInFlight(true)
+    if (isOperating) return
     onCancel?.(agent.id)
-    resetOperationState()
-  }, [agent.id, onCancel, isOperating, localOperationInFlight, resetOperationState])
+  }, [agent.id, onCancel, isOperating])
 
   const handleRetry = useCallback(() => {
-    if (localOperationInFlight || isOperating) return
-    setLocalOperationInFlight(true)
+    if (isOperating) return
     onRetry?.(agent.id)
-    resetOperationState()
-  }, [agent.id, onRetry, isOperating, localOperationInFlight, resetOperationState])
+  }, [agent.id, onRetry, isOperating])
 
   const outputLines = extractAgentOutput(threadState, 3)
   const progressPercentage = calculateProgressPercentage(agent.progress)
@@ -162,16 +134,16 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
           {isRunning && onPause && (
             <button
               onClick={handlePause}
-              disabled={isButtonDisabled}
+              disabled={isOperating}
               className={cn(
                 "p-1.5 rounded transition-colors",
-                isButtonDisabled
+                isOperating
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-300"
               )}
               title="暂停"
             >
-              {isButtonDisabled ? (
+              {isOperating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Pause className="w-4 h-4" />
@@ -182,16 +154,16 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
           {isPaused && onResume && (
             <button
               onClick={handleResume}
-              disabled={isButtonDisabled}
+              disabled={isOperating}
               className={cn(
                 "p-1.5 rounded transition-colors",
-                isButtonDisabled
+                isOperating
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/30"
               )}
               title="恢复"
             >
-              {isButtonDisabled ? (
+              {isOperating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Play className="w-4 h-4" />
@@ -212,10 +184,10 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
           {canCancelAgent(agent) && onCancel && (
             <button
               onClick={handleCancel}
-              disabled={isButtonDisabled}
+              disabled={isOperating}
               className={cn(
                 "p-1.5 rounded transition-colors",
-                isButtonDisabled
+                isOperating
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30"
               )}
@@ -310,20 +282,20 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
               {agent.error.recoverable && onRetry && (
                 <button
                   onClick={handleRetry}
-                  disabled={isButtonDisabled}
+                  disabled={isOperating}
                   className={cn(
                     "mt-2 flex items-center space-x-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
-                    isButtonDisabled
+                    isOperating
                       ? "text-gray-400 bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                       : "text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60"
                   )}
                 >
-                  {isButtonDisabled ? (
+                  {isOperating ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
                     <RotateCcw className="w-3 h-3" />
                   )}
-                  <span>{isButtonDisabled ? '重试中...' : '重试'}</span>
+                  <span>{isOperating ? '重试中...' : '重试'}</span>
                 </button>
               )}
             </div>

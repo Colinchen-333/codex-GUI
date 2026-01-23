@@ -46,11 +46,17 @@ export function MultiAgentView() {
   const spawnAgent = useMultiAgentStore((state) => state.spawnAgent)
   const retryAgent = useMultiAgentStore((state) => state.retryAgent)
   const retryWorkflow = useMultiAgentStore((state) => state.retryWorkflow)
+  const retryPhase = useMultiAgentStore((state) => state.retryPhase)
+  const recoverApprovalTimeout = useMultiAgentStore((state) => state.recoverApprovalTimeout)
   const clearAgents = useMultiAgentStore((state) => state.clearAgents)
   const clearWorkflow = useMultiAgentStore((state) => state.clearWorkflow)
 
   // Track selected agent for detail panel
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [panelWidth, setPanelWidth] = useState(600)
+  const resizingRef = useRef(false)
+  const minPanelWidth = 400
+  const maxPanelWidth = 900
 
   // Track agent operation state (for cancel/pause/resume feedback)
   const [operatingAgentId, setOperatingAgentId] = useState<string | null>(null)
@@ -198,6 +204,14 @@ export function MultiAgentView() {
     }
   }
 
+  const handleRejectAndRetry = useCallback(async (reason: string) => {
+    if (!pendingApprovalPhase) return
+    
+    setDismissedApprovalPhaseIds((prev) => new Set([...prev, pendingApprovalPhase.id]))
+    rejectPhase(pendingApprovalPhase.id, reason)
+    await retryPhase(pendingApprovalPhase.id)
+  }, [pendingApprovalPhase, rejectPhase, retryPhase])
+
   // P0-008: Added debounce protection using operationInFlightRef
   const handleRetry = useCallback(async (agentId: string) => {
     // Debounce protection: prevent double-click
@@ -294,6 +308,7 @@ export function MultiAgentView() {
           agents={agents.filter((a) => pendingApprovalPhase.agentIds.includes(a.id))}
           onApprove={handleApproval}
           onReject={handleRejection}
+          onRejectAndRetry={(reason) => void handleRejectAndRetry(reason)}
         />
       )}
 
@@ -590,7 +605,18 @@ export function MultiAgentView() {
       <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
         {/* Workflow Header */}
         {workflow && (
-          <WorkflowStageHeader workflow={workflow} onRetryWorkflow={() => void retryWorkflow()} />
+          <WorkflowStageHeader
+            workflow={workflow}
+            onRetryWorkflow={() => void retryWorkflow()}
+            onRecoverTimeout={(phaseId) => {
+              recoverApprovalTimeout(phaseId)
+              setDismissedApprovalPhaseIds((prev) => {
+                const next = new Set(prev)
+                next.delete(phaseId)
+                return next
+              })
+            }}
+          />
         )}
 
         {/* Main Content Area */}
@@ -650,7 +676,36 @@ export function MultiAgentView() {
 
           {/* Agent Detail Panel - Right Side Drawer */}
           {selectedAgent && (
-            <div className="w-[600px] flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl">
+            <div
+              className="flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl relative"
+              style={{ width: panelWidth }}
+            >
+              {/* Resize Handle */}
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500/70 z-10"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  resizingRef.current = true
+                  const startX = e.clientX
+                  const startWidth = panelWidth
+
+                  const onMouseMove = (moveEvent: MouseEvent) => {
+                    if (!resizingRef.current) return
+                    const delta = startX - moveEvent.clientX
+                    const newWidth = Math.min(maxPanelWidth, Math.max(minPanelWidth, startWidth + delta))
+                    setPanelWidth(newWidth)
+                  }
+
+                  const onMouseUp = () => {
+                    resizingRef.current = false
+                    document.removeEventListener('mousemove', onMouseMove)
+                    document.removeEventListener('mouseup', onMouseUp)
+                  }
+
+                  document.addEventListener('mousemove', onMouseMove)
+                  document.addEventListener('mouseup', onMouseUp)
+                }}
+              />
               <AgentDetailPanel agent={selectedAgent} onClose={handleCloseDetail} />
             </div>
           )}

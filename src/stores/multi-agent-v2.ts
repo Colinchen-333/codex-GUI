@@ -1423,14 +1423,12 @@ export const useMultiAgentStore = create<MultiAgentState>()(
 
       log.info(`[recoverApprovalTimeout] Recovering phase ${phaseId} from approval_timeout`, 'multi-agent')
 
-      // Reset phase status to 'completed' (waiting for approval)
       set((s) => {
         if (!s.workflow) return
 
         const p = s.workflow.phases.find((wp) => wp.id === phaseId)
         if (p) {
-          p.status = 'completed'
-          p.output = p.output?.replace(/审批超时.*/, '审批已恢复，等待用户操作')
+          p.status = 'awaiting_approval'
         }
       })
 

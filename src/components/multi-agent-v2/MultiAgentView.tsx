@@ -16,6 +16,7 @@ import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
 import { AgentDetailPanel } from './AgentDetailPanel'
 import { ApprovalDialog } from './ApprovalDialog'
+import { ReviewInbox } from './ReviewInbox'
 import { useMultiAgentStore, type AgentType } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
 import { useAgents, useWorkflow, useMultiAgentConfig } from '../../hooks/useMultiAgent'
@@ -71,6 +72,7 @@ export function MultiAgentView() {
   // Quick start dialogs
   const [showWorkflowDialog, setShowWorkflowDialog] = useState(false)
   const [showAgentDialog, setShowAgentDialog] = useState(false)
+  const [showReviewInbox, setShowReviewInbox] = useState(false)
   const [workflowTask, setWorkflowTask] = useState('')
   const [agentTask, setAgentTask] = useState('')
   const [selectedAgentType, setSelectedAgentType] = useState<AgentType>('explore')
@@ -321,6 +323,22 @@ export function MultiAgentView() {
           onRejectAndRetry={(reason) => void handleRejectAndRetry(reason)}
         />
       )}
+
+      {/* Review Inbox Dialog */}
+      <ReviewInbox
+        isOpen={showReviewInbox}
+        onClose={() => setShowReviewInbox(false)}
+        onSelectAgent={(agentId) => setSelectedAgentId(agentId)}
+        onOpenPhaseApproval={() => {
+          if (pendingApprovalPhase) {
+            setDismissedApprovalPhaseIds((prev) => {
+              const next = new Set(prev)
+              next.delete(pendingApprovalPhase.id)
+              return next
+            })
+          }
+        }}
+      />
 
       {/* Cancel Confirmation Dialog */}
       {confirmCancelAgentId && (
@@ -612,7 +630,7 @@ export function MultiAgentView() {
       )}
 
       {/* Main View */}
-      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex flex-col h-full bg-background">
         {/* Workflow Header */}
         {workflow && (
           <WorkflowStageHeader
@@ -629,9 +647,12 @@ export function MultiAgentView() {
           />
         )}
 
-        {/* Review Inbox Badge */}
+        {/* Review Inbox Badge - Clickable to open Review Inbox */}
         {totalPendingDecisions > 0 && (
-          <div className="px-6 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+          <button
+            onClick={() => setShowReviewInbox(true)}
+            className="w-full px-6 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors text-left"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
@@ -653,11 +674,11 @@ export function MultiAgentView() {
                   )}
                 </div>
               </div>
-              <div className="text-xs text-amber-600 dark:text-amber-400">
-                {pendingApprovalPhase ? '请审查阶段工作成果' : '请在代理详情中处理安全审批'}
-              </div>
+              <span className="text-xs text-amber-600 dark:text-amber-400 hover:underline">
+                点击查看详情 →
+              </span>
             </div>
-          </div>
+          </button>
         )}
 
         {/* Main Content Area */}
@@ -752,53 +773,7 @@ export function MultiAgentView() {
           )}
         </div>
 
-        {/* Bottom Status Bar (Optional) */}
-        {agents.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-2">
-            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-              <div className="flex items-center space-x-6">
-                <span>
-                  总计代理:{' '}
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">{agents.length}</span>
-                </span>
-                <span>
-                  运行中:{' '}
-                  <span className="font-semibold text-blue-600 dark:text-blue-400">
-                    {agents.filter((a) => a.status === 'running').length}
-                  </span>
-                </span>
-                <span>
-                  已完成:{' '}
-                  <span className="font-semibold text-green-600 dark:text-green-400">
-                    {agents.filter((a) => a.status === 'completed').length}
-                  </span>
-                </span>
-                <span>
-                  错误:{' '}
-                  <span className="font-semibold text-red-600 dark:text-red-400">
-                    {agents.filter((a) => a.status === 'error').length}
-                  </span>
-                </span>
-              </div>
 
-              {workflow && (
-                <div className="text-gray-500 dark:text-gray-400">
-                  工作流:{' '}
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{workflow.name}</span>
-                </div>
-              )}
-
-              {/* Quick Add Button */}
-              <button
-                onClick={handleOpenAgentDialog}
-                className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>添加代理</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </>
   )

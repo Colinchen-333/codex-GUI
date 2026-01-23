@@ -8,6 +8,7 @@
 
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { WritableDraft } from 'immer'
 import { getAgentSandboxPolicy, getAgentSystemPrompt, getAgentToolWhitelist } from '../lib/agent-types'
 import { threadApi } from '../lib/api'
@@ -269,22 +270,23 @@ function buildPhaseOutput(phase: WorkflowPhase, agents: AgentDescriptor[]): stri
 // ==================== Store Implementation ====================
 
 export const useMultiAgentStore = create<MultiAgentState>()(
-  immer((set, get) => ({
-    // ==================== Initial State ====================
-    config: defaultConfig,
-    workingDirectory: '',
-    agents: {},
-    agentOrder: [],
-    agentMapping: {},
-    workflow: null,
-    workflowEngine: null,
-    previousPhaseOutput: undefined,
-    phaseCompletionInFlight: null,
-    approvalInFlight: {},
-    approvalTimeouts: {},
-    pauseInFlight: {}, // WF-006: Track pause operations
-    dependencyWaitTimeouts: {}, // WF-008: Track dependency wait timeouts
-    pauseTimeouts: {}, // Track pause timeout timers
+  persist(
+    immer((set, get) => ({
+      // ==================== Initial State ====================
+      config: defaultConfig,
+      workingDirectory: '',
+      agents: {},
+      agentOrder: [],
+      agentMapping: {},
+      workflow: null,
+      workflowEngine: null,
+      previousPhaseOutput: undefined,
+      phaseCompletionInFlight: null,
+      approvalInFlight: {},
+      approvalTimeouts: {},
+      pauseInFlight: {},
+      dependencyWaitTimeouts: {},
+      pauseTimeouts: {},
 
     // ==================== Configuration ====================
     setConfig: (config: Partial<MultiAgentConfig>) => {
@@ -2199,5 +2201,84 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         s.pauseTimeouts = {}
       })
     },
-  }))
+  })),
+    {
+      name: 'codex-multi-agent-state',
+      version: 1,
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        config: state.config,
+        workingDirectory: state.workingDirectory,
+        agents: state.agents,
+        agentOrder: state.agentOrder,
+        agentMapping: state.agentMapping,
+        workflow: state.workflow,
+        previousPhaseOutput: state.previousPhaseOutput,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return
+        
+        const restoreDates = (obj: unknown): unknown => {
+          if (!obj || typeof obj !== 'object') return obj
+          if (Array.isArray(obj)) return obj.map(restoreDates)
+          
+          const result: Record<string, unknown> = {}
+          for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+              result[key] = new Date(value)
+            } else if (typeof value === 'object' && value !== null) {
+              result[key] = restoreDates(value)
+            } else {
+              result[key] = value
+            }
+          }
+          return result
+        }
+        
+        if (state.workflow) {
+          state.workflow = restoreDates(state.workflow) as typeof state.workflow
+        }
+        if (state.agents) {
+          state.agents = restoreDates(state.agents) as typeof state.agents
+        }
+        
+        // P0-4: Reconcile "ghost" running states after app restart
+        // Backend threads are gone, so mark running agents/phases as error (recoverable)
+        if (state.agents) {
+          for (const agentId of Object.keys(state.agents)) {
+            const agent = state.agents[agentId]
+            if (agent && agent.status === 'running') {
+              log.warn(`[onRehydrateStorage] Agent ${agentId} was running before restart, marking as error`, 'multi-agent')
+              agent.status = 'error'
+              agent.completedAt = new Date()
+              agent.error = {
+                message: '应用重启后连接丢失。点击"重试"继续执行。',
+                code: 'APP_RESTART_LOST_CONNECTION',
+                recoverable: true,
+              }
+              agent.progress.description = '连接丢失'
+            }
+          }
+        }
+        
+        if (state.workflow) {
+          for (const phase of state.workflow.phases) {
+            if (phase.status === 'running') {
+              log.warn(`[onRehydrateStorage] Phase ${phase.id} was running before restart, marking as error`, 'multi-agent')
+              phase.status = 'failed'
+              phase.completedAt = new Date()
+              phase.output = '应用重启后连接丢失。请重试此阶段。'
+            }
+          }
+          // If workflow was running but has failed phases, mark as failed
+          if (state.workflow.status === 'running') {
+            const hasFailedPhase = state.workflow.phases.some((p) => p.status === 'failed')
+            if (hasFailedPhase) {
+              state.workflow.status = 'failed'
+            }
+          }
+        }
+      },
+    }
+  )
 )

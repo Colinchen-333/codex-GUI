@@ -150,44 +150,14 @@ function App() {
     )
   }
 
-  // Multi-Agent Mode Layout
-  if (appMode === 'multi-agent') {
-    return (
-      <ErrorBoundary>
-        <ToastProvider>
-          <GlobalErrorHandler />
-          <KeyboardShortcuts />
-          <div className="flex h-screen w-screen overflow-hidden bg-background p-3">
-            {/* Multi-Agent Full Screen */}
-            <div className="flex flex-1 flex-col overflow-hidden rounded-2xl bg-card shadow-sm border border-border/50 relative">
-              <AsyncErrorBoundary
-                onError={(error) => {
-                  logError(error, {
-                    context: 'App',
-                    source: 'AsyncErrorBoundary',
-                    details: 'Async error in multi-agent view'
-                  })
-                }}
-              >
-                <MultiAgentViewContainer />
-              </AsyncErrorBoundary>
-              <StatusBar />
-            </div>
-          </div>
-          <ConnectionStatus />
-        </ToastProvider>
-      </ErrorBoundary>
-    )
-  }
-
-  // Normal Mode Layout
+  // Unified Layout - Both normal and multi-agent modes share the same shell
   return (
     <ErrorBoundary>
       <ToastProvider>
         <GlobalErrorHandler />
         <KeyboardShortcuts />
         <div className="flex h-screen w-screen overflow-hidden bg-background p-3 gap-3">
-          {/* Left Sidebar */}
+          {/* Left Sidebar - Always visible */}
           <Sidebar />
 
           {/* Main Content Area */}
@@ -197,11 +167,11 @@ function App() {
                 logError(error, {
                   context: 'App',
                   source: 'AsyncErrorBoundary',
-                  details: 'Async error in main area'
+                  details: `Async error in ${appMode === 'multi-agent' ? 'multi-agent' : 'main'} area`
                 })
               }}
             >
-              <MainArea />
+              {appMode === 'multi-agent' ? <MultiAgentViewContainer /> : <MainArea />}
             </AsyncErrorBoundary>
             <StatusBar />
           </div>

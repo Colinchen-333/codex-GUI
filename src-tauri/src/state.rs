@@ -77,10 +77,7 @@ impl AppState {
     pub async fn restart_app_server(&self) -> Result<()> {
         tracing::info!("Restarting app server...");
         self.stop_app_server().await?;
-
-        // Small delay to ensure process cleanup
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
+        // stop_app_server awaits shutdown() which waits for process exit, no extra delay needed
         self.start_app_server().await?;
 
         // Emit reconnected event

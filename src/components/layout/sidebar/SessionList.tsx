@@ -412,7 +412,7 @@ export const SessionList = memo(function SessionList({
                       </span>
                       <span
                         className={cn(
-                          'px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground truncate max-w-[80px]',
+'px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground truncate max-w-[120px]',
                           isSelected &&
                             'bg-primary-foreground/20 text-primary-foreground/80'
                         )}

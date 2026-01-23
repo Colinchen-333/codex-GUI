@@ -11,12 +11,13 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, Play, Bot, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2 } from 'lucide-react'
+import { X, Plus, Play, Bot, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
 import { AgentDetailPanel } from './AgentDetailPanel'
 import { ApprovalDialog } from './ApprovalDialog'
 import { useMultiAgentStore, type AgentType } from '../../stores/multi-agent-v2'
+import { useThreadStore } from '../../stores/thread'
 import { useAgents, useWorkflow, useMultiAgentConfig } from '../../hooks/useMultiAgent'
 import { createPlanModeWorkflow } from '../../lib/workflows/plan-mode'
 import { cn } from '../../lib/utils'
@@ -118,6 +119,21 @@ export function MultiAgentView() {
     }
     return null
   }, [workflow, agents, dismissedApprovalPhaseIds])
+
+  const threadStoreState = useThreadStore((state) => state.threads)
+  const safetyApprovalCount = useMemo(() => {
+    const agentThreadIds = new Set(agents.map((a) => a.threadId))
+    let count = 0
+    for (const threadId of agentThreadIds) {
+      const thread = threadStoreState[threadId]
+      if (thread?.pendingApprovals) {
+        count += thread.pendingApprovals.length
+      }
+    }
+    return count
+  }, [agents, threadStoreState])
+
+  const totalPendingDecisions = (pendingApprovalPhase ? 1 : 0) + safetyApprovalCount
 
   const handleViewDetails = (agentId: string) => {
     setSelectedAgentId(agentId)
@@ -611,6 +627,37 @@ export function MultiAgentView() {
               })
             }}
           />
+        )}
+
+        {/* Review Inbox Badge */}
+        {totalPendingDecisions > 0 && (
+          <div className="px-6 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                  <Bell className="w-4 h-4 animate-pulse" />
+                  <span className="font-medium">待处理决策</span>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  {pendingApprovalPhase && (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 rounded text-amber-800 dark:text-amber-300">
+                      <CheckSquare className="w-3.5 h-3.5" />
+                      1 阶段审批
+                    </span>
+                  )}
+                  {safetyApprovalCount > 0 && (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 rounded text-blue-800 dark:text-blue-300">
+                      <FileCode className="w-3.5 h-3.5" />
+                      {safetyApprovalCount} 安全审批
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="text-xs text-amber-600 dark:text-amber-400">
+                {pendingApprovalPhase ? '请审查阶段工作成果' : '请在代理详情中处理安全审批'}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Main Content Area */}

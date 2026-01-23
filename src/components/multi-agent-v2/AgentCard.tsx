@@ -65,6 +65,8 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
   const isPaused = agent.status === 'pending' && agent.interruptReason === 'pause'
   const pendingApprovalCount = threadState?.pendingApprovals?.length ?? 0
   const hasWaitingApprovals = pendingApprovalCount > 0
+  const STUCK_THRESHOLD_MS = 5 * 60 * 1000
+  const maybeStuck = isRunning && elapsedTime > STUCK_THRESHOLD_MS
 
   return (
     <div
@@ -119,6 +121,12 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
                 <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex items-center space-x-1 animate-pulse">
                   <Bell className="w-3 h-3" />
                   <span>待审批 {pendingApprovalCount}</span>
+                </span>
+              )}
+              {maybeStuck && (
+                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 flex items-center space-x-1">
+                  <AlertCircle className="w-3 h-3" />
+                  <span>可能卡住</span>
                 </span>
               )}
             </div>

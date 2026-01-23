@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { CheckCircle, XCircle, RotateCcw, ChevronDown, ChevronUp, Terminal, FileCode, AlertCircle, Activity } from 'lucide-react'
+import { CheckCircle, XCircle, RotateCcw, ChevronDown, ChevronUp, ChevronRight, Terminal, FileCode, AlertCircle, Activity } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { WorkflowPhase, AgentDescriptor } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
@@ -369,6 +369,7 @@ function AgentArtifactCard({
   isExpanded: boolean
   onToggle: () => void
 }) {
+  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
   const threadState = useThreadStore((state) => state.threads[agent.threadId])
 
   const artifacts = (() => {
@@ -464,22 +465,85 @@ function AgentArtifactCard({
           {/* File Changes with Diff */}
           {artifacts.fileChanges.map((fc) => (
             <div key={fc.id} className="p-4">
-              <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                <FileCode className="w-4 h-4" />
-                文件变更
-              </h5>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <FileCode className="w-4 h-4" />
+                  文件变更 ({fc.content.changes.length})
+                </h5>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const newSet = new Set(expandedFiles)
+                      fc.content.changes.forEach((_, idx) => newSet.add(`${fc.id}-${idx}`))
+                      setExpandedFiles(newSet)
+                    }}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                  >
+                    全部展开
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <button
+                    onClick={() => {
+                      const newSet = new Set(expandedFiles)
+                      fc.content.changes.forEach((_, idx) => newSet.delete(`${fc.id}-${idx}`))
+                      setExpandedFiles(newSet)
+                    }}
+                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                  >
+                    全部折叠
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 {fc.content.changes.map((change, idx) => {
-                  const hunks = parseDiff(change.diff || '')
-                  const fileDiff = {
-                    path: change.path,
-                    kind: change.kind as 'add' | 'modify' | 'delete' | 'rename',
-                    oldPath: change.oldPath,
-                    hunks,
-                  }
+                  const fileKey = `${fc.id}-${idx}`
+                  const isFileExpanded = expandedFiles.has(fileKey)
+                  
                   return (
-                    <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                      <DiffView diff={fileDiff} />
+                    <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+                      <button
+                        onClick={() => {
+                          const newSet = new Set(expandedFiles)
+                          if (isFileExpanded) newSet.delete(fileKey)
+                          else newSet.add(fileKey)
+                          setExpandedFiles(newSet)
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                      >
+                         {isFileExpanded ? (
+                           <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                         ) : (
+                           <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                         )}
+                         <span className="font-mono text-xs text-gray-700 dark:text-gray-300 flex-1 truncate" title={change.path}>
+                           {change.path}
+                         </span>
+                         <span className={cn(
+                           "text-[10px] px-1.5 py-0.5 rounded uppercase font-medium flex-shrink-0",
+                           change.kind === 'add' && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                           change.kind === 'delete' && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                           change.kind === 'modify' && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                           change.kind === 'rename' && "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+                         )}>
+                           {change.kind}
+                         </span>
+                      </button>
+                      
+                      {isFileExpanded && (
+                        <div className="border-t border-gray-200 dark:border-gray-700">
+                          {(() => {
+                            const hunks = parseDiff(change.diff || '')
+                            const fileDiff = {
+                              path: change.path,
+                              kind: change.kind as 'add' | 'modify' | 'delete' | 'rename',
+                              oldPath: change.oldPath,
+                              hunks,
+                            }
+                            return <DiffView diff={fileDiff} />
+                          })()}
+                        </div>
+                      )}
                     </div>
                   )
                 })}

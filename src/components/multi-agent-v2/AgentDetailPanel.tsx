@@ -9,8 +9,8 @@
  * - Closeable/minimizable
  */
 
-import { useRef, useEffect } from 'react'
-import { X, Minimize2, Terminal, AlertCircle, Wrench, User, Bot, ChevronDown, FileCode, Check, XCircle } from 'lucide-react'
+import { useRef, useEffect, useState, useMemo } from 'react'
+import { X, Minimize2, Terminal, AlertCircle, Wrench, User, Bot, ChevronDown, FileCode, Check, XCircle, ArrowDown } from 'lucide-react'
 import type { AgentDescriptor } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
 import { DiffView, parseDiff } from '../ui/DiffView'
@@ -34,16 +34,68 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
   // Get thread state for this agent
   const threadState = useThreadStore((state) => state.threads[agent.threadId])
 
-  // Auto-scroll ref
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollBottomRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (scrollBottomRef.current && threadState?.itemOrder.length) {
-      scrollBottomRef.current.scrollIntoView({ behavior: 'smooth' })
+  const [isScrollLocked, setIsScrollLocked] = useState(false)
+  const [hasNewMessages, setHasNewMessages] = useState(false)
+
+  const handleScroll = () => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const { scrollHeight, scrollTop, clientHeight } = container
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50
+
+    if (isAtBottom) {
+      setIsScrollLocked(false)
+      setHasNewMessages(false)
+    } else {
+      setIsScrollLocked(true)
     }
-  }, [threadState?.itemOrder.length])
+  }
+
+  useEffect(() => {
+    if (threadState?.itemOrder.length) {
+      if (isScrollLocked) {
+        setHasNewMessages(true)
+      } else if (scrollBottomRef.current) {
+        scrollBottomRef.current.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+  }, [threadState?.itemOrder.length, isScrollLocked])
+
+  const stats = useMemo(() => {
+    if (!threadState?.itemOrder.length) return null
+    let files = 0, commands = 0, errors = 0
+    let firstFileId: string | null = null
+    let firstCommandId: string | null = null
+    let firstErrorId: string | null = null
+
+    for (const id of threadState.itemOrder) {
+      const item = threadState.items[id]
+      if (!item) continue
+      if (item.type === 'fileChange') {
+        files++
+        if (!firstFileId) firstFileId = id
+      } else if (item.type === 'commandExecution') {
+        commands++
+        if (!firstCommandId) firstCommandId = id
+      } else if (item.type === 'error') {
+        errors++
+        if (!firstErrorId) firstErrorId = id
+      }
+    }
+    return { files, commands, errors, firstFileId, firstCommandId, firstErrorId }
+  }, [threadState])
+
+  const scrollToId = (id: string | null) => {
+    if (!id) return
+    const element = document.getElementById(`msg-${id}`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
 
   // Render message based on type
   const renderMessage = (itemId: string) => {
@@ -54,7 +106,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       case 'agentMessage': {
         const content = item.content as { text: string }
         return (
-          <div key={itemId} className="flex items-start space-x-3">
+          <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
               <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
@@ -72,7 +124,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       case 'userMessage': {
         const content = item.content as { text: string }
         return (
-          <div key={itemId} className="flex items-start space-x-3">
+          <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </div>
@@ -89,7 +141,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
         const content = item.content as { command: string; output?: string; exitCode?: number }
         const hasError = content.exitCode !== undefined && content.exitCode !== 0
         return (
-          <div key={itemId} className="flex items-start space-x-3">
+          <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
             <div className={cn(
               "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
               hasError ? "bg-red-100 dark:bg-red-900/40" : "bg-gray-800 dark:bg-gray-900"
@@ -133,7 +185,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
         const isApplied = content.applied
 
         return (
-          <div key={itemId} className="flex items-start space-x-3">
+          <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
             <div className={cn(
               "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
               isApplied ? "bg-green-100 dark:bg-green-900/40" : needsApproval ? "bg-amber-100 dark:bg-amber-900/40" : "bg-gray-100 dark:bg-gray-700"
@@ -226,7 +278,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
         const isRunning = content.isRunning
 
         return (
-          <div key={itemId} className="flex items-start space-x-3">
+          <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
             <div className={cn(
               "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
               hasError
@@ -295,7 +347,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       case 'error': {
         const content = item.content as { message: string; code?: string }
         return (
-          <div key={itemId} className="flex items-start space-x-3">
+          <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
               <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
             </div>
@@ -317,7 +369,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       default:
         // Fallback for unknown message types
         return (
-          <div key={itemId} className="flex items-start space-x-3 opacity-60">
+          <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3 opacity-60">
             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               <ChevronDown className="w-4 h-4 text-gray-400" />
             </div>
@@ -392,34 +444,88 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       </div>
 
       {/* Message History */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-auto p-4 space-y-4 bg-gray-50/50 dark:bg-gray-900/50"
-      >
-        {threadState ? (
-          <>
-            {threadState.itemOrder.length > 0 ? (
-              <>
-                {threadState.itemOrder.map(renderMessage)}
-                {/* Auto-scroll anchor */}
-                <div ref={scrollBottomRef} />
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                <div className="text-center">
-                  <Bot className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">等待代理输出...</p>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-            <div className="text-center">
-              <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">线程未加载</p>
-              <p className="text-xs mt-1 font-mono">ID: {agent.threadId.slice(0, 16)}</p>
+      <div className="relative flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/50">
+        {stats && (stats.files > 0 || stats.commands > 0 || stats.errors > 0) && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+            <div className="flex items-center space-x-1 p-1 bg-white/90 dark:bg-gray-800/90 backdrop-blur shadow-sm border border-gray-200 dark:border-gray-700 rounded-full pointer-events-auto">
+              {stats.files > 0 && (
+                <button
+                  onClick={() => scrollToId(stats.firstFileId)}
+                  className="flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-xs font-medium text-gray-600 dark:text-gray-300"
+                  title="跳转到第一个文件变更"
+                >
+                  <FileCode className="w-3 h-3" />
+                  <span>{stats.files}</span>
+                </button>
+              )}
+              {stats.commands > 0 && (
+                <button
+                  onClick={() => scrollToId(stats.firstCommandId)}
+                  className="flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-xs font-medium text-gray-600 dark:text-gray-300"
+                  title="跳转到第一个命令"
+                >
+                  <Terminal className="w-3 h-3" />
+                  <span>{stats.commands}</span>
+                </button>
+              )}
+              {stats.errors > 0 && (
+                <button
+                  onClick={() => scrollToId(stats.firstErrorId)}
+                  className="flex items-center space-x-1 px-2 py-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors text-xs font-medium text-red-600 dark:text-red-400"
+                  title="跳转到第一个错误"
+                >
+                  <AlertCircle className="w-3 h-3" />
+                  <span>{stats.errors}</span>
+                </button>
+              )}
             </div>
+          </div>
+        )}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="absolute inset-0 overflow-auto p-4 space-y-4"
+        >
+          {threadState ? (
+            <>
+              {threadState.itemOrder.length > 0 ? (
+                <>
+                  {threadState.itemOrder.map(renderMessage)}
+                  <div ref={scrollBottomRef} />
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                  <div className="text-center">
+                    <Bot className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">等待代理输出...</p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+              <div className="text-center">
+                <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">线程未加载</p>
+                <p className="text-xs mt-1 font-mono">ID: {agent.threadId.slice(0, 16)}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {hasNewMessages && isScrollLocked && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+            <button
+              onClick={() => {
+                setIsScrollLocked(false)
+                setHasNewMessages(false)
+                scrollBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full shadow-lg transition-all animate-bounce"
+            >
+              <span>新消息</span>
+              <ArrowDown className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>

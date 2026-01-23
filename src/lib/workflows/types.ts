@@ -140,3 +140,48 @@ export interface WorkflowExecutionContext {
   previousPhaseOutput?: string
   globalConfig?: Record<string, unknown>
 }
+
+// ==================== Workflow Template Types ====================
+
+/**
+ * Template source - distinguishes built-in templates from user-created ones
+ */
+export type WorkflowTemplateSource = 'builtin' | 'user'
+
+/**
+ * Agent group template - defines a group of agents to spawn in a phase
+ */
+export interface PhaseAgentGroupTemplate {
+  id: string
+  type: AgentType
+  count: number
+  taskTemplate: string // Supports {{userTask}} interpolation
+  config?: AgentConfigOverrides
+}
+
+/**
+ * Phase template - defines a phase within a workflow template
+ */
+export interface PhaseTemplate {
+  id: string
+  kind: WorkflowPhaseKind
+  name: string
+  description: string
+  requiresApproval: boolean
+  approvalTimeoutMs?: number
+  agentGroups: PhaseAgentGroupTemplate[]
+}
+
+/**
+ * Workflow template - reusable workflow definition
+ */
+export interface WorkflowTemplate {
+  id: string
+  name: string
+  description: string
+  source: WorkflowTemplateSource
+  schemaVersion: number
+  phases: PhaseTemplate[]
+  createdAt: Date
+  updatedAt: Date
+}

@@ -15,6 +15,8 @@ import { threadApi } from '../lib/api'
 import { log } from '../lib/logger'
 import { normalizeApprovalPolicy, normalizeSandboxMode } from '../lib/normalize'
 import { extractPhaseSummary, generatePhaseAgentTasks } from '../lib/workflows/plan-mode'
+import { createWorkflowFromTemplate } from '../lib/workflows/template-engine'
+import type { WorkflowTemplate } from '../lib/workflows/types'
 import { useThreadStore } from './thread'
 import type { SingleThreadState } from './thread/types'
 import { APPROVAL_TIMEOUT_MS } from './thread/constants'
@@ -111,6 +113,7 @@ export interface MultiAgentState {
 
   // Actions - Workflow Management
   startWorkflow: (workflow: Workflow) => Promise<void>
+  startWorkflowFromTemplate: (template: WorkflowTemplate, userTask: string) => Promise<void>
   approvePhase: (phaseId: string) => Promise<void>
   rejectPhase: (phaseId: string, reason?: string) => void
   recoverApprovalTimeout: (phaseId: string) => void
@@ -1146,6 +1149,16 @@ export const useMultiAgentStore = create<MultiAgentState>()(
 
       // Start first phase
       await get()._executePhase(workflow.phases[0])
+    },
+
+    startWorkflowFromTemplate: async (template: WorkflowTemplate, userTask: string) => {
+      const state = get()
+      const context = {
+        workingDirectory: state.config.cwd || state.workingDirectory,
+        userTask,
+      }
+      const workflow = createWorkflowFromTemplate(template, userTask, context)
+      await get().startWorkflow(workflow)
     },
 
     /**

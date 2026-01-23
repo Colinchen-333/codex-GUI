@@ -11,16 +11,16 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, Play, Bot, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare } from 'lucide-react'
+import { X, Plus, Play, Bot, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare, Box, User } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
 import { AgentDetailPanel } from './AgentDetailPanel'
 import { ApprovalDialog } from './ApprovalDialog'
 import { ReviewInbox } from './ReviewInbox'
 import { useMultiAgentStore, type AgentType } from '../../stores/multi-agent-v2'
+import { useWorkflowTemplatesStore } from '../../stores/workflowTemplates'
 import { useThreadStore } from '../../stores/thread'
-import { useAgents, useWorkflow, useMultiAgentConfig } from '../../hooks/useMultiAgent'
-import { createPlanModeWorkflow } from '../../lib/workflows/plan-mode'
+import { useAgents, useWorkflow } from '../../hooks/useMultiAgent'
 import { cn } from '../../lib/utils'
 
 // Agent type options for quick creation
@@ -35,7 +35,6 @@ const AGENT_TYPE_OPTIONS: { type: AgentType; icon: React.ReactNode; name: string
 export function MultiAgentView() {
   // Use granular selectors to prevent re-renders on unrelated state changes
   const agents = useAgents()
-  const config = useMultiAgentConfig()
   const workflow = useWorkflow()
   
   // Get actions individually (stable references)
@@ -44,7 +43,6 @@ export function MultiAgentView() {
   const cancelAgent = useMultiAgentStore((state) => state.cancelAgent)
   const pauseAgent = useMultiAgentStore((state) => state.pauseAgent)
   const resumeAgent = useMultiAgentStore((state) => state.resumeAgent)
-  const startWorkflow = useMultiAgentStore((state) => state.startWorkflow)
   const spawnAgent = useMultiAgentStore((state) => state.spawnAgent)
   const retryAgent = useMultiAgentStore((state) => state.retryAgent)
   const retryWorkflow = useMultiAgentStore((state) => state.retryWorkflow)
@@ -52,6 +50,9 @@ export function MultiAgentView() {
   const recoverApprovalTimeout = useMultiAgentStore((state) => state.recoverApprovalTimeout)
   const clearAgents = useMultiAgentStore((state) => state.clearAgents)
   const clearWorkflow = useMultiAgentStore((state) => state.clearWorkflow)
+  const startWorkflowFromTemplate = useMultiAgentStore((state) => state.startWorkflowFromTemplate)
+  
+  const templates = useWorkflowTemplatesStore((state) => state.getAllTemplates())
 
   // Track selected agent for detail panel
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
@@ -76,6 +77,7 @@ export function MultiAgentView() {
   const [workflowTask, setWorkflowTask] = useState('')
   const [agentTask, setAgentTask] = useState('')
   const [selectedAgentType, setSelectedAgentType] = useState<AgentType>('explore')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
 
   const workflowInputRef = useRef<HTMLTextAreaElement>(null)
   const agentInputRef = useRef<HTMLTextAreaElement>(null)
@@ -252,6 +254,9 @@ export function MultiAgentView() {
   const openWorkflowDialogDirectly = () => {
     setShowWorkflowDialog(true)
     setWorkflowTask('')
+    if (templates.length > 0) {
+      setSelectedTemplateId(templates[0].id)
+    }
     setTimeout(() => workflowInputRef.current?.focus(), 100)
   }
 
@@ -273,7 +278,10 @@ export function MultiAgentView() {
   }
 
   const handleStartWorkflow = async () => {
-    if (!workflowTask.trim()) return
+    if (!workflowTask.trim() || !selectedTemplateId) return
+
+    const template = templates.find(t => t.id === selectedTemplateId)
+    if (!template) return
 
     // Clean up any existing agents before starting new workflow
     // This ensures a fresh state even if there are leftover agents from previous workflows
@@ -284,11 +292,7 @@ export function MultiAgentView() {
       clearWorkflow()
     }
 
-    const workflowInstance = createPlanModeWorkflow(workflowTask.trim(), {
-      workingDirectory: config.cwd,
-      userTask: workflowTask.trim(),
-    })
-    void startWorkflow(workflowInstance)
+    void startWorkflowFromTemplate(template, workflowTask.trim())
     handleCloseWorkflowDialog()
   }
 
@@ -466,12 +470,12 @@ export function MultiAgentView() {
       {/* Workflow Quick Start Dialog */}
       {showWorkflowDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             {/* Dialog Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 bg-gray-900 dark:bg-gray-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 bg-gray-900 dark:bg-gray-800 flex-shrink-0">
               <div className="flex items-center space-x-3">
                 <Play className="w-5 h-5 text-white" />
-                <h3 className="text-lg font-semibold text-white">启动 Plan Mode 工作流</h3>
+                <h3 className="text-lg font-semibold text-white">启动工作流</h3>
               </div>
               <button
                 onClick={handleCloseWorkflowDialog}
@@ -482,30 +486,73 @@ export function MultiAgentView() {
             </div>
 
             {/* Dialog Content */}
-            <div className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Plan Mode 工作流将自动执行 4 个阶段：探索 → 设计 → 审查 → 实施
-              </p>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                描述您要完成的任务
-              </label>
-              <textarea
-                ref={workflowInputRef}
-                value={workflowTask}
-                onChange={(e) => setWorkflowTask(e.target.value)}
-                placeholder="例如：为项目添加暗色模式支持..."
-                className="w-full h-32 px-4 py-3 border dark:border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.metaKey) {
-                    void handleStartWorkflow()
-                  }
-                }}
-              />
-              <p className="text-xs text-gray-400 mt-2">按 ⌘ + Enter 快速启动</p>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  1. 选择工作流模板
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {templates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => setSelectedTemplateId(template.id)}
+                      className={cn(
+                        "flex flex-col text-left p-3 rounded-xl border-2 transition-all",
+                        selectedTemplateId === template.id
+                          ? "border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-700/50"
+                          : "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {template.name}
+                        </span>
+                        {template.source === 'builtin' ? (
+                          <Box className="w-4 h-4 text-blue-500" />
+                        ) : (
+                          <User className="w-4 h-4 text-amber-500" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
+                        {template.description}
+                      </p>
+                      <div className="flex items-center gap-2 mt-auto">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                          {template.phases.length} 阶段
+                        </span>
+                        {template.source === 'builtin' && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+                            内置
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  2. 描述您要完成的任务
+                </label>
+                <textarea
+                  ref={workflowInputRef}
+                  value={workflowTask}
+                  onChange={(e) => setWorkflowTask(e.target.value)}
+                  placeholder="例如：为项目添加暗色模式支持..."
+                  className="w-full h-32 px-4 py-3 border dark:border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.metaKey) {
+                      void handleStartWorkflow()
+                    }
+                  }}
+                />
+                <p className="text-xs text-gray-400 mt-2">按 ⌘ + Enter 快速启动</p>
+              </div>
             </div>
 
             {/* Dialog Footer */}
-            <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
               <button
                 onClick={handleCloseWorkflowDialog}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -514,10 +561,10 @@ export function MultiAgentView() {
               </button>
               <button
                 onClick={() => void handleStartWorkflow()}
-                disabled={!workflowTask.trim()}
+                disabled={!workflowTask.trim() || !selectedTemplateId}
                 className={cn(
                   "px-6 py-2 rounded-lg font-medium transition-all",
-                  workflowTask.trim()
+                  workflowTask.trim() && selectedTemplateId
                     ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 shadow-md hover:shadow-lg"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed"
                 )}

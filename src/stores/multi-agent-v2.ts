@@ -13,7 +13,6 @@ import { getAgentSandboxPolicy, getAgentSystemPrompt, getAgentToolWhitelist } fr
 import { threadApi } from '../lib/api'
 import { log } from '../lib/logger'
 import { normalizeApprovalPolicy, normalizeSandboxMode } from '../lib/normalize'
-import { WorkflowEngine } from '../lib/workflows/workflow-engine'
 import { extractPhaseSummary, generatePhaseAgentTasks } from '../lib/workflows/plan-mode'
 import { useThreadStore } from './thread'
 import type { SingleThreadState } from './thread/types'
@@ -77,7 +76,6 @@ export interface MultiAgentState {
 
   // Workflow
   workflow: Workflow | null
-  workflowEngine: WorkflowEngine | null
   previousPhaseOutput?: string
   phaseCompletionInFlight: string | null
 
@@ -1126,61 +1124,22 @@ export const useMultiAgentStore = create<MultiAgentState>()(
           }
         }
 
-        // Clear agents state
         set((s) => {
           s.agents = {}
           s.agentOrder = []
           s.agentMapping = {}
           s.workflow = null
-          s.workflowEngine = null
           s.previousPhaseOutput = undefined
           s.phaseCompletionInFlight = null
         })
       }
 
-      // Set workflow
       set((s) => {
         s.workflow = workflow as WritableDraft<Workflow>
         s.workflow.status = 'running'
         s.workflow.startedAt = new Date()
         s.previousPhaseOutput = undefined
         s.phaseCompletionInFlight = null
-      })
-
-      // Create workflow engine
-      const context: WorkflowExecutionContext = {
-        workingDirectory: state.workingDirectory || state.config.cwd,
-        userTask: workflow.description,
-        globalConfig: { ...state.config },
-      }
-
-      const engine = new WorkflowEngine(workflow.phases, context, {
-        onPhaseStarted: (phase) => {
-          log.info(`[Workflow] Phase started: ${phase.name}`, 'multi-agent')
-        },
-        onPhaseCompleted: (phase) => {
-          log.info(`[Workflow] Phase completed: ${phase.name}`, 'multi-agent')
-        },
-        onPhaseFailed: (phase, error) => {
-          log.error(`[Workflow] Phase failed: ${phase.name}: ${error}`, 'multi-agent')
-        },
-        onApprovalRequired: (phase) => {
-          log.info(`[Workflow] Approval required for phase: ${phase.name}`, 'multi-agent')
-          // UI will show approval dialog
-        },
-        onAllPhasesCompleted: () => {
-          log.info('[Workflow] All phases completed', 'multi-agent')
-          set((s) => {
-            if (s.workflow) {
-              s.workflow.status = 'completed'
-              s.workflow.completedAt = new Date()
-            }
-          })
-        },
-      })
-
-      set((s) => {
-        s.workflowEngine = engine as WritableDraft<WorkflowEngine>
       })
 
       // Start first phase
@@ -1530,7 +1489,6 @@ export const useMultiAgentStore = create<MultiAgentState>()(
 
       set((s) => {
         s.workflow = null
-        s.workflowEngine = null
         s.previousPhaseOutput = undefined
         s.phaseCompletionInFlight = null
         s.approvalInFlight = {}
@@ -2237,7 +2195,6 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         s.agentOrder = []
         s.agentMapping = {}
         s.workflow = null
-        s.workflowEngine = null
         s.previousPhaseOutput = undefined
         s.phaseCompletionInFlight = null
         // Clear all approval and timeout tracking state

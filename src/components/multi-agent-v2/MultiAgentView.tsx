@@ -11,7 +11,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, Play, Bot, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare, Box, User } from 'lucide-react'
+import { X, Plus, Play, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare, Box, User, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
 import { AgentDetailPanel } from './AgentDetailPanel'
@@ -78,6 +78,7 @@ export function MultiAgentView() {
   const [agentTask, setAgentTask] = useState('')
   const [selectedAgentType, setSelectedAgentType] = useState<AgentType>('explore')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
 
   const workflowInputRef = useRef<HTMLTextAreaElement>(null)
   const agentInputRef = useRef<HTMLTextAreaElement>(null)
@@ -254,6 +255,7 @@ export function MultiAgentView() {
   const openWorkflowDialogDirectly = () => {
     setShowWorkflowDialog(true)
     setWorkflowTask('')
+    setShowAdvancedOptions(false)
     if (templates.length > 0) {
       setSelectedTemplateId(templates[0].id)
     }
@@ -278,13 +280,14 @@ export function MultiAgentView() {
   }
 
   const handleStartWorkflow = async () => {
-    if (!workflowTask.trim() || !selectedTemplateId) return
+    if (!workflowTask.trim()) return
 
-    const template = templates.find(t => t.id === selectedTemplateId)
+    const templateId = selectedTemplateId || templates[0]?.id
+    if (!templateId) return
+
+    const template = templates.find(t => t.id === templateId)
     if (!template) return
 
-    // Clean up any existing agents before starting new workflow
-    // This ensures a fresh state even if there are leftover agents from previous workflows
     if (agents.length > 0) {
       await clearAgents()
     }
@@ -467,15 +470,15 @@ export function MultiAgentView() {
         </div>
       )}
 
-      {/* Workflow Quick Start Dialog */}
+      {/* Workflow Quick Start Dialog - Standard Mode */}
       {showWorkflowDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             {/* Dialog Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 bg-gray-900 dark:bg-gray-800 flex-shrink-0">
               <div className="flex items-center space-x-3">
-                <Play className="w-5 h-5 text-white" />
-                <h3 className="text-lg font-semibold text-white">启动工作流</h3>
+                <Sparkles className="w-5 h-5 text-white" />
+                <h3 className="text-lg font-semibold text-white">开始任务</h3>
               </div>
               <button
                 onClick={handleCloseWorkflowDialog}
@@ -487,90 +490,107 @@ export function MultiAgentView() {
 
             {/* Dialog Content */}
             <div className="p-6 overflow-y-auto flex-1">
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  1. 选择工作流模板
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {templates.map((template) => (
-                    <button
-                      key={template.id}
-                      onClick={() => setSelectedTemplateId(template.id)}
-                      className={cn(
-                        "flex flex-col text-left p-3 rounded-xl border-2 transition-all",
-                        selectedTemplateId === template.id
-                          ? "border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-700/50"
-                          : "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800"
-                      )}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {template.name}
-                        </span>
-                        {template.source === 'builtin' ? (
-                          <Box className="w-4 h-4 text-blue-500" />
-                        ) : (
-                          <User className="w-4 h-4 text-amber-500" />
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
-                        {template.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-auto">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                          {template.phases.length} 阶段
-                        </span>
-                        {template.source === 'builtin' && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
-                            内置
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
+              {/* Task Input - Primary Focus */}
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  2. 描述您要完成的任务
+                  描述您的需求
                 </label>
                 <textarea
                   ref={workflowInputRef}
                   value={workflowTask}
                   onChange={(e) => setWorkflowTask(e.target.value)}
-                  placeholder="例如：为项目添加暗色模式支持..."
-                  className="w-full h-32 px-4 py-3 border dark:border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
+                  placeholder="例如：为用户设置页面添加头像上传功能..."
+                  className="w-full h-28 px-4 py-3 border dark:border-gray-600 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && e.metaKey) {
                       void handleStartWorkflow()
                     }
                   }}
                 />
-                <p className="text-xs text-gray-400 mt-2">按 ⌘ + Enter 快速启动</p>
               </div>
+
+              {/* Safety Promise */}
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <p className="text-xs text-green-700 dark:text-green-300">
+                  <span className="font-medium">安全承诺：</span>所有代码变更都需要您的审批，您可以随时查看 Diff 并决定是否应用。
+                </p>
+              </div>
+
+              {/* Advanced Options Toggle */}
+              <button
+                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                {showAdvancedOptions ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+                高级选项
+              </button>
+
+              {/* Advanced Options - Template Picker */}
+              {showAdvancedOptions && (
+                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">
+                    选择工作流模板
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {templates.map((template) => (
+                      <button
+                        key={template.id}
+                        onClick={() => setSelectedTemplateId(template.id)}
+                        className={cn(
+                          "flex flex-col text-left p-2.5 rounded-lg border transition-all",
+                          selectedTemplateId === template.id
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                        )}
+                      >
+                        <div className="flex items-center justify-between w-full mb-0.5">
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {template.name}
+                          </span>
+                          {template.source === 'builtin' ? (
+                            <Box className="w-3.5 h-3.5 text-blue-500" />
+                          ) : (
+                            <User className="w-3.5 h-3.5 text-amber-500" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1">
+                          {template.phases.length} 阶段 · {template.description.split('：')[0]}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Dialog Footer */}
-            <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-              <button
-                onClick={handleCloseWorkflowDialog}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => void handleStartWorkflow()}
-                disabled={!workflowTask.trim() || !selectedTemplateId}
-                className={cn(
-                  "px-6 py-2 rounded-lg font-medium transition-all",
-                  workflowTask.trim() && selectedTemplateId
-                    ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 shadow-md hover:shadow-lg"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed"
-                )}
-              >
-                启动工作流
-              </button>
+            <div className="flex items-center justify-between px-6 py-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+              <p className="text-xs text-gray-400">⌘ + Enter 快速启动</p>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleCloseWorkflowDialog}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={() => void handleStartWorkflow()}
+                  disabled={!workflowTask.trim()}
+                  className={cn(
+                    "px-6 py-2 rounded-lg font-medium transition-all flex items-center gap-2",
+                    workflowTask.trim()
+                      ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg"
+                      : "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed"
+                  )}
+                >
+                  <Play className="w-4 h-4" />
+                  开始执行
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -739,34 +759,69 @@ export function MultiAgentView() {
           >
             <div className="p-6">
               {agents.length === 0 && !workflow ? (
-                // Empty state - no agents and no workflow
-                <div className="flex items-center justify-center h-96">
-                  <div className="text-center">
-                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gray-900 dark:bg-gray-700 flex items-center justify-center shadow-lg">
-                      <Bot className="w-10 h-10 text-white" />
+                <div className="flex items-center justify-center min-h-[500px]">
+                  <div className="text-center max-w-xl">
+                    <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-8 h-8 text-white" />
                     </div>
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      欢迎使用多智能体模式
+                      您决策，代理执行
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
-                      创建代理或启动工作流，让多个专门化的 AI 代理协同完成复杂任务
+                    <p className="text-gray-500 dark:text-gray-400 mb-6">
+                      描述您的需求，多个 AI 代理将自动协作完成。所有变更都需要您的审批。
                     </p>
-                    <div className="flex items-center justify-center space-x-4">
-                      <button
-                        className="flex items-center space-x-2 px-6 py-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl hover:bg-gray-800 dark:hover:bg-gray-200 transition-all shadow-md hover:shadow-lg"
-                        onClick={handleOpenWorkflowDialog}
-                      >
-                        <Play className="w-5 h-5" />
-                        <span>启动工作流</span>
-                      </button>
-                      <button
-                        className="flex items-center space-x-2 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        onClick={handleOpenAgentDialog}
-                      >
-                        <Plus className="w-5 h-5" />
-                        <span>手动创建代理</span>
-                      </button>
+
+                    <button
+                      className="flex items-center justify-center gap-2 w-full max-w-sm mx-auto px-6 py-3.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl mb-6"
+                      onClick={handleOpenWorkflowDialog}
+                    >
+                      <Sparkles className="w-5 h-5" />
+                      <span className="font-medium">开始新任务</span>
+                    </button>
+
+                    <div className="mb-6">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">或点击示例快速开始</p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {[
+                          '修复失败的测试用例',
+                          '为这个模块添加单元测试',
+                          '重构这段代码提高可读性',
+                        ].map((example) => (
+                          <button
+                            key={example}
+                            onClick={() => {
+                              setWorkflowTask(example)
+                              openWorkflowDialogDirectly()
+                            }}
+                            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            {example}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+
+                    <div className="flex items-center justify-center gap-6 text-xs text-gray-400 dark:text-gray-500">
+                      <span className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        变更需审批
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        可查看 Diff
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-purple-500" />
+                        随时可取消
+                      </span>
+                    </div>
+
+                    <button
+                      className="mt-6 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      onClick={handleOpenAgentDialog}
+                    >
+                      或手动创建单个代理 →
+                    </button>
                   </div>
                 </div>
               ) : (

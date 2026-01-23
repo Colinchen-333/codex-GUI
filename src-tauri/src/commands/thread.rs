@@ -33,6 +33,7 @@ fn parse_sandbox_policy(policy: Option<String>) -> Option<SandboxPolicy> {
 
 /// Start a new thread
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn start_thread(
     state: State<'_, AppState>,
     project_id: String,
@@ -122,6 +123,7 @@ pub struct SkillInput {
 
 /// Send a message to start a new turn
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn send_message(
     state: State<'_, AppState>,
     thread_id: String,
@@ -226,7 +228,7 @@ pub async fn respond_to_approval(
         }
         "decline" => ApprovalDecision::Decline,
         "cancel" => ApprovalDecision::Cancel,
-        _ => return Err(crate::Error::Other(format!("Invalid decision: {}", decision))),
+        _ => return Err(crate::Error::Other(format!("Invalid decision: {decision}"))),
     };
 
     let result = ApprovalResponseResult { decision };
@@ -295,7 +297,7 @@ fn save_base64_image_to_temp(data_url: &str) -> Result<String> {
     // Decode base64
     let image_bytes = STANDARD
         .decode(base64_data)
-        .map_err(|e| Error::Other(format!("Failed to decode base64 image: {}", e)))?;
+        .map_err(|e| Error::Other(format!("Failed to decode base64 image: {e}")))?;
 
     // Create temp file
     let temp_dir = std::env::temp_dir();
@@ -311,9 +313,9 @@ fn save_base64_image_to_temp(data_url: &str) -> Result<String> {
 
     // Write to file
     let mut file = std::fs::File::create(&temp_path)
-        .map_err(|e| Error::Other(format!("Failed to create temp file: {}", e)))?;
+        .map_err(|e| Error::Other(format!("Failed to create temp file: {e}")))?;
     file.write_all(&image_bytes)
-        .map_err(|e| Error::Other(format!("Failed to write image to temp file: {}", e)))?;
+        .map_err(|e| Error::Other(format!("Failed to write image to temp file: {e}")))?;
 
     Ok(temp_path.to_string_lossy().to_string())
 }

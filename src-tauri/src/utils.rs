@@ -13,7 +13,7 @@ pub fn validate_and_canonicalize_path(path: &str) -> Result<std::path::PathBuf> 
     // Canonicalize to resolve symlinks and traversal
     let canonical_path = project_path
         .canonicalize()
-        .map_err(|_| crate::Error::InvalidPath(format!("Invalid or non-existent path: {}", path)))?;
+        .map_err(|_| crate::Error::InvalidPath(format!("Invalid or non-existent path: {path}")))?;
 
     // Ensure it's absolute (canonicalize returns absolute path)
     if !canonical_path.is_absolute() {

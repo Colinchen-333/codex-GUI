@@ -42,10 +42,10 @@ fn cleanup_temp_images() {
                                     // Only delete files older than 1 hour
                                     if let Ok(modified) = metadata.modified() {
                                         if let Ok(age) = std::time::SystemTime::now().duration_since(modified) {
-                                            if age.as_secs() > 3600 {
-                                                if std::fs::remove_file(&path).is_ok() {
-                                                    cleaned += 1;
-                                                }
+                                            if age.as_secs() > 3600
+                                                && std::fs::remove_file(&path).is_ok()
+                                            {
+                                                cleaned += 1;
                                             }
                                         }
                                     }

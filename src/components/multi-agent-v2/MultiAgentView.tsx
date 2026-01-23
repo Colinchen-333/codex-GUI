@@ -17,6 +17,7 @@ import { AgentGridView } from './AgentGridView'
 import { AgentDetailPanel } from './AgentDetailPanel'
 import { ApprovalDialog } from './ApprovalDialog'
 import { useMultiAgentStore, type AgentType } from '../../stores/multi-agent-v2'
+import { useAgents, useWorkflow, useMultiAgentConfig } from '../../hooks/useMultiAgent'
 import { createPlanModeWorkflow } from '../../lib/workflows/plan-mode'
 import { cn } from '../../lib/utils'
 
@@ -30,21 +31,22 @@ const AGENT_TYPE_OPTIONS: { type: AgentType; icon: React.ReactNode; name: string
 ]
 
 export function MultiAgentView() {
-  const agents = useMultiAgentStore((state) => Object.values(state.agents))
-  const config = useMultiAgentStore((state) => state.config)
-  const {
-    workflow,
-    approvePhase,
-    rejectPhase,
-    cancelAgent,
-    pauseAgent,
-    resumeAgent,
-    startWorkflow,
-    spawnAgent,
-    retryAgent,
-    clearAgents,
-    clearWorkflow,
-  } = useMultiAgentStore()
+  // Use granular selectors to prevent re-renders on unrelated state changes
+  const agents = useAgents()
+  const config = useMultiAgentConfig()
+  const workflow = useWorkflow()
+  
+  // Get actions individually (stable references)
+  const approvePhase = useMultiAgentStore((state) => state.approvePhase)
+  const rejectPhase = useMultiAgentStore((state) => state.rejectPhase)
+  const cancelAgent = useMultiAgentStore((state) => state.cancelAgent)
+  const pauseAgent = useMultiAgentStore((state) => state.pauseAgent)
+  const resumeAgent = useMultiAgentStore((state) => state.resumeAgent)
+  const startWorkflow = useMultiAgentStore((state) => state.startWorkflow)
+  const spawnAgent = useMultiAgentStore((state) => state.spawnAgent)
+  const retryAgent = useMultiAgentStore((state) => state.retryAgent)
+  const clearAgents = useMultiAgentStore((state) => state.clearAgents)
+  const clearWorkflow = useMultiAgentStore((state) => state.clearWorkflow)
 
   // Track selected agent for detail panel
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)

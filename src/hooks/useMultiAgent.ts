@@ -2,15 +2,27 @@
  * useMultiAgent Hook - React hook for multi-agent system
  *
  * Provides convenient access to multi-agent store state and actions
+ * 
+ * PERFORMANCE NOTE: These hooks use stable selectors to prevent unnecessary re-renders.
+ * Prefer using specific hooks (useAgentIds, useAgentById) over useAgents when possible.
  */
 
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useMultiAgentStore } from '../stores/multi-agent-v2'
 import type { AgentStatus, AgentDescriptor } from '../stores/multi-agent-v2'
 import { sortAgentsByStatus, groupAgentsByStatus } from '../lib/agent-utils'
 
 /**
- * Get all agents
+ * Get stable array of agent IDs (for rendering lists without re-creating arrays)
+ */
+export function useAgentIds(): string[] {
+  return useMultiAgentStore(useShallow((state) => state.agentOrder))
+}
+
+/**
+ * Get all agents (NOTE: creates new array on each render where agents change)
+ * Prefer useAgentIds + useAgentById for list rendering
  */
 export function useAgents(): AgentDescriptor[] {
   return useMultiAgentStore((state) => {

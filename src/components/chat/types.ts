@@ -45,7 +45,7 @@ export interface CommandExecutionContentType {
   needsApproval?: boolean
   reason?: string
   commandActions?: string[]
-  proposedExecpolicyAmendment?: string
+  proposedExecpolicyAmendment?: { command: string[] } | null
 }
 
 export interface FileChangeContentType {

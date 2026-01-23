@@ -16,23 +16,20 @@ pub fn validate_id(id: &str, field_name: &str) -> Result<()> {
 
     if id.len() > MAX_ID_LENGTH {
         return Err(crate::Error::Other(format!(
-            "{} exceeds maximum length of {} characters",
-            field_name, MAX_ID_LENGTH
+            "{field_name} exceeds maximum length of {MAX_ID_LENGTH} characters"
         )));
     }
 
-    if id.len() == 0 {
+    if id.is_empty() {
         return Err(crate::Error::Other(format!(
-            "{} cannot be empty",
-            field_name
+            "{field_name} cannot be empty"
         )));
     }
 
     // Allow alphanumeric, hyphens, underscores
     if !id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
         return Err(crate::Error::Other(format!(
-            "{} contains invalid characters (only alphanumeric, -, _ allowed)",
-            field_name
+            "{field_name} contains invalid characters (only alphanumeric, -, _ allowed)"
         )));
     }
 
@@ -48,8 +45,7 @@ fn validate_arg_safe(arg: &str) -> Result<()> {
     for dangerous in dangerous_chars {
         if arg.contains(dangerous) {
             return Err(crate::Error::Other(format!(
-                "Invalid argument: contains unsafe character '{}'",
-                dangerous
+                "Invalid argument: contains unsafe character '{dangerous}'"
             )));
         }
     }
@@ -79,8 +75,7 @@ fn validate_branch_name(branch: &str) -> Result<()> {
     const MAX_BRANCH_LENGTH: usize = 256;
     if branch.len() > MAX_BRANCH_LENGTH {
         return Err(crate::Error::Other(format!(
-            "Branch name exceeds maximum length of {} characters",
-            MAX_BRANCH_LENGTH
+            "Branch name exceeds maximum length of {MAX_BRANCH_LENGTH} characters"
         )));
     }
 
@@ -168,8 +163,7 @@ fn validate_limit(limit: u32) -> Result<u32> {
 
     if limit > MAX_LIMIT {
         return Err(crate::Error::Other(format!(
-            "Limit exceeds maximum of {}",
-            MAX_LIMIT
+            "Limit exceeds maximum of {MAX_LIMIT}"
         )));
     }
 
@@ -188,8 +182,7 @@ pub async fn add_project(state: State<'_, AppState>, path: String) -> Result<Pro
     // Validate path exists
     if !Path::new(&path).exists() {
         return Err(crate::Error::InvalidPath(format!(
-            "Path does not exist: {}",
-            path
+            "Path does not exist: {path}"
         )));
     }
 
@@ -368,8 +361,7 @@ fn inside_git_repo(project_path: &Path) -> Result<bool> {
         Ok(_) => Ok(false),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(err) => Err(crate::Error::Other(format!(
-            "Failed to check git repo: {}",
-            err
+            "Failed to check git repo: {err}"
         ))),
     }
 }
@@ -379,7 +371,7 @@ fn run_git_capture_stdout(project_path: &Path, args: &[&str]) -> Result<String> 
         .args(args)
         .current_dir(project_path)
         .output()
-        .map_err(|err| crate::Error::Other(format!("Failed to run git: {}", err)))?;
+        .map_err(|err| crate::Error::Other(format!("Failed to run git: {err}")))?;
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
@@ -396,7 +388,7 @@ fn run_git_capture_diff(project_path: &Path, args: &[&str]) -> Result<String> {
         .args(args)
         .current_dir(project_path)
         .output()
-        .map_err(|err| crate::Error::Other(format!("Failed to run git: {}", err)))?;
+        .map_err(|err| crate::Error::Other(format!("Failed to run git: {err}")))?;
 
     if output.status.success() || output.status.code() == Some(1) {
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
@@ -419,7 +411,7 @@ fn run_git_diff_file(project_path: &Path, null_path: &str, file_path: &str) -> R
         .arg(file_path)
         .current_dir(project_path)
         .output()
-        .map_err(|err| crate::Error::Other(format!("Failed to run git diff: {}", err)))?;
+        .map_err(|err| crate::Error::Other(format!("Failed to run git diff: {err}")))?;
 
     // git diff --no-index returns 1 when there are differences, which is expected
     if output.status.success() || output.status.code() == Some(1) {
@@ -511,6 +503,7 @@ pub async fn list_project_files(
     Ok(files)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn collect_files_recursive(
     root: &Path,
     current: &Path,
@@ -642,7 +635,7 @@ pub async fn get_git_branches(path: String) -> Result<Vec<GitBranch>> {
         .args(["branch", "-a", "--format=%(HEAD) %(refname:short)"])
         .current_dir(&canonical_path)
         .output()
-        .map_err(|err| crate::Error::Other(format!("Failed to run git: {}", err)))?;
+        .map_err(|err| crate::Error::Other(format!("Failed to run git: {err}")))?;
 
     if !output.status.success() {
         return Ok(Vec::new());
@@ -709,10 +702,10 @@ pub async fn get_git_commits(path: String, limit: Option<u32>) -> Result<Vec<Git
     let format = "%H|%h|%s|%an|%ar";
 
     let output = std::process::Command::new("git")
-        .args(["log", &format!("-{}", limit), &format!("--format={}", format)])
+        .args(["log", &format!("-{limit}"), &format!("--format={format}")])
         .current_dir(&canonical_path)
         .output()
-        .map_err(|err| crate::Error::Other(format!("Failed to run git: {}", err)))?;
+        .map_err(|err| crate::Error::Other(format!("Failed to run git: {err}")))?;
 
     if !output.status.success() {
         return Ok(Vec::new());
@@ -955,8 +948,7 @@ mod tests {
         for attempt in injection_attempts {
             assert!(
                 validate_arg_safe(attempt).is_err(),
-                "Should reject injection attempt: {}",
-                attempt
+                "Should reject injection attempt: {attempt}"
             );
         }
     }
@@ -975,8 +967,7 @@ mod tests {
         for attempt in injection_attempts {
             assert!(
                 validate_branch_name(attempt).is_err(),
-                "Should reject branch injection: {}",
-                attempt
+                "Should reject branch injection: {attempt}"
             );
         }
     }

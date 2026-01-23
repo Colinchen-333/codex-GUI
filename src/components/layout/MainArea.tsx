@@ -412,9 +412,13 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
 
   const serverReady = serverStatus ? serverStatus.isRunning : isServerConnected ? null : false
 
-  // Clear local error when project changes
+  const prevProjectIdRef = useRef<string | undefined>(undefined)
   useEffect(() => {
-    setLocalError(null)
+    if (prevProjectIdRef.current !== undefined && prevProjectIdRef.current !== projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting error state when project changes
+      setLocalError(null)
+    }
+    prevProjectIdRef.current = projectId
   }, [projectId])
 
   if (!project) return null

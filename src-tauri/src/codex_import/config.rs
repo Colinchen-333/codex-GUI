@@ -59,11 +59,11 @@ pub fn read_config() -> Result<CodexConfig> {
 /// Read configuration from a specific path
 pub fn read_config_from_path(path: &Path) -> Result<CodexConfig> {
     let content = std::fs::read_to_string(path).map_err(|e| {
-        Error::Other(format!("Failed to read Codex config: {}", e))
+        Error::Other(format!("Failed to read Codex config: {e}"))
     })?;
 
     let config: CodexConfig = toml::from_str(&content).map_err(|e| {
-        Error::Other(format!("Failed to parse Codex config: {}", e))
+        Error::Other(format!("Failed to parse Codex config: {e}"))
     })?;
 
     tracing::debug!(

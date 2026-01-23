@@ -143,7 +143,7 @@ fn scan_sessions_recursive(dir: &Path, sessions: &mut Vec<CodexSessionSummary>) 
     }
 
     let entries = fs::read_dir(dir).map_err(|e| {
-        Error::Other(format!("Failed to read sessions directory: {}", e))
+        Error::Other(format!("Failed to read sessions directory: {e}"))
     })?;
 
     for entry in entries.flatten() {
@@ -171,7 +171,7 @@ fn scan_sessions_recursive(dir: &Path, sessions: &mut Vec<CodexSessionSummary>) 
 /// Parse session summary from file (only reads metadata and first message)
 fn parse_session_summary(path: &Path) -> Result<CodexSessionSummary> {
     let file = fs::File::open(path).map_err(|e| {
-        Error::Other(format!("Failed to open session file: {}", e))
+        Error::Other(format!("Failed to open session file: {e}"))
     })?;
 
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
@@ -298,13 +298,13 @@ fn find_session_file(dir: &Path, session_id: &str) -> Result<PathBuf> {
         }
     }
 
-    Err(Error::SessionNotFound(format!("Codex CLI session not found: {}", session_id)))
+    Err(Error::SessionNotFound(format!("Codex CLI session not found: {session_id}")))
 }
 
 /// Parse full session from file
 fn parse_full_session(path: &Path) -> Result<CodexSession> {
     let file = fs::File::open(path).map_err(|e| {
-        Error::Other(format!("Failed to open session file: {}", e))
+        Error::Other(format!("Failed to open session file: {e}"))
     })?;
 
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
@@ -414,7 +414,7 @@ pub fn delete_session(session_id: &str) -> Result<()> {
     let file_path = find_session_file(&sessions_dir, session_id)?;
 
     fs::remove_file(&file_path).map_err(|e| {
-        Error::Other(format!("Failed to delete session: {}", e))
+        Error::Other(format!("Failed to delete session: {e}"))
     })?;
 
     tracing::info!("Deleted Codex CLI session: {}", session_id);

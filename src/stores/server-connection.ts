@@ -136,7 +136,7 @@ export const useServerConnectionStore = create<ServerConnectionState>((set, get)
       })
     })()
 
-    inFlightReconnect.finally(() => {
+    void inFlightReconnect.finally(() => {
       inFlightReconnect = null
     })
 

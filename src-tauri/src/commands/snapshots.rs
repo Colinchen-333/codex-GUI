@@ -48,7 +48,7 @@ pub async fn cleanup_old_snapshots_by_age(
     let days = max_age_days.unwrap_or(30); // Default 30 days
     let count = state.database.cleanup_snapshots_older_than(days)?;
 
-    Ok(format!("Deleted {} old snapshots (older than {} days)", count, days))
+    Ok(format!("Deleted {count} old snapshots (older than {days} days)"))
 }
 
 /// Clean up old snapshots for a specific session
@@ -61,5 +61,5 @@ pub async fn cleanup_session_snapshots(
     let keep = keep_count.unwrap_or(10); // Default keep 10 most recent
     let count = state.database.cleanup_old_snapshots(&session_id, keep)?;
 
-    Ok(format!("Deleted {} old snapshots for session {} (kept {} most recent)", count, session_id, keep))
+    Ok(format!("Deleted {count} old snapshots for session {session_id} (kept {keep} most recent)"))
 }

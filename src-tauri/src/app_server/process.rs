@@ -94,7 +94,7 @@ impl AppServerProcess {
             .stderr(Stdio::inherit())
             .kill_on_drop(true)
             .spawn()
-            .map_err(|e| Error::AppServer(format!("Failed to spawn app-server: {}", e)))?;
+            .map_err(|e| Error::AppServer(format!("Failed to spawn app-server: {e}")))?;
 
         let stdin = child
             .stdin
@@ -139,7 +139,7 @@ impl AppServerProcess {
                             }
                             Err(e) => {
                                 tracing::error!("Error reading from app-server stdout: {}", e);
-                                disconnect_reason = Some(format!("IO error: {}", e));
+                                disconnect_reason = Some(format!("IO error: {e}"));
                                 break;
                             }
                         }
@@ -155,8 +155,7 @@ impl AppServerProcess {
                     tracing::warn!("Cleaning up {} pending requests due to disconnect", count);
                     for (id, pending_req) in pending.drain() {
                         let _ = pending_req.sender.send(Err(Error::AppServer(format!(
-                            "Request {} failed: {}",
-                            id, reason
+                            "Request {id} failed: {reason}"
                         ))));
                     }
                 }
@@ -355,12 +354,12 @@ impl AppServerProcess {
         self.stdin
             .write_all(json.as_bytes())
             .await
-            .map_err(|e| Error::AppServer(format!("Failed to write to stdin: {}", e)))?;
+            .map_err(|e| Error::AppServer(format!("Failed to write to stdin: {e}")))?;
 
         self.stdin
             .flush()
             .await
-            .map_err(|e| Error::AppServer(format!("Failed to flush stdin: {}", e)))?;
+            .map_err(|e| Error::AppServer(format!("Failed to flush stdin: {e}")))?;
 
         // Wait for response with timeout
         let result = tokio::time::timeout(std::time::Duration::from_secs(30), rx).await;
@@ -401,7 +400,7 @@ impl AppServerProcess {
             for id in stale_ids {
                 if let Some(pending_req) = pending.remove(&id) {
                     let _ = pending_req.sender.send(Err(Error::AppServer(
-                        format!("Request {} expired (stale)", id)
+                        format!("Request {id} expired (stale)")
                     )));
                 }
             }
@@ -427,12 +426,12 @@ impl AppServerProcess {
         self.stdin
             .write_all(json.as_bytes())
             .await
-            .map_err(|e| Error::AppServer(format!("Failed to write to stdin: {}", e)))?;
+            .map_err(|e| Error::AppServer(format!("Failed to write to stdin: {e}")))?;
 
         self.stdin
             .flush()
             .await
-            .map_err(|e| Error::AppServer(format!("Failed to flush stdin: {}", e)))?;
+            .map_err(|e| Error::AppServer(format!("Failed to flush stdin: {e}")))?;
 
         Ok(())
     }
@@ -456,12 +455,12 @@ impl AppServerProcess {
         self.stdin
             .write_all(json.as_bytes())
             .await
-            .map_err(|e| Error::AppServer(format!("Failed to write to stdin: {}", e)))?;
+            .map_err(|e| Error::AppServer(format!("Failed to write to stdin: {e}")))?;
 
         self.stdin
             .flush()
             .await
-            .map_err(|e| Error::AppServer(format!("Failed to flush stdin: {}", e)))?;
+            .map_err(|e| Error::AppServer(format!("Failed to flush stdin: {e}")))?;
 
         Ok(())
     }

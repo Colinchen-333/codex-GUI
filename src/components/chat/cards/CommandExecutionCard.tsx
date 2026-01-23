@@ -26,7 +26,7 @@ import { formatDuration } from './card-utils'
 // -----------------------------------------------------------------------------
 
 interface ApprovalUIProps {
-  proposedExecpolicyAmendment?: string
+  proposedExecpolicyAmendment?: { command: string[] } | null
   onApprove: (decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline') => Promise<void>
   onExplain: () => Promise<void>
   isExplaining: boolean
@@ -344,6 +344,7 @@ export const CommandExecutionCard = memo(
     return (
       <BaseCard
         icon={<Terminal size={14} />}
+        title="Command"
         subtitle={commandDisplay}
         timestamp={item.createdAt}
         status={getCardStatus()}

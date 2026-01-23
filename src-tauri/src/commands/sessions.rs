@@ -31,6 +31,7 @@ pub async fn get_session(
 
 /// Update session metadata
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_session_metadata(
     state: State<'_, AppState>,
     session_id: String,
@@ -58,8 +59,7 @@ pub async fn update_session_metadata(
                     // and finding one that might be associated with this thread
                     // If we can't find one, return an error
                     return Err(crate::Error::Other(format!(
-                        "Cannot create session metadata for {} without project_id",
-                        session_id
+                        "Cannot create session metadata for {session_id} without project_id"
                     )));
                 }
             };

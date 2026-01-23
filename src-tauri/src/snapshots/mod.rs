@@ -237,7 +237,7 @@ fn prepare_restore_path(
 ) -> Result<ValidatedRestorePath> {
     // Validate the path
     let validated = validate_restore_path(relative_path, project_path)
-        .map_err(|e| Error::Other(format!("Path validation failed for '{}': {}", relative_path, e)))?;
+        .map_err(|e| Error::Other(format!("Path validation failed for '{relative_path}': {e}")))?;
 
     // Create parent directories if needed
     // Do this right after validation to minimize TOCTOU window
@@ -245,15 +245,15 @@ fn prepare_restore_path(
         // Re-check for symlinks in the path we're about to create
         // This catches race conditions where a symlink was created between validation and now
         check_path_for_symlinks(parent, project_path)
-            .map_err(|e| Error::Other(format!("Path security check failed: {}", e)))?;
+            .map_err(|e| Error::Other(format!("Path security check failed: {e}")))?;
 
         fs::create_dir_all(parent)
-            .map_err(|e| Error::Other(format!("Failed to create directory: {}", e)))?;
+            .map_err(|e| Error::Other(format!("Failed to create directory: {e}")))?;
 
         // After creating directories, verify no symlinks were introduced
         // This is the final TOCTOU mitigation check
         check_path_for_symlinks(validated.as_path(), project_path)
-            .map_err(|e| Error::Other(format!("Path security check failed after directory creation: {}", e)))?;
+            .map_err(|e| Error::Other(format!("Path security check failed after directory creation: {e}")))?;
     }
 
     Ok(validated)
@@ -263,16 +263,12 @@ fn prepare_restore_path(
 fn validate_commit_sha(sha: &str) -> Result<()> {
     // Only allow hexadecimal characters (0-9, a-f, A-F)
     if !sha.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(Error::Other(format!(
-            "Invalid commit SHA: contains non-hexadecimal characters"
-        )));
+        return Err(Error::Other("Invalid commit SHA: contains non-hexadecimal characters".to_string()));
     }
 
     // Reasonable length check (git SHAs are typically 40 chars, short SHAs are 7+)
     if sha.len() < 7 || sha.len() > 64 {
-        return Err(Error::Other(format!(
-            "Invalid commit SHA: length must be between 7 and 64 characters"
-        )));
+        return Err(Error::Other("Invalid commit SHA: length must be between 7 and 64 characters".to_string()));
     }
 
     Ok(())
@@ -297,7 +293,7 @@ pub fn create_snapshot(db: &Database, session_id: &str, project_path: &Path) -> 
     // Security: Canonicalize path to prevent symlink attacks and traversal
     let canonical_path = project_path
         .canonicalize()
-        .map_err(|_| Error::Other(format!("Invalid or non-existent path")))?;
+        .map_err(|_| Error::Other("Invalid or non-existent path".to_string()))?;
 
     if is_git_repo(&canonical_path) {
         create_git_snapshot(db, session_id, &canonical_path)
@@ -315,10 +311,10 @@ fn collect_project_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>>
             return Ok(());
         }
 
-        let entries = fs::read_dir(dir).map_err(|e| Error::Other(format!("Failed to read dir: {}", e)))?;
+        let entries = fs::read_dir(dir).map_err(|e| Error::Other(format!("Failed to read dir: {e}")))?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| Error::Other(format!("Failed to read entry: {}", e)))?;
+            let entry = entry.map_err(|e| Error::Other(format!("Failed to read entry: {e}")))?;
             let path = entry.path();
             let file_name = entry.file_name();
             let name = file_name.to_string_lossy();
@@ -365,7 +361,7 @@ fn create_file_backup_snapshot(db: &Database, session_id: &str, project_path: &P
         if let Ok(contents) = fs::read(file_path) {
             let relative_path = file_path
                 .strip_prefix(project_path)
-                .map_err(|e| Error::Other(format!("Failed to get relative path: {}", e)))?;
+                .map_err(|e| Error::Other(format!("Failed to get relative path: {e}")))?;
 
             backup_files.insert(
                 relative_path.to_string_lossy().to_string(),
@@ -380,7 +376,7 @@ fn create_file_backup_snapshot(db: &Database, session_id: &str, project_path: &P
     };
 
     let metadata_json = serde_json::to_string(&metadata)
-        .map_err(|e| Error::Other(format!("Failed to serialize metadata: {}", e)))?;
+        .map_err(|e| Error::Other(format!("Failed to serialize metadata: {e}")))?;
 
     let snapshot = Snapshot::new_file_backup(session_id, &metadata_json);
     db.insert_snapshot(&snapshot)?;
@@ -413,7 +409,7 @@ fn create_git_snapshot(db: &Database, session_id: &str, project_path: &Path) -> 
         .args(["stash", "push", "-u", "-m", "codex-desktop-snapshot"])
         .current_dir(project_path)
         .output()
-        .map_err(|e| Error::Git(format!("Failed to run git stash: {}", e)))?;
+        .map_err(|e| Error::Git(format!("Failed to run git stash: {e}")))?;
 
     let stash_created = String::from_utf8_lossy(&stash_output.stdout)
         .contains("Saved working directory");
@@ -425,7 +421,7 @@ fn create_git_snapshot(db: &Database, session_id: &str, project_path: &Path) -> 
             .args(["stash", "list", "-1"])
             .current_dir(project_path)
             .output()
-            .map_err(|e| Error::Git(format!("Failed to get stash list: {}", e)))?;
+            .map_err(|e| Error::Git(format!("Failed to get stash list: {e}")))?;
 
         let stash_info = String::from_utf8_lossy(&stash_list.stdout);
         if stash_info.contains("codex-desktop-snapshot") {
@@ -463,7 +459,7 @@ fn get_current_head(project_path: &Path) -> Result<String> {
         .args(["rev-parse", "HEAD"])
         .current_dir(project_path)
         .output()
-        .map_err(|e| Error::Git(format!("Failed to get HEAD: {}", e)))?;
+        .map_err(|e| Error::Git(format!("Failed to get HEAD: {e}")))?;
 
     if !output.status.success() {
         return Err(Error::Git("Failed to get HEAD commit".to_string()));
@@ -477,7 +473,7 @@ pub fn revert_to_snapshot(db: &Database, snapshot_id: &str, project_path: &Path)
     // Security: Canonicalize path to prevent symlink attacks and traversal
     let canonical_path = project_path
         .canonicalize()
-        .map_err(|_| Error::Other(format!("Invalid or non-existent path")))?;
+        .map_err(|_| Error::Other("Invalid or non-existent path".to_string()))?;
 
     let snapshot = db
         .get_snapshot(snapshot_id)?
@@ -507,12 +503,12 @@ fn revert_file_backup_snapshot(snapshot: &Snapshot, project_path: &Path) -> Resu
         .ok_or_else(|| Error::Other("Missing metadata in file backup snapshot".to_string()))?;
 
     let metadata: FileBackupMetadata = serde_json::from_str(metadata_str)
-        .map_err(|e| Error::Other(format!("Failed to parse file backup metadata: {}", e)))?;
+        .map_err(|e| Error::Other(format!("Failed to parse file backup metadata: {e}")))?;
 
     // Ensure project_path is canonical for all subsequent comparisons
     let canonical_project = project_path
         .canonicalize()
-        .map_err(|e| Error::Other(format!("Failed to canonicalize project path: {}", e)))?;
+        .map_err(|e| Error::Other(format!("Failed to canonicalize project path: {e}")))?;
 
     let mut restored_count = 0;
     let mut skipped_paths: Vec<String> = Vec::new();
@@ -537,7 +533,7 @@ fn revert_file_backup_snapshot(snapshot: &Snapshot, project_path: &Path) -> Resu
         // Decode the base64 content
         let contents = BASE64
             .decode(base64_content)
-            .map_err(|e| Error::Other(format!("Failed to decode file content for '{}': {}", relative_path, e)))?;
+            .map_err(|e| Error::Other(format!("Failed to decode file content for '{relative_path}': {e}")))?;
 
         // Final symlink check right before writing (TOCTOU mitigation)
         // This minimizes the window between check and use
@@ -554,7 +550,7 @@ fn revert_file_backup_snapshot(snapshot: &Snapshot, project_path: &Path) -> Resu
 
         // Write the file using the validated path
         fs::write(validated_path.as_path(), &contents)
-            .map_err(|e| Error::Other(format!("Failed to write file '{}': {}", relative_path, e)))?;
+            .map_err(|e| Error::Other(format!("Failed to write file '{relative_path}': {e}")))?;
 
         restored_count += 1;
     }
@@ -584,7 +580,7 @@ fn revert_git_snapshot(snapshot: &Snapshot, project_path: &Path) -> Result<()> {
     // Security: Canonicalize path to prevent symlink attacks and traversal
     let canonical_path = project_path
         .canonicalize()
-        .map_err(|_| Error::Other(format!("Invalid or non-existent path")))?;
+        .map_err(|_| Error::Other("Invalid or non-existent path".to_string()))?;
 
     let metadata: serde_json::Value = snapshot
         .metadata_json
@@ -606,11 +602,11 @@ fn revert_git_snapshot(snapshot: &Snapshot, project_path: &Path) -> Result<()> {
             .args(["stash", "pop"])
             .current_dir(&canonical_path)
             .output()
-            .map_err(|e| Error::Git(format!("Failed to pop stash: {}", e)))?;
+            .map_err(|e| Error::Git(format!("Failed to pop stash: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::Git(format!("Failed to pop stash: {}", stderr)));
+            return Err(Error::Git(format!("Failed to pop stash: {stderr}")));
         }
     } else {
         // Security: Validate commit SHA to prevent command injection
@@ -621,11 +617,11 @@ fn revert_git_snapshot(snapshot: &Snapshot, project_path: &Path) -> Result<()> {
             .args(["reset", "--hard", commit_sha])
             .current_dir(&canonical_path)
             .output()
-            .map_err(|e| Error::Git(format!("Failed to reset: {}", e)))?;
+            .map_err(|e| Error::Git(format!("Failed to reset: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(Error::Git(format!("Failed to reset to {}: {}", commit_sha, stderr)));
+            return Err(Error::Git(format!("Failed to reset to {commit_sha}: {stderr}")));
         }
     }
 
@@ -877,8 +873,7 @@ mod tests {
             let result = validate_restore_path(attack, &project_path);
             assert!(
                 result.is_err(),
-                "Attack vector should be rejected: {:?}",
-                attack
+                "Attack vector should be rejected: {attack:?}"
             );
         }
     }
@@ -957,8 +952,7 @@ mod tests {
         for attempt in injection_attempts {
             assert!(
                 validate_commit_sha(attempt).is_err(),
-                "Should reject injection: {}",
-                attempt
+                "Should reject injection: {attempt}"
             );
         }
     }

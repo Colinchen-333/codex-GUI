@@ -412,18 +412,18 @@ impl Database {
             return Ok(0);
         }
 
-        let to_delete = &snapshot_ids[keep_count..];
-
-        // Delete old snapshots one by one to avoid SQL injection issues with dynamic IN clauses
-        let mut deleted_count = 0;
-        for id in to_delete {
-            match conn.execute("DELETE FROM snapshots WHERE id = ?1", params![id]) {
-                Ok(_) => deleted_count += 1,
-                Err(e) => {
-                    tracing::warn!("Failed to delete snapshot {}: {}", id, e);
-                }
-            }
-        }
+        // Single SQL delete: remove all snapshots for this session except the N most recent
+        let deleted_count = conn.execute(
+            r#"DELETE FROM snapshots 
+               WHERE session_id = ?1 
+               AND id NOT IN (
+                   SELECT id FROM snapshots 
+                   WHERE session_id = ?1 
+                   ORDER BY created_at DESC 
+                   LIMIT ?2
+               )"#,
+            params![session_id, keep_count],
+        )?;
 
         Ok(deleted_count)
     }

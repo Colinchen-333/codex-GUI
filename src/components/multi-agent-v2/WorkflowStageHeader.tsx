@@ -9,12 +9,13 @@
  * - Running phase pulse effect
  */
 
-import { Check, AlertCircle, Search, FileText, Eye, Code, Loader2 } from 'lucide-react'
+import { Check, AlertCircle, Search, FileText, Eye, Code, Loader2, RotateCcw } from 'lucide-react'
 import type { Workflow, WorkflowPhase } from '../../stores/multi-agent-v2'
 import { cn } from '../../lib/utils'
 
 interface WorkflowStageHeaderProps {
   workflow: Workflow
+  onRetryWorkflow?: () => void
 }
 
 // Phase icons mapping
@@ -25,7 +26,7 @@ const PHASE_ICONS: Record<string, React.ReactNode> = {
   implement: <Code className="w-4 h-4" />,
 }
 
-export function WorkflowStageHeader({ workflow }: WorkflowStageHeaderProps) {
+export function WorkflowStageHeader({ workflow, onRetryWorkflow }: WorkflowStageHeaderProps) {
   const { phases, currentPhaseIndex } = workflow
 
   const getPhaseIcon = (phase: WorkflowPhase, index: number) => {
@@ -119,6 +120,15 @@ export function WorkflowStageHeader({ workflow }: WorkflowStageHeaderProps) {
                workflow.status === 'completed' ? '已完成' :
                workflow.status === 'failed' ? '失败' : '等待中'}
             </span>
+            {workflow.status === 'failed' && onRetryWorkflow && (
+              <button
+                onClick={onRetryWorkflow}
+                className="flex items-center space-x-1 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>重试</span>
+              </button>
+            )}
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{workflow.description}</p>
         </div>

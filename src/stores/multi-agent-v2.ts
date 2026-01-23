@@ -17,6 +17,7 @@ import { WorkflowEngine } from '../lib/workflows/workflow-engine'
 import { extractPhaseSummary, generatePhaseAgentTasks } from '../lib/workflows/plan-mode'
 import { useThreadStore } from './thread'
 import type { SingleThreadState } from './thread/types'
+import { APPROVAL_TIMEOUT_MS } from './thread/constants'
 
 // Import types from shared types file
 import type {
@@ -167,7 +168,8 @@ const APPROVAL_POLICY_ORDER: Record<string, number> = {
 
 const MAX_AGENT_OUTPUT_CHARS = 4000
 const START_SLOT_POLL_MS = 500
-const DEFAULT_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes default approval timeout
+// Use unified timeout from thread constants (10 minutes)
+const DEFAULT_APPROVAL_TIMEOUT_MS = APPROVAL_TIMEOUT_MS
 const DEFAULT_DEPENDENCY_WAIT_TIMEOUT_MS = 5 * 60 * 1000 // WF-008: 5 minutes default dependency wait timeout
 const DEFAULT_PAUSE_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes default pause timeout
 
@@ -2012,18 +2014,23 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         }
       }
 
-      // Step 2: Reset phase and workflow status
+      // Step 2: Reset phase and workflow status (preserve rejection feedback in metadata)
       set((s) => {
         if (!s.workflow) return
 
         const p = s.workflow.phases.find((wp) => wp.id === phaseId)
         if (p) {
+          if (p.output && p.output.startsWith('Phase rejected:')) {
+            p.metadata = {
+              ...p.metadata,
+              lastRejectionReason: p.output.replace('Phase rejected: ', ''),
+            }
+          }
           p.status = 'pending'
           p.startedAt = undefined
           p.completedAt = undefined
           p.output = undefined
           p.agentIds = []
-          // Clear any error metadata
           if (p.metadata?.spawnFailedCount) {
             delete p.metadata.spawnFailedCount
           }

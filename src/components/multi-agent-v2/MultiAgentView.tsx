@@ -45,6 +45,7 @@ export function MultiAgentView() {
   const startWorkflow = useMultiAgentStore((state) => state.startWorkflow)
   const spawnAgent = useMultiAgentStore((state) => state.spawnAgent)
   const retryAgent = useMultiAgentStore((state) => state.retryAgent)
+  const retryWorkflow = useMultiAgentStore((state) => state.retryWorkflow)
   const clearAgents = useMultiAgentStore((state) => state.clearAgents)
   const clearWorkflow = useMultiAgentStore((state) => state.clearWorkflow)
 
@@ -590,7 +591,7 @@ export function MultiAgentView() {
       <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
         {/* Workflow Header */}
         {workflow && (
-          <WorkflowStageHeader workflow={workflow} />
+          <WorkflowStageHeader workflow={workflow} onRetryWorkflow={() => void retryWorkflow()} />
         )}
 
         {/* Main Content Area */}

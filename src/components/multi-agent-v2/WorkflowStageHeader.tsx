@@ -200,17 +200,22 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTime
                       </p>
                       {/* Minimal status indicator below label */}
                     {phase.status === 'running' && (
-                      <p className="text-[10px] text-blue-500 font-medium animate-pulse mt-0.5">Running...</p>
+                      <p className="text-[10px] text-blue-500 font-medium animate-pulse mt-0.5">
+                        {phase.kind === 'explore' ? '探索中...' : 
+                         phase.kind === 'design' ? '规划中...' : 
+                         phase.kind === 'review' ? '审查中...' : 
+                         phase.kind === 'implement' ? '执行中...' : '处理中...'}
+                      </p>
                     )}
                     {(phase.status === 'awaiting_approval' || phase.status === 'approval_timeout') && (
                       <div className="flex flex-col items-center">
-                        <p className="text-[10px] text-amber-500 font-bold mt-0.5">NEEDS APPROVAL</p>
+                        <p className="text-[10px] text-amber-500 font-bold mt-0.5">待审批</p>
                         {phase.status === 'approval_timeout' && onRecoverTimeout && (
                           <button
                             onClick={() => onRecoverTimeout(phase.id)}
                             className="mt-1 px-2 py-0.5 text-[10px] bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 rounded hover:bg-orange-200 transition-colors"
                           >
-                            Recover
+                            恢复
                           </button>
                         )}
                       </div>

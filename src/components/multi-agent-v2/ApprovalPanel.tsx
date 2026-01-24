@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { CheckCircle, XCircle, RotateCcw, ChevronDown, ChevronRight, Terminal, FileCode, AlertCircle, Loader2, X, AlertTriangle, Lightbulb } from 'lucide-react'
+import { CheckCircle, XCircle, RotateCcw, ChevronDown, ChevronRight, Terminal, FileCode, AlertCircle, Loader2, X, AlertTriangle, Lightbulb, Copy } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useMultiAgentStore, type WorkflowPhase, type AgentDescriptor } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
@@ -583,7 +583,20 @@ function AgentArtifactCard({
           {/* Errors */}
           {artifacts.errors.length > 0 && (
             <div className="p-3 bg-red-50 dark:bg-red-900/10">
-              <h5 className="text-xs font-medium text-red-700 dark:text-red-400 mb-1">错误</h5>
+              <div className="flex items-center justify-between mb-1">
+                <h5 className="text-xs font-medium text-red-700 dark:text-red-400">错误</h5>
+                <button
+                  onClick={() => {
+                    const errorText = artifacts.errors.join('\n')
+                    void navigator.clipboard.writeText(errorText)
+                  }}
+                  className="text-[10px] px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors flex items-center gap-1"
+                  title="复制错误信息"
+                >
+                  <Copy className="w-3 h-3" />
+                  复制
+                </button>
+              </div>
               {artifacts.errors.map((err, i) => (
                 <p key={i} className="text-xs text-red-600 dark:text-red-300 font-mono break-all">{err}</p>
               ))}

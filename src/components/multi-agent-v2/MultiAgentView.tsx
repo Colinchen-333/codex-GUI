@@ -11,7 +11,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, Play, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare, Box, User, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { X, Plus, Play, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare, Box, User, ChevronDown, ChevronUp, Sparkles, Bot } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
 import { AgentDetailPanel } from './AgentDetailPanel'
@@ -752,6 +752,17 @@ export function MultiAgentView() {
 
       {/* Main View */}
       <div className="flex flex-col h-full bg-background">
+        {/* Mode Identity Banner */}
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-violet-50 dark:bg-violet-900/20 border-b border-violet-200 dark:border-violet-800">
+          <Bot className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+          <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
+            多智能体模式
+          </span>
+          <span className="text-xs text-violet-600/70 dark:text-violet-400/70">
+            · 4阶段工作流 · 您是审查者，Agent 是执行者
+          </span>
+        </div>
+
         {/* Workflow Header */}
         {workflow && (
           <WorkflowStageHeader

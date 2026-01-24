@@ -131,17 +131,29 @@ export const StatusBarActions = memo(function StatusBarActions({
       <div className="flex items-center gap-1">
         {/* Multi-Agent Mode Toggle */}
         <button
-          className="hover:bg-primary/10 h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`h-7 px-2 flex items-center justify-center gap-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            appMode === 'multi-agent' 
+              ? 'bg-violet-600 text-white hover:bg-violet-700' 
+              : 'hover:bg-primary/10 hover:text-foreground'
+          }`}
           onClick={() => void handleMultiAgentToggle()}
           disabled={isTransitioning}
-          title={isTransitioning ? 'Switching...' : appMode === 'normal' ? 'Multi-Agent Mode' : 'Exit Multi-Agent Mode'}
+          title={isTransitioning ? '切换中...' : appMode === 'normal' 
+            ? '多智能体模式 - 适合复杂任务：4阶段工作流 + 审批控制' 
+            : '返回普通模式 - 适合快速交互：直接对话获取帮助'}
         >
           {isTransitioning ? (
             <Loader2 size={14} className="animate-spin" />
           ) : appMode === 'normal' ? (
-            <Bot size={14} />
+            <>
+              <Bot size={14} />
+              <span className="text-xs hidden sm:inline">多智能体</span>
+            </>
           ) : (
-            <ArrowLeft size={14} />
+            <>
+              <ArrowLeft size={14} />
+              <span className="text-xs">退出</span>
+            </>
           )}
         </button>
       {activeThread && appMode === 'normal' && (

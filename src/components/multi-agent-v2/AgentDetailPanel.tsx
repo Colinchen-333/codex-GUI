@@ -10,8 +10,8 @@
  */
 
 import { useRef, useEffect, useState, useMemo } from 'react'
-import { X, Minimize2, Terminal, AlertCircle, Wrench, User, Bot, ChevronDown, FileCode, Check, XCircle, ArrowDown } from 'lucide-react'
-import type { AgentDescriptor } from '../../stores/multi-agent-v2'
+import { X, Minimize2, Terminal, AlertCircle, Wrench, User, Bot, ChevronDown, FileCode, Check, XCircle, ArrowDown, Play, RotateCcw } from 'lucide-react'
+import { useMultiAgentStore, type AgentDescriptor } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
 import { DiffView, parseDiff } from '../ui/DiffView'
 import type { FileChangeContentType } from '../chat/types'
@@ -33,6 +33,8 @@ interface AgentDetailPanelProps {
 export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPanelProps) {
   // Get thread state for this agent
   const threadState = useThreadStore((state) => state.threads[agent.threadId])
+  const retryAgent = useMultiAgentStore((state) => state.retryAgent)
+  const resumeAgent = useMultiAgentStore((state) => state.resumeAgent)
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollBottomRef = useRef<HTMLDivElement>(null)
@@ -452,13 +454,40 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
         </div>
       </div>
 
-      {/* Task Description */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">
-          任务
-        </h4>
-        <p className="text-sm text-gray-600 dark:text-gray-400">{agent.task}</p>
-      </div>
+        {/* Task Description */}
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          {(agent.status === 'pending' && agent.interruptReason === 'pause') && (
+            <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between">
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                <Play className="w-3.5 h-3.5" /> 代理已暂停
+              </span>
+              <button
+                onClick={() => resumeAgent(agent.id)}
+                className="px-2 py-1 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 rounded transition-colors"
+              >
+                继续
+              </button>
+            </div>
+          )}
+          {(agent.status === 'error' && agent.error?.recoverable) && (
+            <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center justify-between">
+              <span className="text-xs font-medium text-red-700 dark:text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5" /> 代理执行出错
+              </span>
+              <button
+                onClick={() => retryAgent(agent.id)}
+                className="px-2 py-1 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded transition-colors flex items-center gap-1"
+              >
+                <RotateCcw className="w-3 h-3" /> 重试
+              </button>
+            </div>
+          )}
+          
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">
+            任务
+          </h4>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{agent.task}</p>
+        </div>
 
       {/* Message History */}
       <div className="relative flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/50">

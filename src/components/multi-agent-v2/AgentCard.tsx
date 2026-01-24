@@ -131,6 +131,19 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
           {agent.task}
         </p>
 
+        {isPaused && onResume && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-lg p-3 mb-3">
+             <p className="text-xs font-medium text-amber-800 dark:text-amber-300">代理已暂停</p>
+             <button
+               onClick={handleResume}
+               disabled={isOperating}
+               className="mt-2 text-[10px] font-bold text-amber-700 flex items-center gap-1 hover:underline"
+             >
+               <Play className="w-3 h-3" /> 继续
+             </button>
+          </div>
+        )}
+
         {/* Dynamic Status Area */}
         {hasWaitingApprovals ? (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-lg p-3 flex items-center gap-3 animate-pulse">

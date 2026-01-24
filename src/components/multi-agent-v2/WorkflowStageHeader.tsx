@@ -167,6 +167,10 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTime
           )}
         </div>
 
+        <p className="text-xs text-muted-foreground -mt-4 mb-4">
+          当前阶段完成后需要审批，您将决定是否推进到下一阶段
+        </p>
+
         {/* Phase Progress - Minimalist Design */}
         <div className="flex items-center relative">
           {phases.map((phase, index) => {

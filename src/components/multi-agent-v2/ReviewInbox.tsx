@@ -107,6 +107,10 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
           </button>
         </div>
 
+        <p className="px-4 py-2 text-xs text-muted-foreground bg-muted/20 border-b border-border">
+          这里是您的审查队列：优先处理阶段审批，再查看变更审批
+        </p>
+
         <div className="flex-1 overflow-y-auto">
           {totalCount === 0 && !hasRecoveryItems ? (
             <div className="p-6 text-center text-muted-foreground">

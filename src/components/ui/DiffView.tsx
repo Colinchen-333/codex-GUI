@@ -85,6 +85,11 @@ export function DiffView({
     rename: 'text-blue-500',
   }
 
+  const totalLines = useMemo(() => 
+    diff.hunks.reduce((sum, hunk) => sum + hunk.lines.length, 0),
+    [diff.hunks]
+  )
+
   return (
     <div className="rounded-lg border border-border overflow-hidden">
       {/* Header */}
@@ -101,6 +106,9 @@ export function DiffView({
             <span className="text-muted-foreground text-sm">
               (from {diff.oldPath})
             </span>
+          )}
+          {totalLines > 500 && (
+            <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded ml-2">大变更</span>
           )}
         </div>
         <div className="flex items-center gap-2">

@@ -197,7 +197,7 @@ export function ApprovalPanel({
         {/* Role Reminder */}
         <div className="px-4 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2 border-b border-blue-200 dark:border-blue-800">
           <span className="font-medium">您的角色:</span>
-          <span>审查 Agent 提案 → 批准或拒绝 → 推进工作流</span>
+          <span>审查代理提案 → 批准或拒绝 → 推进工作流</span>
         </div>
         {/* Title and phase info */}
         <div className="px-4 py-3 flex items-center justify-between">

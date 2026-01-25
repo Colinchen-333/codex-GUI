@@ -1,5 +1,6 @@
 import { X, CheckSquare, FileCode, ChevronRight, Clock, RotateCcw, AlertTriangle } from 'lucide-react'
 import { useMultiAgentStore } from '../../stores/multi-agent-v2'
+import { useDecisionQueue } from '../../hooks/useDecisionQueue'
 import { usePendingApprovals } from '../../hooks/usePendingApprovals'
 import { cn } from '../../lib/utils'
 
@@ -14,6 +15,8 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
   const recoverApprovalTimeout = useMultiAgentStore((state) => state.recoverApprovalTimeout)
   const recoverCancelledWorkflow = useMultiAgentStore((state) => state.recoverCancelledWorkflow)
   const retryAgent = useMultiAgentStore((state) => state.retryAgent)
+
+  const { counts } = useDecisionQueue()
 
   const {
     phaseApproval: pendingApprovalPhase,
@@ -57,9 +60,35 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
           </button>
         </div>
 
-        <p className="px-4 py-2 text-xs text-muted-foreground bg-muted/20 border-b border-border">
-          这里是您的审批队列：优先处理阶段审批，再查看变更审批
-        </p>
+        <div className="px-4 py-2 bg-muted/20 border-b border-border">
+          <p className="text-xs text-muted-foreground mb-1.5">
+            按优先级排序：安全审批 → 阶段审批 → 恢复操作
+          </p>
+          {counts.total > 0 && (
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {counts.safetyApprovals > 0 && (
+                <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded">
+                  {counts.safetyApprovals} 安全
+                </span>
+              )}
+              {counts.phaseApprovals > 0 && (
+                <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                  {counts.phaseApprovals} 阶段
+                </span>
+              )}
+              {counts.timeoutRecoveries > 0 && (
+                <span className="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded">
+                  {counts.timeoutRecoveries} 超时
+                </span>
+              )}
+              {counts.errorRecoveries > 0 && (
+                <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded">
+                  {counts.errorRecoveries} 错误
+                </span>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="flex-1 overflow-y-auto">
           {totalCount === 0 && !hasRecoveryItems ? (

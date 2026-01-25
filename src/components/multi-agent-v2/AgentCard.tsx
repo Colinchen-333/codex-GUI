@@ -68,33 +68,33 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
   return (
     <div
       className={cn(
-        'group relative rounded-xl border bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden',
-        'dark:border-gray-700',
-        agent.status === 'error' && 'border-red-300 dark:border-red-500/50',
-        agent.status === 'running' && 'border-blue-300 dark:border-blue-500/50 ring-1 ring-blue-100 dark:ring-blue-900/30',
-        agent.status === 'completed' && 'border-green-300 dark:border-green-500/50',
-        agent.status === 'cancelled' && 'border-gray-300 dark:border-gray-600 opacity-75'
+        'group relative rounded-xl border bg-card shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden',
+        'border-border',
+        agent.status === 'error' && 'border-destructive/50',
+        agent.status === 'running' && 'border-blue-400 dark:border-blue-500/50 ring-1 ring-blue-100 dark:ring-blue-900/30',
+        agent.status === 'completed' && 'border-green-400 dark:border-green-500/50',
+        agent.status === 'cancelled' && 'border-muted-foreground/30 opacity-75'
       )}
     >
       {/* Quick Actions Overlay (Visible on Hover) */}
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-lg p-1 border border-gray-100 dark:border-gray-700 shadow-sm">
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1 bg-card/90 backdrop-blur rounded-lg p-1 border border-border shadow-sm">
         {isRunning && onPause && (
-          <button onClick={handlePause} disabled={isOperating} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500">
+          <button onClick={handlePause} disabled={isOperating} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
              {isOperating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
           </button>
         )}
         {isPaused && onResume && (
-          <button onClick={handleResume} disabled={isOperating} className="p-1.5 hover:bg-green-50 dark:hover:bg-green-900/20 rounded text-green-600">
+          <button onClick={handleResume} disabled={isOperating} className="p-1.5 hover:bg-green-100 dark:hover:bg-green-900/20 rounded text-green-600 dark:text-green-400">
              {isOperating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           </button>
         )}
         {onViewDetails && (
-          <button onClick={() => onViewDetails(agent.id)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-blue-600">
+          <button onClick={() => onViewDetails(agent.id)} className="p-1.5 hover:bg-muted rounded text-blue-600 dark:text-blue-400">
              <Eye className="w-4 h-4" />
           </button>
         )}
         {canCancelAgent(agent) && onCancel && (
-          <button onClick={handleCancel} disabled={isOperating} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500">
+          <button onClick={handleCancel} disabled={isOperating} className="p-1.5 hover:bg-destructive/10 rounded text-destructive">
              <X className="w-4 h-4" />
           </button>
         )}
@@ -105,13 +105,13 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
              <div className={cn(
-               "w-10 h-10 rounded-lg flex items-center justify-center text-xl bg-gray-50 dark:bg-gray-900",
+               "w-10 h-10 rounded-lg flex items-center justify-center text-xl bg-muted",
                isRunning && "animate-pulse ring-2 ring-blue-500/20"
              )}>
                {getAgentTypeIcon(agent.type)}
              </div>
              <div>
-               <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm">{getAgentTypeDisplayName(agent.type)}</h3>
+               <h3 className="font-bold text-foreground text-sm">{getAgentTypeDisplayName(agent.type)}</h3>
                <div className="flex items-center gap-2 mt-0.5">
                  <span className={cn(
                    'px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded',
@@ -120,14 +120,14 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
                  )}>
                    {formatAgentStatus(agent.status)}
                  </span>
-                 {elapsedTime > 0 && <span className="text-[10px] text-gray-400 font-mono">{formatElapsedTime(elapsedTime)}</span>}
+                 {elapsedTime > 0 && <span className="text-[10px] text-muted-foreground font-mono">{formatElapsedTime(elapsedTime)}</span>}
                </div>
              </div>
           </div>
         </div>
 
         {/* Task Section - Truncated */}
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 min-h-[2.5em]" title={agent.task}>
+        <p className="text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[2.5em]" title={agent.task}>
           {agent.task}
         </p>
 
@@ -149,32 +149,32 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-lg p-3 flex items-center gap-3 animate-pulse">
             <Bell className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             <div className="flex-1">
-              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">Approval Required</p>
-              <p className="text-[10px] text-amber-600 dark:text-amber-400">{pendingApprovalCount} pending requests</p>
+              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">需要审批</p>
+              <p className="text-[10px] text-amber-600 dark:text-amber-400">{pendingApprovalCount} 个待处理请求</p>
             </div>
           </div>
         ) : maybeStuck ? (
           <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50 rounded-lg p-3 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
             <div className="flex-1">
-              <p className="text-xs font-bold text-orange-700 dark:text-orange-300">Potentially Stuck</p>
-              <p className="text-[10px] text-orange-600 dark:text-orange-400">No output for 5m+</p>
+              <p className="text-xs font-bold text-orange-700 dark:text-orange-300">可能卡住</p>
+              <p className="text-[10px] text-orange-600 dark:text-orange-400">超过 5 分钟无输出</p>
             </div>
           </div>
         ) : isRunning ? (
           <div className="space-y-2">
-            <div className="flex justify-between text-[10px] font-medium text-gray-500 uppercase">
-              <span>Progress</span>
+            <div className="flex justify-between text-[10px] font-medium text-muted-foreground uppercase">
+              <span>进度</span>
               <span>{progressPercentage}%</span>
             </div>
-            <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div 
-                className="h-full bg-blue-500 transition-all duration-500" 
+                className="h-full bg-primary transition-all duration-500" 
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
-            <p className="text-[10px] text-gray-400 truncate mt-1">
-              {agent.progress.description || 'Processing...'}
+            <p className="text-[10px] text-muted-foreground truncate mt-1">
+              {agent.progress.description || '处理中...'}
             </p>
           </div>
         ) : agent.status === 'error' && agent.error ? (
@@ -186,13 +186,13 @@ function AgentCardComponent({ agent, onViewDetails, onCancel, onPause, onResume,
                   disabled={isOperating}
                   className="mt-2 text-[10px] font-bold text-red-700 flex items-center gap-1 hover:underline"
                 >
-                  <RotateCcw className="w-3 h-3" /> Retry
+                  <RotateCcw className="w-3 h-3" /> 重试
                 </button>
              )}
           </div>
         ) : (
-          <div className="h-12 flex items-center justify-center text-gray-300 dark:text-gray-600">
-            <span className="text-xs">Idle</span>
+          <div className="h-12 flex items-center justify-center text-muted-foreground/50">
+            <span className="text-xs">空闲</span>
           </div>
         )}
       </div>

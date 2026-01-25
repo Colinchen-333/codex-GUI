@@ -110,13 +110,13 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTime
     }
     if (isPastPhase) {
       return {
-        circle: 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400',
-        label: 'text-gray-600 dark:text-gray-400',
+        circle: 'bg-muted text-muted-foreground',
+        label: 'text-muted-foreground',
       }
     }
     return {
-      circle: 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400',
-      label: 'text-gray-500 dark:text-gray-400',
+      circle: 'bg-muted/50 text-muted-foreground',
+      label: 'text-muted-foreground',
     }
   }
 
@@ -130,16 +130,16 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTime
     if (phase.status === 'running') {
       return 'bg-gradient-to-r from-blue-500 to-gray-300 dark:from-blue-600 dark:to-gray-700 animate-pulse'
     }
-    return 'bg-gray-200 dark:bg-gray-700'
+    return 'bg-muted'
   }
 
   return (
-    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-4 sticky top-0 z-10 transition-colors duration-300">
+    <div className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-4 sticky top-0 z-10 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         {/* Workflow Title & Status - Compact Row */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{workflow.name}</h2>
+            <h2 className="text-xl font-bold text-foreground tracking-tight">{workflow.name}</h2>
             <div className={cn(
               "px-2.5 py-0.5 text-xs font-semibold rounded-full uppercase tracking-wider",
               workflow.status === 'running'
@@ -148,7 +148,7 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTime
                   ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                   : workflow.status === 'failed'
                     ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                    : "bg-muted text-muted-foreground"
             )}>
               {workflow.status === 'running' ? 'EXECUTING' :
                workflow.status === 'completed' ? 'COMPLETED' :
@@ -159,7 +159,7 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTime
           {workflow.status === 'failed' && onRetryWorkflow && (
             <button
               onClick={onRetryWorkflow}
-              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-white bg-gray-900 dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg transition-all shadow-sm hover:shadow"
+              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-lg transition-all shadow-sm hover:shadow"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Retry Workflow</span>
@@ -265,7 +265,7 @@ function WorkflowStageHeaderComponent({ workflow, onRetryWorkflow, onRecoverTime
 
                 {/* Connector Line */}
                 {index < phases.length - 1 && (
-                  <div className="flex-1 mx-2 h-0.5 bg-gray-100 dark:bg-gray-800 relative overflow-hidden rounded-full">
+                  <div className="flex-1 mx-2 h-0.5 bg-muted/50 relative overflow-hidden rounded-full">
                     <div
                       className={cn(
                         'absolute inset-0 transition-transform duration-700 origin-left',

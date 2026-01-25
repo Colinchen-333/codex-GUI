@@ -202,16 +202,16 @@ export function SetupView({ onComplete }: SetupViewProps) {
       {/* Task Input Dialog */}
       {showTaskDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-border">
             {/* Dialog Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-900 dark:bg-gray-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-primary">
               <div className="flex items-center space-x-3">
-                <Sparkles className="w-5 h-5 text-white" />
-                <h3 className="text-lg font-semibold text-white">描述您的任务</h3>
+                <Sparkles className="w-5 h-5 text-primary-foreground" />
+                <h3 className="text-lg font-semibold text-primary-foreground">描述您的任务</h3>
               </div>
               <button
                 onClick={handleTaskDialogClose}
-                className="p-1 text-white/80 hover:text-white hover:bg-white/10 rounded"
+                className="p-1 text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 rounded"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -219,7 +219,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
 
             {/* Dialog Content */}
             <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 详细描述您希望多智能体系统完成的任务，系统将自动规划并执行 4 阶段工作流。
               </p>
               <textarea
@@ -227,30 +227,30 @@ export function SetupView({ onComplete }: SetupViewProps) {
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
                 placeholder="例如：为项目添加用户认证功能，包括登录、注册和密码重置..."
-                className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full h-32 px-4 py-3 border border-border bg-background text-foreground rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.metaKey) {
                     void handleTaskSubmit()
                   }
                 }}
               />
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 提示：按 ⌘+Enter 快速提交
               </p>
 
               {/* Error Display */}
               {error && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{error}</p>
+                <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
             </div>
 
             {/* Dialog Footer */}
-            <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t bg-gray-50">
+            <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-border bg-muted/50">
               <button
                 onClick={handleTaskDialogClose}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
               >
                 取消
               </button>
@@ -260,13 +260,13 @@ export function SetupView({ onComplete }: SetupViewProps) {
                 className={cn(
                   'px-6 py-2 rounded-lg font-medium transition-all flex items-center space-x-2',
                   !taskDescription.trim() || isStarting
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200'
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 )}
               >
                 {isStarting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                     <span>启动中...</span>
                   </>
                 ) : (
@@ -282,28 +282,28 @@ export function SetupView({ onComplete }: SetupViewProps) {
       )}
 
       {/* Main Setup View */}
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="w-full max-w-2xl mx-4">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-2xl mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary text-primary-foreground rounded-2xl mb-4">
               <Workflow className="w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">多智能体模式配置</h1>
-            <p className="text-gray-600">
+            <h1 className="text-3xl font-bold text-foreground mb-2">多智能体模式配置</h1>
+            <p className="text-muted-foreground">
               配置工作环境和工作流模式，开始多智能体协作
             </p>
           </div>
 
         {/* Configuration Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-8">
+        <div className="bg-card border border-border rounded-2xl shadow-xl p-8 space-y-8">
           {/* Step 1: Working Directory */}
           <div>
             <div className="flex items-center space-x-2 mb-3">
-              <FolderOpen className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              <h2 className="text-lg font-semibold text-gray-900">1. 工作目录</h2>
+              <FolderOpen className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold text-foreground">1. 工作目录</h2>
             </div>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               选择代理执行任务的工作目录
             </p>
             <div className="flex items-center space-x-3">
@@ -313,8 +313,8 @@ export function SetupView({ onComplete }: SetupViewProps) {
                 readOnly
                 placeholder="点击按钮选择目录..."
                 className={cn(
-                  "flex-1 px-4 py-2 border rounded-lg bg-gray-50 text-gray-900",
-                  dirError ? "border-red-300 focus:border-red-500" : "border-gray-300"
+                  "flex-1 px-4 py-2 border rounded-lg bg-muted/50 text-foreground",
+                  dirError ? "border-destructive focus:border-destructive" : "border-border"
                 )}
               />
               <button
@@ -323,13 +323,13 @@ export function SetupView({ onComplete }: SetupViewProps) {
                 className={cn(
                   "px-4 py-2 rounded-lg transition-colors flex items-center space-x-2",
                   isValidatingDir
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200"
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
                 )}
               >
                 {isValidatingDir ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                     <span>验证中...</span>
                   </>
                 ) : (
@@ -339,13 +339,13 @@ export function SetupView({ onComplete }: SetupViewProps) {
             </div>
             {/* Directory Error Display */}
             {dirError && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{dirError}</p>
+              <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-sm text-destructive">{dirError}</p>
               </div>
             )}
             {/* Success indicator */}
             {workingDir && !dirError && (
-              <div className="mt-2 flex items-center space-x-2 text-sm text-green-600">
+              <div className="mt-2 flex items-center space-x-2 text-sm text-green-600 dark:text-green-400">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
@@ -357,10 +357,10 @@ export function SetupView({ onComplete }: SetupViewProps) {
           {/* Step 2: Workflow Mode */}
           <div>
             <div className="flex items-center space-x-2 mb-3">
-              <Workflow className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              <h2 className="text-lg font-semibold text-gray-900">2. 工作流模式</h2>
+              <Workflow className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold text-foreground">2. 工作流模式</h2>
             </div>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               选择工作流执行模式
             </p>
             <div className="space-y-3">
@@ -370,23 +370,23 @@ export function SetupView({ onComplete }: SetupViewProps) {
                 className={cn(
                   'w-full p-4 border-2 rounded-lg text-left transition-all',
                   workflowMode === 'plan'
-                    ? 'border-gray-900 dark:border-gray-100 bg-gray-100 dark:bg-gray-800'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-muted-foreground/50'
                 )}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">
+                    <h3 className="font-semibold text-foreground mb-1">
                       Plan Mode（推荐）
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       4 阶段结构化工作流：探索 → 设计 → 审查 → 实施
                     </p>
                   </div>
                   {workflowMode === 'plan' && (
-                    <div className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 ml-3">
+                    <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center flex-shrink-0 ml-3">
                       <svg
-                        className="w-3 h-3 text-white"
+                        className="w-3 h-3 text-primary-foreground"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -409,23 +409,23 @@ export function SetupView({ onComplete }: SetupViewProps) {
                 className={cn(
                   'w-full p-4 border-2 rounded-lg text-left transition-all',
                   workflowMode === 'custom'
-                    ? 'border-gray-900 dark:border-gray-100 bg-gray-100 dark:bg-gray-800'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-muted-foreground/50'
                 )}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">
+                    <h3 className="font-semibold text-foreground mb-1">
                       自定义模式
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       手动创建和管理代理，自由组织工作流
                     </p>
                   </div>
                   {workflowMode === 'custom' && (
-                    <div className="w-5 h-5 bg-gray-900 dark:bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 ml-3">
+                    <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center flex-shrink-0 ml-3">
                       <svg
-                        className="w-3 h-3 text-white"
+                        className="w-3 h-3 text-primary-foreground"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -447,13 +447,13 @@ export function SetupView({ onComplete }: SetupViewProps) {
           {/* Step 3: Global Configuration */}
           <div>
             <div className="flex items-center space-x-2 mb-3">
-              <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              <h2 className="text-lg font-semibold text-gray-900">3. 全局配置</h2>
+              <Settings className="w-5 h-5 text-muted-foreground" />
+              <h2 className="text-lg font-semibold text-foreground">3. 全局配置</h2>
             </div>
             <div className="space-y-4">
               {/* Model Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   默认模型
                 </label>
                 <select
@@ -461,7 +461,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
                   onChange={(e) =>
                     setGlobalConfig({ ...globalConfig, model: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
                 >
                   <option value="">{isModelsLoading ? '加载模型中...' : '使用默认模型'}</option>
                   {models.length > 0 ? (
@@ -482,7 +482,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
 
               {/* Approval Policy */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   审批策略
                 </label>
                 <select
@@ -493,7 +493,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
                       approvalPolicy: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
                 >
                   <option value="on-request">每次变更需审批（最安全）</option>
                   <option value="on-failure">仅失败时审批（更快捷）</option>
@@ -504,7 +504,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
 
               {/* Timeout */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   超时时间（秒）
                 </label>
                 <input
@@ -518,7 +518,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
                   }
                   min="60"
                   max="3600"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
+                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
                 />
               </div>
             </div>
@@ -533,13 +533,13 @@ export function SetupView({ onComplete }: SetupViewProps) {
             className={cn(
               'px-6 py-3 rounded-lg font-semibold transition-all flex items-center space-x-2',
               !workingDir || isStarting || isValidatingDir || dirError
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 shadow-lg hover:shadow-xl'
+                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl'
             )}
           >
             {isStarting ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                 <span>启动中...</span>
               </>
             ) : (
@@ -553,13 +553,13 @@ export function SetupView({ onComplete }: SetupViewProps) {
 
         {/* Error Display */}
         {error && !showTaskDialog && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
 
         {/* Help Text */}
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="mt-6 text-center text-sm text-muted-foreground">
           <p>
             提示：Plan Mode 适合复杂任务，系统会自动规划并执行 4 个阶段的工作流
           </p>

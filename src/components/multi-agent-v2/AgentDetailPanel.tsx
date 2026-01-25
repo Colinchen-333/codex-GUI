@@ -144,12 +144,12 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
         const content = item.content as { text: string }
         return (
           <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center">
+              <User className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-                <p className="text-sm text-gray-800 dark:text-gray-200">{content.text}</p>
+              <div className="bg-muted rounded-lg p-3 border border-border">
+                <p className="text-sm text-foreground">{content.text}</p>
               </div>
             </div>
           </div>
@@ -207,11 +207,11 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
           <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3">
             <div className={cn(
               "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
-              isApplied ? "bg-green-100 dark:bg-green-900/40" : needsApproval ? "bg-amber-100 dark:bg-amber-900/40" : "bg-gray-100 dark:bg-gray-700"
+              isApplied ? "bg-green-100 dark:bg-green-900/40" : needsApproval ? "bg-amber-100 dark:bg-amber-900/40" : "bg-muted"
             )}>
               <FileCode className={cn(
                 "w-4 h-4",
-                isApplied ? "text-green-600 dark:text-green-400" : needsApproval ? "text-amber-600 dark:text-amber-400" : "text-gray-600 dark:text-gray-400"
+                isApplied ? "text-green-600 dark:text-green-400" : needsApproval ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
               )} />
             </div>
             <div className="flex-1 min-w-0">
@@ -221,13 +221,13 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
               )}>
                 <div className={cn(
                   "px-3 py-2 flex items-center justify-between",
-                  isApplied ? "bg-green-50 dark:bg-green-900/20" : needsApproval ? "bg-amber-50 dark:bg-amber-900/20" : "bg-gray-50 dark:bg-gray-800"
+                  isApplied ? "bg-green-50 dark:bg-green-900/20" : needsApproval ? "bg-amber-50 dark:bg-amber-900/20" : "bg-muted/50"
                 )}>
                   <div className="flex items-center gap-2 text-xs font-medium">
                     {addCount > 0 && <span className="text-green-600">+{addCount}</span>}
                     {modifyCount > 0 && <span className="text-yellow-600">~{modifyCount}</span>}
                     {deleteCount > 0 && <span className="text-red-600">-{deleteCount}</span>}
-                    <span className="text-gray-500">{content.changes.length} file(s)</span>
+                    <span className="text-muted-foreground">{content.changes.length} file(s)</span>
                   </div>
                   {isApplied && (
                     <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
@@ -249,7 +249,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
                       hunks,
                     }
                     return (
-                      <div key={idx} className="border-t border-gray-100 dark:border-gray-700 first:border-t-0">
+                      <div key={idx} className="border-t border-border/50 first:border-t-0">
                         <DiffView diff={fileDiff} />
                       </div>
                     )
@@ -257,12 +257,12 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
                 </div>
 
                 {needsApproval && (
-                  <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
+                  <div className="px-3 py-2 border-t border-border bg-muted/50 flex items-center gap-2">
                     <button
                       onClick={() => {
                         void useThreadStore.getState().respondToApprovalInThread(agent.threadId, itemId, 'accept')
                       }}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
                     >
                       <Check className="w-3 h-3" /> 应用
                     </button>
@@ -270,7 +270,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
                       onClick={() => {
                         void useThreadStore.getState().respondToApprovalInThread(agent.threadId, itemId, 'decline')
                       }}
-                      className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-destructive border border-destructive/30 rounded hover:bg-destructive/10 transition-colors"
                     >
                       <XCircle className="w-3 h-3" /> 拒绝
                     </button>
@@ -301,7 +301,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
             <div className={cn(
               "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
               hasError
-                ? "bg-red-100 dark:bg-red-900/40"
+                ? "bg-destructive/10"
                 : isRunning
                   ? "bg-purple-100 dark:bg-purple-900/40"
                   : "bg-green-100 dark:bg-green-900/40"
@@ -309,7 +309,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
               <Wrench className={cn(
                 "w-4 h-4",
                 hasError
-                  ? "text-red-600 dark:text-red-400"
+                  ? "text-destructive"
                   : isRunning
                     ? "text-purple-600 dark:text-purple-400 animate-spin"
                     : "text-green-600 dark:text-green-400"
@@ -319,7 +319,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
               <div className={cn(
                 "rounded-lg p-3 border",
                 hasError
-                  ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700"
+                  ? "bg-destructive/5 border-destructive/30"
                   : isRunning
                     ? "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700"
                     : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
@@ -328,27 +328,27 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
                   <span className={cn(
                     "text-xs font-semibold",
                     hasError
-                      ? "text-red-700 dark:text-red-300"
+                      ? "text-destructive"
                       : isRunning
                         ? "text-purple-700 dark:text-purple-300"
                         : "text-green-700 dark:text-green-300"
                   )}>
                     {hasError ? '工具错误' : isRunning ? '工具执行中' : '工具完成'}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{content.tool}</span>
+                  <span className="text-xs text-muted-foreground font-mono">{content.tool}</span>
                 </div>
                 {content.arguments != null && typeof content.arguments === 'object' && Object.keys(content.arguments as object).length > 0 ? (
-                  <pre className="text-xs text-gray-600 dark:text-gray-400 font-mono overflow-x-auto mb-2">
+                  <pre className="text-xs text-muted-foreground font-mono overflow-x-auto mb-2">
                     {JSON.stringify(content.arguments, null, 2)}
                   </pre>
                 ) : null}
                 {hasError && (
-                  <pre className="text-xs text-red-600 dark:text-red-400 font-mono overflow-x-auto whitespace-pre-wrap">
+                  <pre className="text-xs text-destructive font-mono overflow-x-auto whitespace-pre-wrap">
                     {content.error}
                   </pre>
                 )}
                 {!hasError && content.result !== undefined && (
-                  <pre className="text-xs text-gray-600 dark:text-gray-400 font-mono overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto">
+                  <pre className="text-xs text-muted-foreground font-mono overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto">
                     {typeof content.result === 'string' ? content.result : JSON.stringify(content.result, null, 2)}
                   </pre>
                 )}
@@ -389,13 +389,13 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
         // Fallback for unknown message types
         return (
           <div key={itemId} id={`msg-${itemId}`} className="flex items-start space-x-3 opacity-60">
-            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <ChevronDown className="w-4 h-4 text-gray-400" />
+            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center">
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                <span className="text-xs text-gray-500">{item.type}</span>
-                <pre className="text-xs text-gray-600 dark:text-gray-400 font-mono mt-1 overflow-x-auto">
+              <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                <span className="text-xs text-muted-foreground">{item.type}</span>
+                <pre className="text-xs text-muted-foreground font-mono mt-1 overflow-x-auto">
                   {JSON.stringify(item.content, null, 2)}
                 </pre>
               </div>
@@ -406,13 +406,13 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full bg-card border-l border-border">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <div className="text-xl">{getAgentTypeIcon(agent.type)}</div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+            <h3 className="font-semibold text-foreground truncate">
               {getAgentTypeDisplayName(agent.type)} 代理
             </h3>
             <div className="flex items-center space-x-2 mt-0.5">
@@ -425,8 +425,8 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
               >
                 {formatAgentStatus(agent.status)}
               </span>
-              <span className="text-xs text-gray-400">•</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate font-mono">
+              <span className="text-xs text-muted-foreground/50">•</span>
+              <span className="text-xs text-muted-foreground truncate font-mono">
                 {agent.id.slice(0, 12)}
               </span>
             </div>
@@ -438,7 +438,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
           {onMinimize && (
             <button
               onClick={onMinimize}
-              className="p-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
               title="最小化"
             >
               <Minimize2 className="w-4 h-4" />
@@ -446,7 +446,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
           )}
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
             title="关闭"
           >
             <X className="w-4 h-4" />
@@ -455,7 +455,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       </div>
 
         {/* Task Description */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="px-4 py-3 border-b border-border bg-card">
           {(agent.status === 'pending' && agent.interruptReason === 'pause') && (
             <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between">
               <span className="text-xs font-medium text-amber-700 dark:text-amber-300 flex items-center gap-2">
@@ -483,15 +483,15 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
             </div>
           )}
           
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
             任务
           </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{agent.task}</p>
+          <p className="text-sm text-foreground/80">{agent.task}</p>
         </div>
 
         {/* Summary Strip - What changed / What needs attention */}
         {stats && (stats.files > 0 || stats.commands > 0 || stats.pendingApprovals > 0 || stats.errors > 0) && (
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="px-4 py-2 border-b border-border bg-muted/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 text-xs">
                 {stats.files > 0 && (
@@ -506,7 +506,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
                 {stats.commands > 0 && (
                   <button
                     onClick={() => scrollToId(stats.firstCommandId)}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-muted text-foreground rounded-md hover:bg-muted/80 transition-colors"
                   >
                     <Terminal className="w-3.5 h-3.5" />
                     <span className="font-medium">{stats.commands} 命令</span>
@@ -541,11 +541,11 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       <div className="relative flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/50">
         {stats && (stats.files > 0 || stats.commands > 0 || stats.errors > 0) && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-            <div className="flex items-center space-x-1 p-1 bg-white/90 dark:bg-gray-800/90 backdrop-blur shadow-sm border border-gray-200 dark:border-gray-700 rounded-full pointer-events-auto">
+            <div className="flex items-center space-x-1 p-1 bg-card/90 backdrop-blur shadow-sm border border-border rounded-full pointer-events-auto">
               {stats.files > 0 && (
                 <button
                   onClick={() => scrollToId(stats.firstFileId)}
-                  className="flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-xs font-medium text-gray-600 dark:text-gray-300"
+                  className="flex items-center space-x-1 px-2 py-1 hover:bg-muted rounded-full transition-colors text-xs font-medium text-muted-foreground"
                   title="跳转到第一个文件变更"
                 >
                   <FileCode className="w-3 h-3" />
@@ -555,7 +555,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
               {stats.commands > 0 && (
                 <button
                   onClick={() => scrollToId(stats.firstCommandId)}
-                  className="flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-xs font-medium text-gray-600 dark:text-gray-300"
+                  className="flex items-center space-x-1 px-2 py-1 hover:bg-muted rounded-full transition-colors text-xs font-medium text-muted-foreground"
                   title="跳转到第一个命令"
                 >
                   <Terminal className="w-3 h-3" />
@@ -565,7 +565,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
               {stats.errors > 0 && (
                 <button
                   onClick={() => scrollToId(stats.firstErrorId)}
-                  className="flex items-center space-x-1 px-2 py-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors text-xs font-medium text-red-600 dark:text-red-400"
+                  className="flex items-center space-x-1 px-2 py-1 hover:bg-destructive/10 rounded-full transition-colors text-xs font-medium text-destructive"
                   title="跳转到第一个错误"
                 >
                   <AlertCircle className="w-3 h-3" />
@@ -588,7 +588,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
                   <div ref={scrollBottomRef} />
                 </>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center h-full text-muted-foreground">
                   <div className="text-center">
                     <Bot className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">等待代理输出...</p>
@@ -597,7 +597,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
               )}
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+            <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center">
                 <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">线程未加载</p>
@@ -625,7 +625,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       </div>
 
       {/* Footer - Agent Metadata */}
-      <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+      <div className="px-4 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground space-y-1">
         <div className="flex justify-between">
           <span>创建时间:</span>
           <span className="font-mono">{agent.createdAt.toLocaleString('zh-CN')}</span>

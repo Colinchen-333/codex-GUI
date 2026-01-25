@@ -31,27 +31,27 @@ const STATUS_GROUP_CONFIG: Record<
 > = {
   running: {
     title: '运行中',
-    color: 'text-blue-600',
+    color: 'text-blue-600 dark:text-blue-400',
     defaultExpanded: true,
   },
   pending: {
     title: '等待中',
-    color: 'text-gray-600',
+    color: 'text-muted-foreground',
     defaultExpanded: true,
   },
   error: {
     title: '错误',
-    color: 'text-red-600',
+    color: 'text-destructive',
     defaultExpanded: true,
   },
   completed: {
     title: '已完成',
-    color: 'text-green-600',
+    color: 'text-green-600 dark:text-green-400',
     defaultExpanded: false, // Collapsed by default
   },
   cancelled: {
     title: '已取消',
-    color: 'text-gray-400',
+    color: 'text-muted-foreground/60',
     defaultExpanded: false,
   },
 }
@@ -91,7 +91,7 @@ function AgentGridViewComponent({
 
   if (agents.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
         <div className="text-center">
           <p className="text-lg font-medium">暂无代理</p>
           <p className="text-sm mt-1">创建代理以开始多智能体协作</p>
@@ -115,9 +115,9 @@ function AgentGridViewComponent({
               className="flex items-center space-x-2 text-left w-full group"
             >
               {isExpanded ? (
-                <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                <ChevronDown className="w-5 h-5 text-muted-foreground group-hover:text-foreground" />
               ) : (
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground" />
               )}
               <h3 className={cn('text-lg font-semibold', config.color)}>
                 {config.title} ({agentsInGroup.length})
@@ -144,7 +144,7 @@ function AgentGridViewComponent({
 
             {/* Collapsed Summary */}
             {!isExpanded && (
-              <div className="text-sm text-gray-500 ml-7">
+              <div className="text-sm text-muted-foreground ml-7">
                 点击展开查看 {agentsInGroup.length} 个代理
               </div>
             )}

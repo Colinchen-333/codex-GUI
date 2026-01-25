@@ -164,62 +164,81 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
               </div>
               <div className="divide-y divide-border">
                 {approvalTimeoutPhase && (
-                  <div className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors">
-                    <div className="p-1.5 rounded-lg bg-red-500/10 flex-shrink-0">
-                      <Clock className="w-4 h-4 text-red-500" />
+                  <div className="w-full px-4 py-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-orange-500/10 flex-shrink-0">
+                        <Clock className="w-4 h-4 text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          审批超时：{approvalTimeoutPhase.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          工作流已暂停，等待您的决策
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => recoverApprovalTimeout(approvalTimeoutPhase.id)}
+                        className="px-2.5 py-1.5 text-xs font-medium bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                      >
+                        继续审批
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">审批超时</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {approvalTimeoutPhase.name}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => recoverApprovalTimeout(approvalTimeoutPhase.id)}
-                      className="px-2 py-1 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                    >
-                      继续审批
-                    </button>
+                    <p className="mt-2 ml-9 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                      → 点击后将重置计时器，您可以继续审批或拒绝此阶段
+                    </p>
                   </div>
                 )}
 
                 {cancelledWorkflow && (
-                  <div className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors">
-                    <div className="p-1.5 rounded-lg bg-orange-500/10 flex-shrink-0">
-                      <RotateCcw className="w-4 h-4 text-orange-500" />
+                  <div className="w-full px-4 py-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-amber-500/10 flex-shrink-0">
+                        <RotateCcw className="w-4 h-4 text-amber-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">工作流已取消</p>
+                        <p className="text-xs text-muted-foreground">
+                          可从当前阶段恢复执行
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => recoverCancelledWorkflow()}
+                        className="px-2.5 py-1.5 text-xs font-medium bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors"
+                      >
+                        恢复工作流
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">工作流已取消</p>
-                      <p className="text-xs text-muted-foreground">
-                        可恢复执行
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => recoverCancelledWorkflow()}
-                      className="px-2 py-1 text-xs font-medium bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
-                    >
-                      恢复工作流
-                    </button>
+                    <p className="mt-2 ml-9 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                      → 将从取消点继续执行，已完成的阶段不会重新运行
+                    </p>
                   </div>
                 )}
 
                 {failedAgents.map(agent => (
-                  <div key={agent.id} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors">
-                    <div className="p-1.5 rounded-lg bg-red-500/10 flex-shrink-0">
-                      <AlertTriangle className="w-4 h-4 text-red-500" />
+                  <div key={agent.id} className="w-full px-4 py-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-lg bg-red-500/10 flex-shrink-0">
+                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          代理执行失败：{agent.type}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {agent.error?.message}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => retryAgent(agent.id)}
+                        className="px-2.5 py-1.5 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                      >
+                        重试
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">代理执行失败</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {agent.type}: {agent.error?.message}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => retryAgent(agent.id)}
-                      className="px-2 py-1 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                    >
-                      重试
-                    </button>
+                    <p className="mt-2 ml-9 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                      → 将使用相同任务重新启动此代理
+                    </p>
                   </div>
                 ))}
               </div>

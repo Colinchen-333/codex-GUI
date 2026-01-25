@@ -832,7 +832,8 @@ export function MultiAgentView() {
         {/* Primary Decision Block - Shows the most important pending action */}
         <PrimaryDecision
           pendingPhase={pendingApprovalPhase}
-          agents={agents}
+          workflow={workflow}
+          agents={agents.map(a => ({ id: a.id, threadId: a.threadId, status: a.status }))}
           onApprovePhase={handleApproval}
           onRejectPhase={() => {
             if (pendingApprovalPhase) {

@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, Clock, Shield, AlertTriangle, ChevronRight, Layer
 import type { WorkflowPhase, Workflow } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
 import { useDecisionQueue } from '../../hooks/useDecisionQueue'
+import { usePhaseSummary } from '../../hooks/usePhaseSummary'
 import { cn } from '../../lib/utils'
 
 interface PrimaryDecisionProps {
@@ -62,48 +63,7 @@ function PrimaryDecisionComponent({
     return counts.total - (safetyApprovalInfo.count > 0 ? 1 : 0) - (pendingPhase ? 1 : 0)
   }, [counts.total, safetyApprovalInfo.count, pendingPhase])
 
-  const phaseSummary = useMemo(() => {
-    if (!pendingPhase) return null
-    
-    let fileChanges = 0
-    let commands = 0
-    let errors = 0
-    const phaseAgentIds = pendingPhase.agentIds || []
-    
-    for (const agentId of phaseAgentIds) {
-      const agent = agents.find(a => a.id === agentId)
-      if (!agent?.threadId) continue
-      
-      const thread = threadStoreState[agent.threadId]
-      if (!thread) continue
-      
-      for (const itemId of thread.itemOrder) {
-        const item = thread.items[itemId]
-        if (!item) continue
-        
-        if (item.type === 'fileChange') {
-          const content = item.content as { changes?: unknown[] }
-          fileChanges += content.changes?.length || 1
-        } else if (item.type === 'commandExecution') {
-          commands++
-        } else if (item.type === 'error') {
-          errors++
-        }
-      }
-    }
-    
-    const completedAgents = phaseAgentIds.filter(id => {
-      const agent = agents.find(a => a.id === id)
-      return agent?.status === 'completed'
-    }).length
-    
-    const failedAgents = phaseAgentIds.filter(id => {
-      const agent = agents.find(a => a.id === id)
-      return agent?.status === 'error'
-    }).length
-    
-    return { fileChanges, commands, errors, completedAgents, failedAgents, totalAgents: phaseAgentIds.length }
-  }, [pendingPhase, agents, threadStoreState])
+  const phaseSummary = usePhaseSummary(pendingPhase, agents)
 
   const hasSafetyApproval = safetyApprovalInfo.count > 0
   const hasPhaseApproval = pendingPhase !== null

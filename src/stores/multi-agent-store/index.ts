@@ -764,6 +764,44 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         }
       },
 
+      skipAgent: async (id: string) => {
+        const agent = get().agents[id]
+        if (!agent) return
+        if (agent.status !== 'error' && agent.status !== 'pending') {
+          log.warn(`[skipAgent] Agent ${id} cannot be skipped in status: ${agent.status}`, 'multi-agent')
+          return
+        }
+
+        try {
+          get()._clearPauseTimeout(id)
+
+          set((state) => {
+            const current = state.agents[id]
+            if (current) {
+              current.status = 'completed'
+              current.completedAt = new Date()
+              current.error = undefined
+              current.progress = {
+                current: 100,
+                total: 100,
+                description: '已跳过',
+              }
+            }
+          })
+
+          log.info(`[skipAgent] Agent ${id} skipped`, 'multi-agent')
+
+          const capturedVersion = get().phaseOperationVersion
+          setTimeout(() => {
+            get().checkPhaseCompletion(capturedVersion).catch((err) => {
+              log.error(`[skipAgent] Failed to check phase completion: ${err}`, 'multi-agent')
+            })
+          }, 0)
+        } catch (error) {
+          log.error(`[skipAgent] Failed to skip agent ${id}: ${error}`, 'multi-agent')
+        }
+      },
+
       removeAgent: (id: string) => {
         const agent = get().agents[id]
         if (!agent) return

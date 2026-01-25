@@ -17,6 +17,8 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
   const recoverApprovalTimeout = useMultiAgentStore((state) => state.recoverApprovalTimeout)
   const recoverCancelledWorkflow = useMultiAgentStore((state) => state.recoverCancelledWorkflow)
   const retryAgent = useMultiAgentStore((state) => state.retryAgent)
+  const skipAgent = useMultiAgentStore((state) => state.skipAgent)
+  const cancelWorkflow = useMultiAgentStore((state) => state.cancelWorkflow)
 
   const { counts } = useDecisionQueue()
 
@@ -222,6 +224,8 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
                     key={agent.id}
                     agent={agent}
                     onRetry={() => retryAgent(agent.id)}
+                    onSkip={() => skipAgent(agent.id)}
+                    onCancelWorkflow={cancelWorkflow}
                   />
                 ))}
               </div>
@@ -250,14 +254,26 @@ interface FailedAgentCardProps {
     }
   }
   onRetry: () => void
+  onSkip: () => void
+  onCancelWorkflow: () => void
 }
 
-function FailedAgentCard({ agent, onRetry }: FailedAgentCardProps) {
+function FailedAgentCard({ agent, onRetry, onSkip, onCancelWorkflow }: FailedAgentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [loadingAction, setLoadingAction] = useState<string | null>(null)
   
   const errorCode = agent.error?.code || 'UNKNOWN'
   const guidance = getErrorGuidance(errorCode)
   const isRecoverable = agent.error?.recoverable !== false
+
+  const handleAction = async (actionType: string, handler: () => void | Promise<void>) => {
+    setLoadingAction(actionType)
+    try {
+      await handler()
+    } finally {
+      setLoadingAction(null)
+    }
+  }
   
   return (
     <div className="w-full px-4 py-3 hover:bg-muted/50 transition-colors">
@@ -297,10 +313,14 @@ function FailedAgentCard({ agent, onRetry }: FailedAgentCardProps) {
           </button>
           {isRecoverable && (
             <button
-              onClick={onRetry}
-              className="px-2.5 py-1.5 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              onClick={() => handleAction('retry', onRetry)}
+              disabled={loadingAction !== null}
+              className={cn(
+                "px-2.5 py-1.5 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors",
+                loadingAction === 'retry' && "opacity-70"
+              )}
             >
-              重试
+              {loadingAction === 'retry' ? '处理中...' : '重试'}
             </button>
           )}
         </div>
@@ -331,30 +351,46 @@ function FailedAgentCard({ agent, onRetry }: FailedAgentCardProps) {
           )}
           
           <div className="flex items-center gap-2 flex-wrap">
-            {guidance.actions.map((action, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  if (action.action === 'retry') {
-                    onRetry()
-                  }
-                }}
-                disabled={action.action !== 'retry'}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors",
-                  action.type === 'primary' && "bg-blue-500 text-white hover:bg-blue-600",
-                  action.type === 'secondary' && "bg-muted text-foreground hover:bg-muted/80 border border-border",
-                  action.type === 'danger' && "bg-red-500 text-white hover:bg-red-600",
-                  action.action !== 'retry' && "opacity-50 cursor-not-allowed"
-                )}
-                title={action.action !== 'retry' ? '此操作需要在代理详情面板中执行' : undefined}
-              >
-                {action.action === 'retry' && <RotateCcw className="w-3 h-3" />}
-                {action.action === 'skip' && <SkipForward className="w-3 h-3" />}
-                {action.action === 'cancel' && <XCircle className="w-3 h-3" />}
-                {action.label}
-              </button>
-            ))}
+            {guidance.actions.map((action, idx) => {
+              const isLoading = loadingAction === action.action
+              const isDisabled = loadingAction !== null
+              
+              const handleClick = () => {
+                if (action.action === 'retry') {
+                  handleAction('retry', onRetry)
+                } else if (action.action === 'skip') {
+                  handleAction('skip', onSkip)
+                } else if (action.action === 'cancel') {
+                  handleAction('cancel', onCancelWorkflow)
+                }
+              }
+              
+              return (
+                <button
+                  key={idx}
+                  onClick={handleClick}
+                  disabled={isDisabled}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors",
+                    action.type === 'primary' && "bg-blue-500 text-white hover:bg-blue-600",
+                    action.type === 'secondary' && "bg-muted text-foreground hover:bg-muted/80 border border-border",
+                    action.type === 'danger' && "bg-red-500 text-white hover:bg-red-600",
+                    isDisabled && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {isLoading ? (
+                    <RotateCcw className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <>
+                      {action.action === 'retry' && <RotateCcw className="w-3 h-3" />}
+                      {action.action === 'skip' && <SkipForward className="w-3 h-3" />}
+                      {action.action === 'cancel' && <XCircle className="w-3 h-3" />}
+                    </>
+                  )}
+                  {isLoading ? '处理中...' : action.label}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

@@ -95,6 +95,7 @@ export interface MultiAgentState {
   pauseAgent: (id: string) => Promise<void>
   resumeAgent: (id: string) => Promise<void>
   retryAgent: (id: string) => Promise<void>
+  skipAgent: (id: string) => Promise<void>
   removeAgent: (id: string) => void
   clearAgents: () => Promise<void>
 

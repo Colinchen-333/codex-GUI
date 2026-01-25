@@ -2,7 +2,14 @@ import { createJSONStorage, type PersistStorage } from 'zustand/middleware'
 import { log } from '../../lib/logger'
 import type { AgentDescriptor } from '../../lib/workflows/types'
 import type { MultiAgentState, PersistedMultiAgentState } from './types'
-import { MAX_PHASE_OUTPUT_LENGTH, MAX_AGENT_TASK_LENGTH } from './constants'
+import { 
+  MAX_PHASE_OUTPUT_LENGTH, 
+  MAX_AGENT_TASK_LENGTH,
+  MAX_PERSISTED_AGENTS,
+  MAX_PERSISTED_PHASES,
+  MAX_ERROR_MESSAGE_LENGTH,
+  MAX_STORAGE_SIZE_KB,
+} from './constants'
 
 export const STORAGE_NAME = 'codex-multi-agent-state'
 export const STORAGE_VERSION = 2
@@ -16,8 +23,20 @@ export function partializeState(state: MultiAgentState): PersistedMultiAgentStat
     ? state.previousPhaseOutput.slice(0, MAX_PHASE_OUTPUT_LENGTH)
     : undefined
 
+  const agentEntries = Object.entries(state.agents)
+  const sortedAgentEntries = agentEntries.sort((a, b) => {
+    const aTime = a[1].completedAt?.getTime() || a[1].startedAt?.getTime() || a[1].createdAt?.getTime() || 0
+    const bTime = b[1].completedAt?.getTime() || b[1].startedAt?.getTime() || b[1].createdAt?.getTime() || 0
+    return bTime - aTime
+  })
+  const recentAgentEntries = sortedAgentEntries.slice(0, MAX_PERSISTED_AGENTS)
+  
+  if (agentEntries.length > MAX_PERSISTED_AGENTS) {
+    log.warn(`[partializeState] Truncating agents: ${agentEntries.length} → ${MAX_PERSISTED_AGENTS}`, 'multi-agent')
+  }
+
   const compactAgents: Record<string, Partial<AgentDescriptor>> = {}
-  for (const [id, agent] of Object.entries(state.agents)) {
+  for (const [id, agent] of recentAgentEntries) {
     compactAgents[id] = {
       id: agent.id,
       type: agent.type,
@@ -30,7 +49,10 @@ export function partializeState(state: MultiAgentState): PersistedMultiAgentStat
       createdAt: agent.createdAt,
       startedAt: agent.startedAt,
       completedAt: agent.completedAt,
-      error: agent.error,
+      error: agent.error ? {
+        ...agent.error,
+        message: agent.error.message?.slice(0, MAX_ERROR_MESSAGE_LENGTH),
+      } : undefined,
       interruptReason: agent.interruptReason,
       config: agent.config,
     }
@@ -38,21 +60,29 @@ export function partializeState(state: MultiAgentState): PersistedMultiAgentStat
 
   const compactWorkflow = state.workflow ? {
     ...state.workflow,
-    phases: state.workflow.phases.map((phase) => ({
+    phases: state.workflow.phases.slice(-MAX_PERSISTED_PHASES).map((phase) => ({
       ...phase,
       output: phase.output?.slice(0, MAX_PHASE_OUTPUT_LENGTH),
     })),
   } : null
 
-  return {
+  const result: PersistedMultiAgentState = {
     config: state.config,
     workingDirectory: state.workingDirectory,
     agents: compactAgents as Record<string, AgentDescriptor>,
-    agentOrder: state.agentOrder,
+    agentOrder: state.agentOrder.slice(-MAX_PERSISTED_AGENTS),
     agentMapping: state.agentMapping,
     workflow: compactWorkflow,
     previousPhaseOutput: truncatedPreviousPhaseOutput,
   }
+  
+  const serialized = JSON.stringify(result)
+  const sizeKB = serialized.length / 1024
+  if (sizeKB > MAX_STORAGE_SIZE_KB) {
+    log.warn(`[partializeState] State size exceeds limit: ${sizeKB.toFixed(1)}KB > ${MAX_STORAGE_SIZE_KB}KB`, 'multi-agent')
+  }
+  
+  return result
 }
 
 function restoreDates(obj: unknown): unknown {

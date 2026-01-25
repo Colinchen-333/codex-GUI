@@ -1,7 +1,9 @@
-import { X, CheckSquare, FileCode, ChevronRight, Clock, RotateCcw, AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
+import { X, CheckSquare, FileCode, ChevronRight, Clock, RotateCcw, AlertTriangle, ChevronDown, ChevronUp, SkipForward, XCircle, Info } from 'lucide-react'
 import { useMultiAgentStore } from '../../stores/multi-agent-v2'
 import { useDecisionQueue } from '../../hooks/useDecisionQueue'
 import { usePendingApprovals } from '../../hooks/usePendingApprovals'
+import { getErrorGuidance } from '../../stores/multi-agent-store/state-machine'
 import { cn } from '../../lib/utils'
 
 interface ReviewInboxProps {
@@ -216,30 +218,11 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
                 )}
 
                 {failedAgents.map(agent => (
-                  <div key={agent.id} className="w-full px-4 py-3 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 rounded-lg bg-red-500/10 flex-shrink-0">
-                        <AlertTriangle className="w-4 h-4 text-red-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">
-                          代理执行失败：{agent.type}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {agent.error?.message}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => retryAgent(agent.id)}
-                        className="px-2.5 py-1.5 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                      >
-                        重试
-                      </button>
-                    </div>
-                    <p className="mt-2 ml-9 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
-                      → 将使用相同任务重新启动此代理
-                    </p>
-                  </div>
+                  <FailedAgentCard
+                    key={agent.id}
+                    agent={agent}
+                    onRetry={() => retryAgent(agent.id)}
+                  />
                 ))}
               </div>
             </div>
@@ -253,5 +236,134 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
         </div>
       </div>
     </>
+  )
+}
+
+interface FailedAgentCardProps {
+  agent: {
+    id: string
+    type?: string
+    error?: {
+      message?: string
+      code?: string
+      recoverable?: boolean
+    }
+  }
+  onRetry: () => void
+}
+
+function FailedAgentCard({ agent, onRetry }: FailedAgentCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  const errorCode = agent.error?.code || 'UNKNOWN'
+  const guidance = getErrorGuidance(errorCode)
+  const isRecoverable = agent.error?.recoverable !== false
+  
+  return (
+    <div className="w-full px-4 py-3 hover:bg-muted/50 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="p-1.5 rounded-lg bg-red-500/10 flex-shrink-0">
+          <AlertTriangle className="w-4 h-4 text-red-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-foreground">
+              {guidance.title}
+            </p>
+            <span className={cn(
+              "px-1.5 py-0.5 text-[10px] font-medium rounded",
+              isRecoverable
+                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+            )}>
+              {isRecoverable ? '可恢复' : '需手动处理'}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {agent.type}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors"
+            title={isExpanded ? '收起详情' : '展开详情'}
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+          {isRecoverable && (
+            <button
+              onClick={onRetry}
+              className="px-2.5 py-1.5 text-xs font-medium bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              重试
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {isExpanded && (
+        <div className="mt-3 ml-9 space-y-2">
+          <div className="p-2.5 bg-muted/50 rounded-lg border border-border">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <div className="space-y-1.5 flex-1">
+                <p className="text-xs text-foreground">
+                  {guidance.description}
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  {guidance.suggestion}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {agent.error?.message && (
+            <div className="p-2 bg-red-50 dark:bg-red-900/10 rounded border border-red-200 dark:border-red-800">
+              <p className="text-xs text-red-700 dark:text-red-300 font-mono break-all">
+                {agent.error.message}
+              </p>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            {guidance.actions.map((action, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  if (action.action === 'retry') {
+                    onRetry()
+                  }
+                }}
+                disabled={action.action !== 'retry'}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors",
+                  action.type === 'primary' && "bg-blue-500 text-white hover:bg-blue-600",
+                  action.type === 'secondary' && "bg-muted text-foreground hover:bg-muted/80 border border-border",
+                  action.type === 'danger' && "bg-red-500 text-white hover:bg-red-600",
+                  action.action !== 'retry' && "opacity-50 cursor-not-allowed"
+                )}
+                title={action.action !== 'retry' ? '此操作需要在代理详情面板中执行' : undefined}
+              >
+                {action.action === 'retry' && <RotateCcw className="w-3 h-3" />}
+                {action.action === 'skip' && <SkipForward className="w-3 h-3" />}
+                {action.action === 'cancel' && <XCircle className="w-3 h-3" />}
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {!isExpanded && (
+        <p className="mt-2 ml-9 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+          → {guidance.suggestion}
+        </p>
+      )}
+    </div>
   )
 }

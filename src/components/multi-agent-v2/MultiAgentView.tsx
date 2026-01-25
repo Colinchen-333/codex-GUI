@@ -829,7 +829,6 @@ export function MultiAgentView() {
           )
         })()}
 
-        {/* Primary Decision Block - Shows the most important pending action */}
         <PrimaryDecision
           pendingPhase={pendingApprovalPhase}
           workflow={workflow}
@@ -851,6 +850,7 @@ export function MultiAgentView() {
               recoverApprovalTimeout(pendingApprovalPhase.id)
             }
           }}
+          onOpenApprovalPanel={pendingApprovalPhase ? undefined : undefined}
         />
 
         {/* Main Content Area */}

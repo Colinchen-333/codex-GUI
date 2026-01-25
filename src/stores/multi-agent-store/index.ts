@@ -82,6 +82,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
       pauseInFlight: {},
       dependencyWaitTimeouts: {},
       pauseTimeouts: {},
+      phaseOperationVersion: 0,
       restartRecoveryInFlight: false,
 
       // ==================== Configuration ====================
@@ -224,7 +225,6 @@ export const useMultiAgentStore = create<MultiAgentState>()(
               let resolved = false
 
               const cleanup = () => {
-                if (checkInterval) clearInterval(checkInterval)
                 get()._clearDependencyWaitTimeout(agentId)
               }
 
@@ -313,7 +313,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
               }, 2000)
 
               set((s) => {
-                s.dependencyWaitTimeouts[agentId] = setTimeout(() => {}, 0) as ReturnType<typeof setTimeout>
+                s.dependencyWaitTimeouts[agentId] = checkInterval as unknown as ReturnType<typeof setTimeout>
               })
             })
           }
@@ -545,8 +545,9 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         })
 
         if (status === 'completed' || status === 'error' || status === 'cancelled') {
+          const capturedVersion = get().phaseOperationVersion
           setTimeout(() => {
-            get().checkPhaseCompletion().catch((err) => {
+            get().checkPhaseCompletion(capturedVersion).catch((err) => {
               log.error(`[updateAgentStatus] Failed to check phase completion: ${err}`, 'multi-agent')
             })
           }, 0)
@@ -795,6 +796,8 @@ export const useMultiAgentStore = create<MultiAgentState>()(
       startWorkflow: async (workflow: Workflow) => {
         const state = get()
 
+        get()._clearAllTimers()
+
         if (state.workflow || Object.keys(state.agents).length > 0) {
           log.info('[startWorkflow] Cleaning up existing workflow/agents before starting new workflow', 'multi-agent')
 
@@ -975,6 +978,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         set((s) => {
           if (s.approvalInFlight[phaseId]) return
           s.approvalInFlight[phaseId] = true
+          s.phaseOperationVersion++
           claimed = true
         })
 
@@ -1044,6 +1048,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         set((s) => {
           if (!s.workflow) return
           s.approvalInFlight[phaseId] = true
+          s.phaseOperationVersion++
         })
 
         try {
@@ -1144,9 +1149,11 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         const workflow = state.workflow
         if (!workflow) return
 
-        for (const phaseId of Object.keys(state.approvalTimeouts)) {
-          get()._clearApprovalTimeout(phaseId)
-        }
+        set((s) => {
+          s.phaseOperationVersion++
+        })
+
+        get()._clearAllTimers()
 
         const agents = Object.values(state.agents)
         for (const agent of agents) {
@@ -1162,22 +1169,17 @@ export const useMultiAgentStore = create<MultiAgentState>()(
           }
           s.phaseCompletionInFlight = null
           s.approvalInFlight = {}
-          s.approvalTimeouts = {}
         })
       },
 
       clearWorkflow: () => {
-        const state = get()
-        for (const phaseId of Object.keys(state.approvalTimeouts)) {
-          get()._clearApprovalTimeout(phaseId)
-        }
+        get()._clearAllTimers()
 
         set((s) => {
           s.workflow = null
           s.previousPhaseOutput = undefined
           s.phaseCompletionInFlight = null
           s.approvalInFlight = {}
-          s.approvalTimeouts = {}
         })
       },
 
@@ -1202,8 +1204,14 @@ export const useMultiAgentStore = create<MultiAgentState>()(
         return workflow.phases[workflow.currentPhaseIndex]
       },
 
-      checkPhaseCompletion: async () => {
+      checkPhaseCompletion: async (expectedVersion?: number) => {
         const state = get()
+
+        if (expectedVersion !== undefined && state.phaseOperationVersion !== expectedVersion) {
+          log.info(`[checkPhaseCompletion] Phase operation version mismatch (expected ${expectedVersion}, got ${state.phaseOperationVersion}), aborting`, 'multi-agent')
+          return
+        }
+
         const workflow = state.workflow
         if (!workflow) return
         if (workflow.status !== 'running') return
@@ -1418,11 +1426,11 @@ export const useMultiAgentStore = create<MultiAgentState>()(
 
       _clearDependencyWaitTimeout: (agentId: string) => {
         const state = get()
-        const timeoutId = state.dependencyWaitTimeouts[agentId]
+        const intervalId = state.dependencyWaitTimeouts[agentId]
 
-        if (timeoutId) {
-          clearTimeout(timeoutId)
-          log.info(`[_clearDependencyWaitTimeout] Cleared timeout for agent ${agentId}`, 'multi-agent')
+        if (intervalId) {
+          clearInterval(intervalId as unknown as ReturnType<typeof setInterval>)
+          log.info(`[_clearDependencyWaitTimeout] Cleared interval for agent ${agentId}`, 'multi-agent')
 
           set((s) => {
             delete s.dependencyWaitTimeouts[agentId]
@@ -1498,7 +1506,8 @@ export const useMultiAgentStore = create<MultiAgentState>()(
             delete s.pauseTimeouts[agentId]
           })
 
-          get().checkPhaseCompletion().catch((err) => {
+          const currentVersion = get().phaseOperationVersion
+          get().checkPhaseCompletion(currentVersion).catch((err) => {
             log.error(`[_startPauseTimeout] Failed to check phase completion: ${err}`, 'multi-agent')
           })
         }, timeoutMs)
@@ -1520,6 +1529,30 @@ export const useMultiAgentStore = create<MultiAgentState>()(
             delete s.pauseTimeouts[agentId]
           })
         }
+      },
+
+      _clearAllTimers: () => {
+        const state = get()
+
+        for (const phaseId of Object.keys(state.approvalTimeouts)) {
+          get()._clearApprovalTimeout(phaseId)
+        }
+
+        for (const agentId of Object.keys(state.dependencyWaitTimeouts)) {
+          get()._clearDependencyWaitTimeout(agentId)
+        }
+
+        for (const agentId of Object.keys(state.pauseTimeouts)) {
+          get()._clearPauseTimeout(agentId)
+        }
+
+        set((s) => {
+          s.approvalTimeouts = {}
+          s.dependencyWaitTimeouts = {}
+          s.pauseTimeouts = {}
+        })
+
+        log.info('[_clearAllTimers] All timers cleared', 'multi-agent')
       },
 
       _autoResumeAfterRestart: async () => {
@@ -1584,6 +1617,10 @@ export const useMultiAgentStore = create<MultiAgentState>()(
           log.error(`[retryPhase] Phase ${phaseId} is not in 'failed' status (current: ${phase.status})`, 'multi-agent')
           return
         }
+
+        set((s) => {
+          s.phaseOperationVersion++
+        })
 
         log.info(`[retryPhase] Retrying phase: ${phase.name} (${phaseId})`, 'multi-agent')
 
@@ -1799,6 +1836,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
           s.pauseInFlight = {}
           s.dependencyWaitTimeouts = {}
           s.pauseTimeouts = {}
+          s.phaseOperationVersion = 0
           s.restartRecoveryInFlight = false
         })
       },

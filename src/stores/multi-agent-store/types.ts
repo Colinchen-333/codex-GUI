@@ -79,6 +79,9 @@ export interface MultiAgentState {
   // Pause timeout tracking
   pauseTimeouts: Record<string, ReturnType<typeof setTimeout>> // Track pause timeout timers
 
+  // Phase operation version (P1 fix: prevent race conditions in checkPhaseCompletion)
+  phaseOperationVersion: number
+
   // Actions - Agent Management
   spawnAgent: (
     type: AgentType,
@@ -104,7 +107,7 @@ export interface MultiAgentState {
   cancelWorkflow: () => Promise<void>
   clearWorkflow: () => void
   _executePhase: (phase: WorkflowPhase) => Promise<void>
-  checkPhaseCompletion: () => Promise<void>
+  checkPhaseCompletion: (expectedVersion?: number) => Promise<void>
   _startApprovalTimeout: (phaseId: string, timeoutMs?: number) => void
   _clearApprovalTimeout: (phaseId: string) => void
 
@@ -118,6 +121,9 @@ export interface MultiAgentState {
   // Pause timeout helpers
   _startPauseTimeout: (agentId: string, timeoutMs?: number) => void
   _clearPauseTimeout: (agentId: string) => void
+
+  // Timer lifecycle (P0 fix: prevent timer leakage across workflow restart)
+  _clearAllTimers: () => void
 
   restartRecoveryInFlight: boolean
   _autoResumeAfterRestart: () => Promise<void>

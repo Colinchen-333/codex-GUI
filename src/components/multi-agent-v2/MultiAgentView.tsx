@@ -11,7 +11,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, Play, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare, Box, User, ChevronDown, ChevronUp, Sparkles, Bot } from 'lucide-react'
+import { X, Plus, Play, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Bell, CheckSquare, Box, User, ChevronDown, ChevronUp, Sparkles, Bot, Clock } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
 import { AgentDetailPanel } from './AgentDetailPanel'
@@ -766,6 +766,47 @@ export function MultiAgentView() {
               })
             }}
           />
+        )}
+
+        {/* Approval Timeout Alert Banner */}
+        {workflow?.phases[workflow.currentPhaseIndex]?.status === 'approval_timeout' && (
+          <div className="bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800 px-4 py-3 flex items-center justify-between animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5 text-orange-600 dark:text-orange-500" />
+              <div>
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
+                  审批超时 - 请尽快处理
+                </p>
+                <p className="text-xs text-orange-600 dark:text-orange-400">
+                  「{workflow.phases[workflow.currentPhaseIndex].name}」阶段等待审批已超时，您仍可操作
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const phase = workflow.phases[workflow.currentPhaseIndex]
+                  if (phase) {
+                    recoverApprovalTimeout(phase.id)
+                    setDismissedApprovalPhaseIds((prev) => {
+                      const next = new Set(prev)
+                      next.delete(phase.id)
+                      return next
+                    })
+                  }
+                }}
+                className="px-3 py-1.5 text-xs font-medium bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-300 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-700 transition-colors"
+              >
+                恢复计时
+              </button>
+              <button
+                onClick={() => setShowReviewInbox(true)}
+                className="px-3 py-1.5 text-xs font-medium bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                立即审批
+              </button>
+            </div>
+          </div>
         )}
 
         {(() => {

@@ -22,7 +22,6 @@ type TimelineItem =
 export function MainConversation({ activeAgentId, onSendTask }: MainConversationProps) {
   const agents = useAgents()
   const workflow = useWorkflow()
-  const threads = useThreadStore((s) => s.threads)
   const approvePhase = useMultiAgentStore((s) => s.approvePhase)
   const rejectPhase = useMultiAgentStore((s) => s.rejectPhase)
 
@@ -40,9 +39,10 @@ export function MainConversation({ activeAgentId, onSendTask }: MainConversation
     [agents, activeAgentId]
   )
 
-  const turnTiming = activeAgent?.threadId
-    ? threads[activeAgent.threadId]?.turnTiming
-    : null
+  const activeThreadId = activeAgent?.threadId
+  const turnTiming = useThreadStore((s) =>
+    activeThreadId ? s.threads[activeThreadId]?.turnTiming : null
+  )
 
   useEffect(() => {
     if (turnTiming?.startedAt && !turnTiming.completedAt) {
@@ -92,7 +92,7 @@ export function MainConversation({ activeAgentId, onSendTask }: MainConversation
       items.push({
         type: 'phase-approval',
         phase: pendingPhase,
-        timestamp: Date.now(),
+        timestamp: pendingPhase.startedAt?.getTime() ?? Number.MAX_SAFE_INTEGER,
       })
     }
 

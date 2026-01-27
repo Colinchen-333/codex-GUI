@@ -40,6 +40,7 @@ export function WorkbenchLayout({ children, className }: WorkbenchLayoutProps) {
   
   const containerRef = useRef<HTMLDivElement>(null);
   const resizingRef = useRef(false);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     try {
@@ -58,6 +59,14 @@ export function WorkbenchLayout({ children, className }: WorkbenchLayoutProps) {
     
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+    };
   }, []);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
@@ -83,6 +92,15 @@ export function WorkbenchLayout({ children, className }: WorkbenchLayoutProps) {
     const onMouseUp = () => {
       resizingRef.current = false;
       setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      cleanupRef.current = null;
+    };
+
+    cleanupRef.current = () => {
+      resizingRef.current = false;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       document.removeEventListener('mousemove', onMouseMove);

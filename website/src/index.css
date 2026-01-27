@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 98%;
+    
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 10%;
+    
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+    
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 10%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 10%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
+    
+    --radius: 0.75rem;
+
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 5%;
+    
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+    
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 0 0% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-height: 100vh;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  code, pre, kbd, samp {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+  
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-black/70 border border-white/20 dark:border-white/10;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 5s ease-in-out infinite;
+    will-change: opacity;
+    transform: translateZ(0);
+  }
+
+  .noise-bg {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.shimmer-text {
+  position: relative;
+  color: theme('colors.blue.400');
+  display: inline-block;
+  overflow: hidden;
+}
+
+.shimmer-text::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    theme('colors.blue.200/50') 50%,
+    transparent 100%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+  will-change: transform;
+  transform-gpu: translateZ(0);
+}

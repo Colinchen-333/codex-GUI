@@ -118,17 +118,18 @@ export function notifyAgentStore(
   eventType: AgentStoreEvent['type'],
   data?: { status?: string } | { text?: string } | { message?: string; code?: string; recoverable?: boolean }
 ): void {
-  // P0-1 Fix: Assign per-thread version at call time to preserve ordering intent
-  const eventVersion = getNextEventVersion(threadId)
-
   try {
     const store = getMultiAgentStore()
 
     // Get agentId from multi-agent store's agentMapping (single source of truth)
+    // Check this FIRST to avoid allocating version entries for non-agent threads
     const agentId = store.agentMapping[threadId]
     if (!agentId) return // Not an agent thread
     const agent = store.getAgent(agentId)
     if (!agent) return
+
+    // P0-1 Fix: Assign per-thread version AFTER confirming this is an agent thread
+    const eventVersion = getNextEventVersion(threadId)
 
     // P1 Fix: Check event version to ignore stale events (except for messageDelta which is high-frequency)
     if (eventType !== 'messageDelta' && !shouldProcessEvent(threadId, eventVersion)) {

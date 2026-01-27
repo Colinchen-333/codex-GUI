@@ -24,9 +24,11 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
     }
   }, [threadState?.itemOrder.length, activeAgentId])
 
-  if (!activeAgentId && agents.length > 0) {
-    onAgentSelect(agents[0].id)
-  }
+  useEffect(() => {
+    if (!activeAgentId && agents.length > 0) {
+      onAgentSelect(agents[0].id)
+    }
+  }, [activeAgentId, agents, onAgentSelect])
 
   return (
     <div className="flex flex-col h-full bg-zinc-900 border-t border-zinc-800">
@@ -78,23 +80,27 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
                 if (!item) return null
 
                 if (item.type === 'agentMessage') {
-                  const content = item.content as { text: string }
+                  const content = item.content as { text?: string } | undefined
+                  const text = content?.text
+                  if (!text) return null
                   return (
                     <div key={itemId} className="text-zinc-300 whitespace-pre-wrap font-mono text-sm leading-relaxed">
-                      {content.text}
+                      {text}
                     </div>
                   )
                 }
                 
                 if (item.type === 'commandExecution') {
-                  const content = item.content as { command: string; output?: string }
+                  const content = item.content as { command?: string; output?: string } | undefined
+                  const command = content?.command
+                  if (!command) return null
                   return (
                     <div key={itemId} className="bg-[#2a2a2a] rounded-md p-3 border border-zinc-700/50 overflow-hidden">
                       <div className="flex items-center gap-2 text-xs text-zinc-400 mb-2 font-mono border-b border-zinc-700/50 pb-2">
                         <span className="text-emerald-400">$</span>
-                        <span>{content.command}</span>
+                        <span>{command}</span>
                       </div>
-                      {content.output && (
+                      {content?.output && (
                         <pre className="text-xs text-zinc-300 font-mono overflow-x-auto whitespace-pre-wrap max-h-60">
                           {content.output}
                         </pre>
@@ -104,14 +110,16 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
                 }
 
                 if (item.type === 'fileChange') {
-                  const content = item.content as { changes: Array<{ path: string; kind: string }> }
+                  const content = item.content as { changes?: Array<{ path?: string; kind?: string }> } | undefined
+                  const changes = content?.changes
+                  if (!changes || !Array.isArray(changes)) return null
                   return (
                     <div key={itemId} className="bg-[#2a2a2a] rounded-md p-3 border border-zinc-700/50 space-y-2">
-                      {content.changes.map((change, idx) => (
+                      {changes.map((change, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs text-zinc-400">
                           <span className="text-yellow-500">📝</span>
-                          <span className="font-mono">{change.path}</span>
-                          <span className="ml-auto opacity-50 uppercase text-[10px]">{change.kind}</span>
+                          <span className="font-mono">{change?.path ?? 'unknown'}</span>
+                          <span className="ml-auto opacity-50 uppercase text-[10px]">{change?.kind ?? ''}</span>
                         </div>
                       ))}
                     </div>
@@ -119,10 +127,11 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
                 }
 
                 if (item.type === 'error') {
-                  const content = item.content as { message: string }
+                  const content = item.content as { message?: string } | undefined
+                  const message = content?.message ?? 'Unknown error'
                   return (
                     <div key={itemId} className="bg-red-900/20 border border-red-900/50 rounded-md p-3 text-red-400 text-sm">
-                      {content.message}
+                      {message}
                     </div>
                   )
                 }
@@ -149,8 +158,8 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
           <div 
             className="h-full bg-emerald-500 transition-all duration-500 ease-out"
             style={{ 
-              width: `${activeAgent.progress.total > 0 
-                ? Math.min(100, (activeAgent.progress.current / activeAgent.progress.total) * 100) 
+              width: `${(activeAgent.progress?.total ?? 0) > 0 
+                ? Math.min(100, ((activeAgent.progress?.current ?? 0) / (activeAgent.progress?.total ?? 1)) * 100) 
                 : 0}%` 
             }}
           />

@@ -136,17 +136,22 @@ export function notifyAgentStore(
     }
 
     switch (eventType) {
-      case 'turnStarted':
-        // Agent is actively running
+      case 'turnStarted': {
         if (agent.status === 'cancelled' || agent.interruptReason === 'pause') {
           return
         }
         store.updateAgentStatus(agentId, 'running')
+        // Only initialize progress on first turn start (avoid multi-turn reset)
+        const startProgress = agent.progress?.current ?? 0
+        if (startProgress === 0) {
+          store.updateAgentProgress(agentId, { current: 0, total: 100, description: '启动中...' })
+        }
         log.debug(
           `[notifyAgentStore] Agent ${agentId} turn started (thread ${threadId})`,
           'agent-integration'
         )
         break
+      }
 
       case 'turnCompleted': {
         // Check if this is the final completion
@@ -173,6 +178,7 @@ export function notifyAgentStore(
         } else {
           // Mark as completed
           store.updateAgentStatus(agentId, 'completed')
+          store.updateAgentProgress(agentId, { current: 100 })
         }
         log.debug(
           `[notifyAgentStore] Agent ${agentId} turn completed (thread ${threadId})`,
@@ -182,12 +188,13 @@ export function notifyAgentStore(
       }
 
       case 'messageDelta': {
-        // Agent is actively working, update progress description
         const deltaData = data as { text?: string } | undefined
-        if (deltaData?.text) {
-          // Extract first line as progress description
+        if (deltaData?.text && agent.status === 'running') {
           const firstLine = deltaData.text.split('\n')[0].slice(0, 50)
+          const progressCurrent = agent.progress?.current ?? 0
+          const newProgress = Math.min(progressCurrent + 1, 90)
           store.updateAgentProgress(agentId, {
+            current: newProgress,
             description: firstLine,
           })
         }

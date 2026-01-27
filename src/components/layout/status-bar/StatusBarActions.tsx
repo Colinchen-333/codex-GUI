@@ -37,26 +37,6 @@ export const StatusBarActions = memo(function StatusBarActions({
 
   const [showExitConfirm, setShowExitConfirm] = useState(false)
 
-  const handleMultiAgentToggle = useCallback(async () => {
-    if (transitionRef.current) {
-      log.debug('[handleMultiAgentToggle] Transition already in progress, ignoring click', 'StatusBarActions')
-      return
-    }
-
-    if (appMode === 'multi-agent') {
-      const multiAgentState = useMultiAgentStore.getState()
-      const hasActiveWorkflow = multiAgentState.workflow && multiAgentState.workflow.status === 'running'
-      const hasAgents = Object.keys(multiAgentState.agents).length > 0
-
-      if (hasActiveWorkflow || hasAgents) {
-        setShowExitConfirm(true)
-        return
-      }
-    }
-
-    await performModeSwitch()
-  }, [appMode])
-
   const performModeSwitch = useCallback(async () => {
     transitionRef.current = true
     setIsTransitioning(true)
@@ -87,6 +67,26 @@ export const StatusBarActions = memo(function StatusBarActions({
       setIsTransitioning(false)
     }
   }, [appMode, setAppMode])
+
+  const handleMultiAgentToggle = useCallback(async () => {
+    if (transitionRef.current) {
+      log.debug('[handleMultiAgentToggle] Transition already in progress, ignoring click', 'StatusBarActions')
+      return
+    }
+
+    if (appMode === 'multi-agent') {
+      const multiAgentState = useMultiAgentStore.getState()
+      const hasActiveWorkflow = multiAgentState.workflow && multiAgentState.workflow.status === 'running'
+      const hasAgents = Object.keys(multiAgentState.agents).length > 0
+
+      if (hasActiveWorkflow || hasAgents) {
+        setShowExitConfirm(true)
+        return
+      }
+    }
+
+    await performModeSwitch()
+  }, [appMode, performModeSwitch])
 
   const handleConfirmExit = useCallback(async () => {
     setShowExitConfirm(false)

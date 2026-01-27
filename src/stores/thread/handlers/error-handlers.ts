@@ -19,6 +19,22 @@ import type {
 import { performFullTurnCleanup } from '../delta-buffer'
 import { notifyAgentStore } from '../agent-integration'
 
+function ensureErrorMessage(message: unknown): string {
+  if (typeof message === 'string') return message
+  if (message === null || message === undefined) return 'Unknown error'
+  if (typeof message === 'object') {
+    const obj = message as Record<string, unknown>
+    if ('message' in obj && typeof obj.message === 'string') return obj.message
+    if ('error' in obj && typeof obj.error === 'string') return obj.error
+    try {
+      return JSON.stringify(message)
+    } catch {
+      return '[Error object]'
+    }
+  }
+  return String(message)
+}
+
 // ==================== Token Usage Handler ====================
 
 export function createHandleTokenUsage(
@@ -65,14 +81,15 @@ export function createHandleStreamError(
             }
           })()
         : event.error.codexErrorInfo
-    // P1 Fix: Use milliseconds timestamp consistently
+    const safeMessage = ensureErrorMessage(event.error.message)
+    
     const errorItem: ErrorItem = {
       id: `error-${Date.now()}`,
       type: 'error',
       status: 'completed',
       content: {
-        message: event.error.message,
-        errorType: errorInfo ? String(errorInfo) : undefined,
+        message: safeMessage,
+        errorType: errorInfo ? JSON.stringify(errorInfo) : undefined,
         willRetry: event.willRetry,
       },
       createdAt: Date.now(),
@@ -82,18 +99,15 @@ export function createHandleStreamError(
       const threadState = state.threads[threadId]
       if (!threadState) return state
 
-      // P2: Immer optimization - direct mutation instead of spreading
       threadState.items[errorItem.id] = errorItem
       threadState.itemOrder.push(errorItem.id)
-      threadState.error = event.error.message
+      threadState.error = safeMessage
       threadState.turnStatus = event.willRetry ? threadState.turnStatus : 'failed'
     })
 
-    // Notify multi-agent store about stream error
-    // Only mark as final error if willRetry is false
     if (!event.willRetry) {
       notifyAgentStore(threadId, 'error', {
-        message: event.error.message,
+        message: safeMessage,
         code: 'STREAM_ERROR',
         recoverable: false,
       })

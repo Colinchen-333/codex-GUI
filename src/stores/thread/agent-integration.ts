@@ -12,6 +12,22 @@
 
 import { log } from '../../lib/logger'
 
+function ensureErrorMessage(message: unknown): string {
+  if (typeof message === 'string') return message
+  if (message === null || message === undefined) return 'Unknown error'
+  if (typeof message === 'object') {
+    const obj = message as Record<string, unknown>
+    if ('message' in obj && typeof obj.message === 'string') return obj.message
+    if ('error' in obj && typeof obj.error === 'string') return obj.error
+    try {
+      return JSON.stringify(message)
+    } catch {
+      return '[Error object]'
+    }
+  }
+  return String(message)
+}
+
 export type AgentStoreEvent =
   | { type: 'turnStarted' }
   | { type: 'turnCompleted'; data: { status?: 'completed' | 'failed' | 'error' | 'interrupted' } }
@@ -179,15 +195,15 @@ export function notifyAgentStore(
       }
 
       case 'error': {
-        // Agent encountered an error
-        const errorData = data as { message?: string; code?: string; recoverable?: boolean } | undefined
+        const errorData = data as { message?: unknown; code?: string; recoverable?: boolean } | undefined
+        const safeMessage = ensureErrorMessage(errorData?.message)
         store.updateAgentStatus(agentId, 'error', {
-          message: errorData?.message || 'Unknown error',
+          message: safeMessage,
           code: errorData?.code || 'UNKNOWN_ERROR',
-          recoverable: errorData?.recoverable ?? true, // Default to recoverable if not specified
+          recoverable: errorData?.recoverable ?? true,
         })
         log.error(
-          `[notifyAgentStore] Agent ${agentId} error (thread ${threadId}): ${JSON.stringify(errorData)}`,
+          `[notifyAgentStore] Agent ${agentId} error (thread ${threadId}): ${safeMessage}`,
           'agent-integration'
         )
         break

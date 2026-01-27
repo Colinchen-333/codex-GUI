@@ -1,4 +1,5 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useThreadStore } from '../stores/thread'
 import type { WorkflowPhase } from '../stores/multi-agent-v2'
 
@@ -17,19 +18,12 @@ interface AgentInfo {
   status: string
 }
 
-interface ThreadSummary {
-  fileChanges: number
-  commands: number
-  errors: number
-  itemCount: number
-}
-
 function computeThreadSummary(
   threadId: string,
   threads: Record<string, { items: Record<string, { type: string; content?: unknown }>; itemOrder: string[] }>
-): ThreadSummary {
+): { fileChanges: number; commands: number; errors: number } {
   const thread = threads[threadId]
-  if (!thread) return { fileChanges: 0, commands: 0, errors: 0, itemCount: 0 }
+  if (!thread) return { fileChanges: 0, commands: 0, errors: 0 }
 
   let fileChanges = 0
   let commands = 0
@@ -49,63 +43,29 @@ function computeThreadSummary(
     }
   }
 
-  return { fileChanges, commands, errors, itemCount: thread.itemOrder.length }
+  return { fileChanges, commands, errors }
 }
 
 export function usePhaseSummary(
   pendingPhase: WorkflowPhase | null,
   agents: AgentInfo[]
 ): PhaseSummary | null {
-  const prevSummaryRef = useRef<PhaseSummary | null>(null)
-  const prevDepsRef = useRef<{ phaseId: string | null; agentStatuses: string; itemCounts: string }>({
-    phaseId: null,
-    agentStatuses: '',
-    itemCounts: '',
-  })
+  const threads = useThreadStore(useShallow((state) => state.threads))
 
-  const threads = useThreadStore((state) => state.threads)
+  const phaseId = pendingPhase?.id ?? null
+  const phaseAgentIds = useMemo(
+    () => pendingPhase?.agentIds ?? [],
+    [pendingPhase?.agentIds]
+  )
 
   return useMemo(() => {
-    if (!pendingPhase) {
-      prevSummaryRef.current = null
-      return null
-    }
-
-    const phaseAgentIds = pendingPhase.agentIds || []
-    if (phaseAgentIds.length === 0) {
-      prevSummaryRef.current = null
+    if (!phaseId || !phaseAgentIds.length) {
       return null
     }
 
     const phaseAgents = phaseAgentIds
       .map((id) => agents.find((a) => a.id === id))
       .filter((a): a is AgentInfo => !!a)
-
-    const sortedAgents = [...phaseAgents].sort((a, b) => a.id.localeCompare(b.id))
-    const agentStatuses = sortedAgents.map((a) => `${a.id}|${a.status}`).join(';')
-    const itemCounts = sortedAgents
-      .map((a) => {
-        const thread = threads[a.threadId]
-        return `${a.id}|${thread?.itemOrder?.length ?? 0}`
-      })
-      .join(';')
-
-    const depsKey = {
-      phaseId: pendingPhase.id,
-      agentStatuses,
-      itemCounts,
-    }
-
-    if (
-      prevDepsRef.current.phaseId === depsKey.phaseId &&
-      prevDepsRef.current.agentStatuses === depsKey.agentStatuses &&
-      prevDepsRef.current.itemCounts === depsKey.itemCounts &&
-      prevSummaryRef.current
-    ) {
-      return prevSummaryRef.current
-    }
-
-    prevDepsRef.current = depsKey
 
     let fileChanges = 0
     let commands = 0
@@ -122,7 +82,7 @@ export function usePhaseSummary(
     const completedAgents = phaseAgents.filter((a) => a.status === 'completed').length
     const failedAgents = phaseAgents.filter((a) => a.status === 'error').length
 
-    const result: PhaseSummary = {
+    return {
       fileChanges,
       commands,
       errors,
@@ -130,8 +90,5 @@ export function usePhaseSummary(
       failedAgents,
       totalAgents: phaseAgentIds.length,
     }
-
-    prevSummaryRef.current = result
-    return result
-  }, [pendingPhase, agents, threads])
+  }, [phaseId, phaseAgentIds, agents, threads])
 }

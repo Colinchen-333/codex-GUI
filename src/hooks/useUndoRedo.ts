@@ -5,7 +5,7 @@
  * Integrates with the UndoRedoStore to provide undo/redo functionality.
  */
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useUndoRedoStore, OPERATION_DESCRIPTIONS } from '../stores/undoRedo'
 import { useThreadStore } from '../stores/thread'
 import { useToast } from '../components/ui/useToast'
@@ -18,24 +18,21 @@ import type { UndoableOperation } from '../stores/undoRedo'
  */
 export function useUndoRedo() {
   const { toast } = useToast()
-  const {
-    undo: undoOperation,
-    redo: redoOperation,
-    canUndo,
-    canRedo,
-    clearHistory,
-  } = useUndoRedoStore()
+
+  // Individual action selectors (stable refs)
+  const undoOperation = useUndoRedoStore((s) => s.undo)
+  const redoOperation = useUndoRedoStore((s) => s.redo)
+  const canUndo = useUndoRedoStore((s) => s.canUndo)
+  const canRedo = useUndoRedoStore((s) => s.canRedo)
+  const clearHistory = useUndoRedoStore((s) => s.clearHistory)
 
   const focusedThreadId = useThreadStore((state) => state.focusedThreadId)
-  const threads = useThreadStore((state) => state.threads)
 
-  /**
-   * Get the current thread state
-   */
   const getCurrentThread = useCallback(() => {
     if (!focusedThreadId) return null
+    const threads = useThreadStore.getState().threads
     return threads[focusedThreadId] ?? null
-  }, [focusedThreadId, threads])
+  }, [focusedThreadId])
 
   /**
    * Record an operation for potential undo
@@ -202,14 +199,17 @@ export function useUndoRedo() {
     toast.success('Redo successful', { message: `Redone: ${operation.description}` })
   }, [canRedo, redoOperation, performRedo, toast])
 
-  return {
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    recordOperation,
-    clearHistory,
-  }
+  return useMemo(
+    () => ({
+      undo,
+      redo,
+      canUndo,
+      canRedo,
+      recordOperation,
+      clearHistory,
+    }),
+    [undo, redo, canUndo, canRedo, recordOperation, clearHistory]
+  )
 }
 
 // ==================== Helper Functions ====================

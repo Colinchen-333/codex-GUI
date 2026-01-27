@@ -20,7 +20,7 @@
  * await execute('user-123')
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 
 /**
  * 异步操作配置选项
@@ -165,13 +165,16 @@ export function useAsyncOperation<T, Args extends unknown[]>(
     })
   }, [])
 
-  return {
-    execute,
-    isLoading: state.isLoading,
-    error: state.error,
-    data: state.data,
-    reset,
-  }
+  return useMemo(
+    () => ({
+      execute,
+      isLoading: state.isLoading,
+      error: state.error,
+      data: state.data,
+      reset,
+    }),
+    [execute, state.isLoading, state.error, state.data, reset]
+  )
 }
 
 /**
@@ -188,5 +191,5 @@ export function useAsyncCallback<Args extends unknown[]>(
 } {
   const { execute, isLoading } = useAsyncOperation(asyncFn, options)
 
-  return { execute, isLoading }
+  return useMemo(() => ({ execute, isLoading }), [execute, isLoading])
 }

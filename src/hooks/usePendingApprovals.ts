@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useMultiAgentStore } from '../stores/multi-agent-v2'
 import { useThreadStore } from '../stores/thread'
 import type { WorkflowPhase, AgentDescriptor } from '../lib/workflows/types'
@@ -38,9 +39,14 @@ function getAgentTypeName(type: string): string {
 }
 
 export function usePendingApprovals(): PendingApprovalsState {
-  const agents = useMultiAgentStore((state) => Object.values(state.agents))
+  const agentOrder = useMultiAgentStore(useShallow((state) => state.agentOrder))
+  const agentsMap = useMultiAgentStore(useShallow((state) => state.agents))
+  const agents = useMemo(
+    () => agentOrder.map(id => agentsMap[id]).filter((a): a is NonNullable<typeof a> => a !== undefined),
+    [agentOrder, agentsMap]
+  )
   const workflow = useMultiAgentStore((state) => state.workflow)
-  const threadStoreState = useThreadStore((state) => state.threads)
+  const threadStoreState = useThreadStore(useShallow((state) => state.threads))
 
   const phaseApproval = useMemo(() => {
     if (!workflow) return null
@@ -86,16 +92,18 @@ export function usePendingApprovals(): PendingApprovalsState {
     return agents.filter(a => a.status === 'error' && a.error?.recoverable)
   }, [agents])
 
-  const hasRecoveryItems = !!approvalTimeoutPhase || cancelledWorkflow || failedAgents.length > 0
-  const totalCount = (phaseApproval ? 1 : 0) + safetyApprovals.reduce((sum, item) => sum + item.count, 0)
+  return useMemo(() => {
+    const hasRecoveryItems = !!approvalTimeoutPhase || cancelledWorkflow || failedAgents.length > 0
+    const totalCount = (phaseApproval ? 1 : 0) + safetyApprovals.reduce((sum, item) => sum + item.count, 0)
 
-  return {
-    phaseApproval,
-    safetyApprovals,
-    approvalTimeoutPhase,
-    cancelledWorkflow,
-    failedAgents,
-    totalCount,
-    hasRecoveryItems,
-  }
+    return {
+      phaseApproval,
+      safetyApprovals,
+      approvalTimeoutPhase,
+      cancelledWorkflow,
+      failedAgents,
+      totalCount,
+      hasRecoveryItems,
+    }
+  }, [phaseApproval, safetyApprovals, approvalTimeoutPhase, cancelledWorkflow, failedAgents])
 }

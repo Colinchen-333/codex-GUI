@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useMultiAgentStore } from '../stores/multi-agent-v2'
 import { useThreadStore } from '../stores/thread'
 import {
@@ -34,9 +35,14 @@ const AGENT_TYPE_NAMES: Record<string, string> = {
 }
 
 export function useDecisionQueue(): DecisionQueueState {
-  const agents = useMultiAgentStore((state) => Object.values(state.agents))
+  const agentOrder = useMultiAgentStore(useShallow((state) => state.agentOrder))
+  const agentsMap = useMultiAgentStore(useShallow((state) => state.agents))
+  const agents = useMemo(
+    () => agentOrder.map(id => agentsMap[id]).filter((a): a is NonNullable<typeof a> => a !== undefined),
+    [agentOrder, agentsMap]
+  )
   const workflow = useMultiAgentStore((state) => state.workflow)
-  const threadStoreState = useThreadStore((state) => state.threads)
+  const threadStoreState = useThreadStore(useShallow((state) => state.threads))
 
   const decisions = useMemo((): PendingDecision[] => {
     const items: PendingDecision[] = []
@@ -133,15 +139,17 @@ export function useDecisionQueue(): DecisionQueueState {
     }
   }, [decisions])
 
-  const primaryDecision = decisions.length > 0 ? decisions[0] : null
-  const hasDecisions = decisions.length > 0
-  const hasCriticalDecisions = counts.safetyApprovals > 0 || counts.phaseApprovals > 0
+  return useMemo(() => {
+    const primaryDecision = decisions.length > 0 ? decisions[0] : null
+    const hasDecisions = decisions.length > 0
+    const hasCriticalDecisions = counts.safetyApprovals > 0 || counts.phaseApprovals > 0
 
-  return {
-    decisions,
-    primaryDecision,
-    counts,
-    hasDecisions,
-    hasCriticalDecisions,
-  }
+    return {
+      decisions,
+      primaryDecision,
+      counts,
+      hasDecisions,
+      hasCriticalDecisions,
+    }
+  }, [decisions, counts])
 }

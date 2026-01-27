@@ -20,14 +20,13 @@ export function useAgentIds(): string[] {
   return useMultiAgentStore(useShallow((state) => state.agentOrder))
 }
 
-/**
- * Get all agents (NOTE: creates new array on each render where agents change)
- * Prefer useAgentIds + useAgentById for list rendering
- */
 export function useAgents(): AgentDescriptor[] {
-  return useMultiAgentStore((state) => {
-    return state.agentOrder.map((id) => state.agents[id]).filter((a) => a !== undefined)
-  })
+  const agentOrder = useMultiAgentStore(useShallow((state) => state.agentOrder))
+  const agents = useMultiAgentStore(useShallow((state) => state.agents))
+  return useMemo(
+    () => agentOrder.map((id) => agents[id]).filter((a): a is AgentDescriptor => a !== undefined),
+    [agentOrder, agents]
+  )
 }
 
 /**
@@ -64,10 +63,17 @@ export function useAgentByThreadId(threadId: string): AgentDescriptor | undefine
 }
 
 /**
- * Get agents by status
+ * Get agents by status (memoized to prevent unnecessary re-renders)
  */
 export function useAgentsWithStatus(status: AgentStatus): AgentDescriptor[] {
-  return useMultiAgentStore((state) => state.getAgentsByStatus(status))
+  const agentOrder = useMultiAgentStore(useShallow((state) => state.agentOrder))
+  const agents = useMultiAgentStore(useShallow((state) => state.agents))
+  return useMemo(
+    () => agentOrder
+      .map((id) => agents[id])
+      .filter((a): a is AgentDescriptor => a !== undefined && a.status === status),
+    [agentOrder, agents, status]
+  )
 }
 
 /**
@@ -98,11 +104,12 @@ export function useWorkflow() {
   return useMultiAgentStore((state) => state.workflow)
 }
 
-/**
- * Get current workflow phase
- */
 export function useCurrentPhase() {
-  return useMultiAgentStore((state) => state.getCurrentPhase())
+  return useMultiAgentStore((state) => {
+    const workflow = state.workflow
+    if (!workflow) return undefined
+    return workflow.phases[workflow.currentPhaseIndex]
+  })
 }
 
 /**
@@ -140,22 +147,34 @@ export function useResumeAgent() {
   return useMultiAgentStore((state) => state.resumeAgent)
 }
 
-/**
- * Get all multi-agent actions
- */
 export function useMultiAgentActions() {
-  return {
-    spawnAgent: useMultiAgentStore((state) => state.spawnAgent),
-    cancelAgent: useMultiAgentStore((state) => state.cancelAgent),
-    pauseAgent: useMultiAgentStore((state) => state.pauseAgent),
-    resumeAgent: useMultiAgentStore((state) => state.resumeAgent),
-    updateAgentStatus: useMultiAgentStore((state) => state.updateAgentStatus),
-    updateAgentProgress: useMultiAgentStore((state) => state.updateAgentProgress),
-    startWorkflow: useMultiAgentStore((state) => state.startWorkflow),
-    approvePhase: useMultiAgentStore((state) => state.approvePhase),
-    rejectPhase: useMultiAgentStore((state) => state.rejectPhase),
-    cancelWorkflow: useMultiAgentStore((state) => state.cancelWorkflow),
-  }
+  const spawnAgent = useMultiAgentStore((state) => state.spawnAgent)
+  const cancelAgent = useMultiAgentStore((state) => state.cancelAgent)
+  const pauseAgent = useMultiAgentStore((state) => state.pauseAgent)
+  const resumeAgent = useMultiAgentStore((state) => state.resumeAgent)
+  const updateAgentStatus = useMultiAgentStore((state) => state.updateAgentStatus)
+  const updateAgentProgress = useMultiAgentStore((state) => state.updateAgentProgress)
+  const startWorkflow = useMultiAgentStore((state) => state.startWorkflow)
+  const approvePhase = useMultiAgentStore((state) => state.approvePhase)
+  const rejectPhase = useMultiAgentStore((state) => state.rejectPhase)
+  const cancelWorkflow = useMultiAgentStore((state) => state.cancelWorkflow)
+  
+  return useMemo(() => ({
+    spawnAgent,
+    cancelAgent,
+    pauseAgent,
+    resumeAgent,
+    updateAgentStatus,
+    updateAgentProgress,
+    startWorkflow,
+    approvePhase,
+    rejectPhase,
+    cancelWorkflow,
+  }), [
+    spawnAgent, cancelAgent, pauseAgent, resumeAgent,
+    updateAgentStatus, updateAgentProgress, startWorkflow,
+    approvePhase, rejectPhase, cancelWorkflow,
+  ])
 }
 
 /**
@@ -174,19 +193,14 @@ export function useAllAgentsCompleted(): boolean {
   return agents.every((a) => a.status === 'completed')
 }
 
-/**
- * Get agent statistics
- */
 export function useAgentStats() {
-  return useMultiAgentStore((state) => {
-    const agents = Object.values(state.agents)
-    return {
-      total: agents.length,
-      running: agents.filter((a) => a.status === 'running').length,
-      pending: agents.filter((a) => a.status === 'pending').length,
-      completed: agents.filter((a) => a.status === 'completed').length,
-      error: agents.filter((a) => a.status === 'error').length,
-      cancelled: agents.filter((a) => a.status === 'cancelled').length,
-    }
-  })
+  const agents = useAgents()
+  return useMemo(() => ({
+    total: agents.length,
+    running: agents.filter((a) => a.status === 'running').length,
+    pending: agents.filter((a) => a.status === 'pending').length,
+    completed: agents.filter((a) => a.status === 'completed').length,
+    error: agents.filter((a) => a.status === 'error').length,
+    cancelled: agents.filter((a) => a.status === 'cancelled').length,
+  }), [agents])
 }

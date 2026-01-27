@@ -4,7 +4,7 @@
  * Provides keyboard navigation through command history using up/down arrows.
  * Only triggers when the cursor is at the beginning of the input or the input is empty.
  */
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useCommandHistoryStore } from '../stores/commandHistory'
 
 export interface UseCommandHistoryOptions {
@@ -35,7 +35,12 @@ export function useCommandHistory({
   setInputValue,
   popupsOpen = false,
 }: UseCommandHistoryOptions): UseCommandHistoryReturn {
-  const { add, getPrevious, getNext, resetCursor, clear } = useCommandHistoryStore()
+  // Use individual selectors for actions (stable refs - won't cause re-renders)
+  const add = useCommandHistoryStore((s) => s.add)
+  const getPrevious = useCommandHistoryStore((s) => s.getPrevious)
+  const getNext = useCommandHistoryStore((s) => s.getNext)
+  const resetCursor = useCommandHistoryStore((s) => s.resetCursor)
+  const clear = useCommandHistoryStore((s) => s.clear)
 
   // Track if we're currently navigating to prevent resetting cursor
   const isNavigatingRef = useRef(false)
@@ -142,10 +147,13 @@ export function useCommandHistory({
     }
   }, [])
 
-  return {
-    handleHistoryKeyDown,
-    addToHistory,
-    resetHistoryCursor,
-    clearHistory,
-  }
+  return useMemo(
+    () => ({
+      handleHistoryKeyDown,
+      addToHistory,
+      resetHistoryCursor,
+      clearHistory,
+    }),
+    [handleHistoryKeyDown, addToHistory, resetHistoryCursor, clearHistory]
+  )
 }

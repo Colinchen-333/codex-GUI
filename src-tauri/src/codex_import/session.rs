@@ -142,9 +142,8 @@ fn scan_sessions_recursive(dir: &Path, sessions: &mut Vec<CodexSessionSummary>) 
         return Ok(());
     }
 
-    let entries = fs::read_dir(dir).map_err(|e| {
-        Error::Other(format!("Failed to read sessions directory: {e}"))
-    })?;
+    let entries = fs::read_dir(dir)
+        .map_err(|e| Error::Other(format!("Failed to read sessions directory: {e}")))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -170,9 +169,8 @@ fn scan_sessions_recursive(dir: &Path, sessions: &mut Vec<CodexSessionSummary>) 
 
 /// Parse session summary from file (only reads metadata and first message)
 fn parse_session_summary(path: &Path) -> Result<CodexSessionSummary> {
-    let file = fs::File::open(path).map_err(|e| {
-        Error::Other(format!("Failed to open session file: {e}"))
-    })?;
+    let file = fs::File::open(path)
+        .map_err(|e| Error::Other(format!("Failed to open session file: {e}")))?;
 
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
     let reader = BufReader::new(file);
@@ -207,7 +205,8 @@ fn parse_session_summary(path: &Path) -> Result<CodexSessionSummary> {
 
                 // Extract first user message
                 if first_user_message.is_none() {
-                    if let Ok(item) = serde_json::from_value::<ResponseItem>(event.payload.clone()) {
+                    if let Ok(item) = serde_json::from_value::<ResponseItem>(event.payload.clone())
+                    {
                         if item.role.as_deref() == Some("user") {
                             if let Some(content) = &item.content {
                                 first_user_message = extract_user_text(content);
@@ -244,28 +243,30 @@ fn parse_session_summary(path: &Path) -> Result<CodexSessionSummary> {
     })
 }
 
-/// Extract text from user message content
 fn extract_user_text(content: &serde_json::Value) -> Option<String> {
-    // Content is usually an array of content items
     if let Some(arr) = content.as_array() {
         for item in arr {
             if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
-                // Skip system instructions
                 if !text.starts_with("<user_instructions>")
                     && !text.starts_with("<environment_context>")
                 {
-                    // Truncate long messages
-                    let preview = if text.len() > 200 {
-                        format!("{}...", &text[..200])
-                    } else {
-                        text.to_string()
-                    };
+                    let preview = truncate_string_safe(text, 200);
                     return Some(preview);
                 }
             }
         }
     }
     None
+}
+
+fn truncate_string_safe(s: &str, max_chars: usize) -> String {
+    let char_count = s.chars().count();
+    if char_count <= max_chars {
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max_chars).collect();
+        format!("{}...", truncated)
+    }
 }
 
 /// Get full session details by ID
@@ -280,7 +281,9 @@ pub fn get_session(session_id: &str) -> Result<CodexSession> {
 /// Find session file by ID
 fn find_session_file(dir: &Path, session_id: &str) -> Result<PathBuf> {
     if !dir.is_dir() {
-        return Err(Error::SessionNotFound("Sessions directory not found".to_string()));
+        return Err(Error::SessionNotFound(
+            "Sessions directory not found".to_string(),
+        ));
     }
 
     for entry in walkdir::WalkDir::new(dir)
@@ -298,14 +301,15 @@ fn find_session_file(dir: &Path, session_id: &str) -> Result<PathBuf> {
         }
     }
 
-    Err(Error::SessionNotFound(format!("Codex CLI session not found: {session_id}")))
+    Err(Error::SessionNotFound(format!(
+        "Codex CLI session not found: {session_id}"
+    )))
 }
 
 /// Parse full session from file
 fn parse_full_session(path: &Path) -> Result<CodexSession> {
-    let file = fs::File::open(path).map_err(|e| {
-        Error::Other(format!("Failed to open session file: {e}"))
-    })?;
+    let file = fs::File::open(path)
+        .map_err(|e| Error::Other(format!("Failed to open session file: {e}")))?;
 
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
     let reader = BufReader::new(file);
@@ -413,9 +417,8 @@ pub fn delete_session(session_id: &str) -> Result<()> {
     let sessions_dir = super::get_codex_dir().join("sessions");
     let file_path = find_session_file(&sessions_dir, session_id)?;
 
-    fs::remove_file(&file_path).map_err(|e| {
-        Error::Other(format!("Failed to delete session: {e}"))
-    })?;
+    fs::remove_file(&file_path)
+        .map_err(|e| Error::Other(format!("Failed to delete session: {e}")))?;
 
     tracing::info!("Deleted Codex CLI session: {}", session_id);
     Ok(())

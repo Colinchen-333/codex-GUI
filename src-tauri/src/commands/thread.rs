@@ -65,12 +65,26 @@ pub async fn start_thread(
         .ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
     let response: ThreadStartResponse = server.send_request("thread/start", params).await?;
 
-    // Create session metadata
-    let metadata = SessionMetadata::new(&response.thread.id, &project_id);
-    state.database.upsert_session_metadata(&metadata)?;
-
-    // Update project last opened time
-    state.database.update_project_last_opened(&project_id)?;
+    // Create session metadata only if project_id is valid (non-empty and exists in database)
+    // Agent threads may not have a project_id, so we skip session metadata creation in that case
+    if !project_id.is_empty() {
+        // Check if project exists before creating session metadata
+        if let Ok(Some(_)) = state.database.get_project(&project_id) {
+            let metadata = SessionMetadata::new(&response.thread.id, &project_id);
+            if let Err(e) = state.database.upsert_session_metadata(&metadata) {
+                tracing::warn!("Failed to create session metadata: {}", e);
+                // Don't fail the thread start - session metadata is optional for agent threads
+            }
+            // Update project last opened time
+            if let Err(e) = state.database.update_project_last_opened(&project_id) {
+                tracing::warn!("Failed to update project last opened time: {}", e);
+            }
+        } else {
+            tracing::info!("Project {} not found in database, skipping session metadata creation", project_id);
+        }
+    } else {
+        tracing::info!("No project_id provided, skipping session metadata creation (agent thread)");
+    }
 
     tracing::info!("Started thread: {}", response.thread.id);
 

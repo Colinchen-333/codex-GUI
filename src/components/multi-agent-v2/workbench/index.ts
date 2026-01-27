@@ -1,0 +1,1 @@
+export { WorkbenchLayout } from './WorkbenchLayout'

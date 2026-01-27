@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useCallback } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { allowlistApi } from '../../../lib/api'
 import { useProjectsStore } from '../../../stores/projects'
+import { parseError } from '../../../lib/errorUtils'
 
 /**
  * Empty state when no commands in allowlist
@@ -115,7 +116,7 @@ export const AllowlistTab = memo(function AllowlistTab() {
       const list = await allowlistApi.get(selectedProjectId)
       setCommands(list)
     } catch (err) {
-      setError(String(err))
+      setError(parseError(err))
     } finally {
       setIsLoading(false)
     }
@@ -132,7 +133,7 @@ export const AllowlistTab = memo(function AllowlistTab() {
       setNewCommand('')
       await fetchAllowlist()
     } catch (err) {
-      setError(String(err))
+      setError(parseError(err))
     }
   }, [selectedProjectId, newCommand, fetchAllowlist])
 
@@ -143,7 +144,7 @@ export const AllowlistTab = memo(function AllowlistTab() {
         await allowlistApi.remove(selectedProjectId, command)
         await fetchAllowlist()
       } catch (err) {
-        setError(String(err))
+        setError(parseError(err))
       }
     },
     [selectedProjectId, fetchAllowlist]

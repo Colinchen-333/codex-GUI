@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { serverApi, type Model } from '../lib/api'
-import { logError } from '../lib/errorUtils'
+import { logError, parseError } from '../lib/errorUtils'
 
 // Cache TTL for models list
 const MODEL_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
@@ -68,7 +68,7 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
         })
         if (requestId === fetchSeq) {
           set({
-            error: error instanceof Error ? error.message : String(error),
+            error: parseError(error),
             isLoading: false,
           })
         }

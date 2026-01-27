@@ -16,6 +16,7 @@ import { useAppStore, type AppState } from '../../stores/app'
 import { useToast } from '../ui/Toast'
 import { serverApi, projectApi, type ReviewTarget } from '../../lib/api'
 import { log } from '../../lib/logger'
+import { parseError } from '../../lib/errorUtils'
 import type { CommandContext } from '../../lib/commandExecutor'
 
 export interface UseChatCommandsProps {
@@ -133,7 +134,7 @@ export function useChatCommands({
         }
         addInfoItem('Git diff', diff.diff || '(no changes)')
       } catch (error) {
-        addInfoItem('Git diff', `Failed to compute diff: ${String(error)}`)
+        addInfoItem('Git diff', `Failed to compute diff: ${parseError(error)}`)
       }
     },
     listSkills: async () => {
@@ -150,7 +151,7 @@ export function useChatCommands({
         )
         addInfoItem('Skills', lines.length ? lines.join('\n') : 'No skills found.')
       } catch (error) {
-        addInfoItem('Skills', `Failed to load skills: ${String(error)}`)
+        addInfoItem('Skills', `Failed to load skills: ${parseError(error)}`)
       }
     },
     listMcp: async () => {
@@ -181,7 +182,7 @@ export function useChatCommands({
         })
         addInfoItem('MCP Servers', sections.join('\n\n'))
       } catch (error) {
-        addInfoItem('MCP Servers', `Failed to load MCP servers: ${String(error)}`)
+        addInfoItem('MCP Servers', `Failed to load MCP servers: ${parseError(error)}`)
       }
     },
     startReview: async (args: string[]) => {

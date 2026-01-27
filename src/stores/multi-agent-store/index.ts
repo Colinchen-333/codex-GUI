@@ -16,6 +16,7 @@ import type { WritableDraft } from 'immer'
 import { getAgentSandboxPolicy } from '../../lib/agent-types'
 import { threadApi } from '../../lib/api'
 import { log } from '../../lib/logger'
+import { parseError } from '../../lib/errorUtils'
 import { normalizeApprovalPolicy } from '../../lib/normalize'
 import { generatePhaseAgentTasks } from '../../lib/workflows/plan-mode'
 import { createWorkflowFromTemplate } from '../../lib/workflows/template-engine'
@@ -459,7 +460,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
                     agent.status = 'error'
                     agent.completedAt = new Date()
                     agent.error = {
-                      message: `Thread registration failed: ${registrationError instanceof Error ? registrationError.message : String(registrationError)}`,
+                      message: `Thread registration failed: ${parseError(registrationError)}`,
                       code: 'THREAD_REGISTRATION_FAILED',
                       recoverable: true,
                     }
@@ -499,7 +500,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
                     agent.threadId = ''
                     agent.threadStoreRef = ''
                     agent.error = {
-                      message: `Failed to send initial message: ${sendError instanceof Error ? sendError.message : String(sendError)}`,
+                      message: `Failed to send initial message: ${parseError(sendError)}`,
                       code: 'INITIAL_MESSAGE_FAILED',
                       recoverable: true,
                     }
@@ -520,7 +521,7 @@ export const useMultiAgentStore = create<MultiAgentState>()(
                   agent.status = 'error'
                   agent.completedAt = new Date()
                   agent.error = {
-                    message: error instanceof Error ? error.message : String(error),
+                    message: parseError(error),
                     code: 'THREAD_START_FAILED',
                     recoverable: true,
                   }
@@ -1894,7 +1895,9 @@ export const useMultiAgentStore = create<MultiAgentState>()(
 
         const threadStore = useThreadStore.getState()
         for (const threadId of threadIds) {
-          threadStore.unregisterAgentThread(threadId)
+          // Use closeThread instead of unregisterAgentThread to fully remove 
+          // the thread from state and prevent memory leaks
+          threadStore.closeThread(threadId)
         }
 
         set((s) => {

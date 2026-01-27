@@ -4,7 +4,7 @@ import { Rocket, Lock, Folder, CheckCircle, ArrowRight, RefreshCcw } from 'lucid
 import { cn } from '../../lib/utils'
 import { serverApi, type AccountInfo } from '../../lib/api'
 import { useProjectsStore } from '../../stores/projects'
-import { logError } from '../../lib/errorUtils'
+import { logError, parseError } from '../../lib/errorUtils'
 import { ProgressBar } from '../ui/loading/ProgressBar'
 
 type OnboardingStep = 'welcome' | 'login' | 'project' | 'ready'
@@ -74,7 +74,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         setStep('ready')
       }
     } catch (err) {
-      setError(String(err))
+      setError(parseError(err))
     } finally {
       setIsLoading(false)
     }

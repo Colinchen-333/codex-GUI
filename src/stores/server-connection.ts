@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ServerStatus } from '../lib/api'
 import { serverApi } from '../lib/api'
 import { log } from '../lib/logger'
+import { parseError } from '../lib/errorUtils'
 import { CONNECTION_RETRY, POLL_INTERVALS } from '../constants'
 
 interface ServerConnectionState {
@@ -75,7 +76,7 @@ export const useServerConnectionStore = create<ServerConnectionState>((set, get)
           void get().attemptReconnect()
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = parseError(error)
         set((state) => ({
           isConnected: false,
           lastError: message,
@@ -123,7 +124,7 @@ export const useServerConnectionStore = create<ServerConnectionState>((set, get)
             }
           }
         } catch (error) {
-          lastError = error instanceof Error ? error.message : String(error)
+          lastError = parseError(error)
           log.error(`[ServerConnection] Reconnect attempt ${attempt} failed: ${lastError}`, 'server-connection')
         }
 

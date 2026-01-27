@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { useToast } from './useToast'
-import { logError } from '../../lib/errorUtils'
+import { logError, parseError } from '../../lib/errorUtils'
 
 interface Props {
   children: ReactNode
@@ -118,14 +118,14 @@ export function useAsyncErrorBoundary() {
     try {
       return await promise
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+      const message = parseError(error)
       logError(error, {
         context: 'useAsyncErrorBoundary',
         source: 'ui',
         details: errorMessage
       })
       showToast(`${errorMessage}: ${message}`, 'error')
-      throw error // Re-throw to allow caller to handle if needed
+      throw error
     }
   }
 
@@ -141,7 +141,7 @@ export function useAsyncErrorBoundary() {
       try {
         await callback(...args)
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = parseError(error)
         logError(error, {
           context: 'useAsyncErrorBoundary',
           source: 'ui',

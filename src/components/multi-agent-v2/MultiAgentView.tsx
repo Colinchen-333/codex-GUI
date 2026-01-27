@@ -11,6 +11,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { X, Plus, Play, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Box, User, ChevronDown, ChevronUp, Sparkles, Bot, Clock } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import { AgentGridView } from './AgentGridView'
@@ -20,6 +21,7 @@ import { ReviewInbox } from './ReviewInbox'
 import { PrimaryDecision } from './PrimaryDecision'
 import { useMultiAgentStore, type AgentType } from '../../stores/multi-agent-v2'
 import { useWorkflowTemplatesStore } from '../../stores/workflowTemplates'
+import { BUILTIN_TEMPLATES } from '../../lib/workflows/presets'
 import { useAgents, useWorkflow } from '../../hooks/useMultiAgent'
 import { cn } from '../../lib/utils'
 
@@ -53,7 +55,12 @@ export function MultiAgentView() {
   const clearWorkflow = useMultiAgentStore((state) => state.clearWorkflow)
   const startWorkflowFromTemplate = useMultiAgentStore((state) => state.startWorkflowFromTemplate)
   
-  const templates = useWorkflowTemplatesStore((state) => state.getAllTemplates())
+  // Fix: Don't call getAllTemplates() in selector - it creates new array each time causing infinite loop
+  const userTemplates = useWorkflowTemplatesStore(useShallow((state) => state.userTemplates))
+  const templates = useMemo(
+    () => [...BUILTIN_TEMPLATES, ...userTemplates],
+    [userTemplates]
+  )
 
   // Track selected agent for detail panel
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
@@ -119,6 +126,11 @@ export function MultiAgentView() {
     }
     return null
   }, [workflow, dismissedApprovalPhaseIds])
+
+  const agentsForPrimaryDecision = useMemo(
+    () => agents.map(a => ({ id: a.id, threadId: a.threadId, status: a.status, type: a.type })),
+    [agents]
+  )
 
 
 
@@ -223,6 +235,58 @@ export function MultiAgentView() {
     }
   }, [retryAgent, operatingAgentIds])
 
+  const handleRetryWorkflow = useCallback(() => {
+    void retryWorkflow()
+  }, [retryWorkflow])
+
+  const handleRecoverTimeout = useCallback((phaseId: string) => {
+    recoverApprovalTimeout(phaseId)
+    setDismissedApprovalPhaseIds((prev) => {
+      const next = new Set(prev)
+      next.delete(phaseId)
+      return next
+    })
+  }, [recoverApprovalTimeout])
+
+  const handleOpenReviewInbox = useCallback(() => {
+    setShowReviewInbox(true)
+  }, [])
+
+  const handleRejectPhase = useCallback(() => {
+    if (pendingApprovalPhase) {
+      setDismissedApprovalPhaseIds((prev) => {
+        const next = new Set(prev)
+        next.delete(pendingApprovalPhase.id)
+        return next
+      })
+    }
+    setShowReviewInbox(true)
+  }, [pendingApprovalPhase])
+
+  const handleRecoverTimeoutForPhase = useCallback(() => {
+    if (pendingApprovalPhase) {
+      recoverApprovalTimeout(pendingApprovalPhase.id)
+    }
+  }, [pendingApprovalPhase, recoverApprovalTimeout])
+
+  const handleCloseReviewInbox = useCallback(() => {
+    setShowReviewInbox(false)
+  }, [])
+
+  const handleSelectAgentFromInbox = useCallback((agentId: string) => {
+    setSelectedAgentId(agentId)
+  }, [])
+
+  const handleOpenPhaseApprovalFromInbox = useCallback(() => {
+    if (pendingApprovalPhase) {
+      setDismissedApprovalPhaseIds((prev) => {
+        const next = new Set(prev)
+        next.delete(pendingApprovalPhase.id)
+        return next
+      })
+    }
+  }, [pendingApprovalPhase])
+
   // Workflow dialog handlers
   const handleOpenWorkflowDialog = () => {
     // Check if there's already a running workflow
@@ -319,17 +383,9 @@ export function MultiAgentView() {
       {/* Review Inbox Dialog */}
       <ReviewInbox
         isOpen={showReviewInbox}
-        onClose={() => setShowReviewInbox(false)}
-        onSelectAgent={(agentId) => setSelectedAgentId(agentId)}
-        onOpenPhaseApproval={() => {
-          if (pendingApprovalPhase) {
-            setDismissedApprovalPhaseIds((prev) => {
-              const next = new Set(prev)
-              next.delete(pendingApprovalPhase.id)
-              return next
-            })
-          }
-        }}
+        onClose={handleCloseReviewInbox}
+        onSelectAgent={handleSelectAgentFromInbox}
+        onOpenPhaseApproval={handleOpenPhaseApprovalFromInbox}
       />
 
       {/* Cancel Confirmation Dialog */}
@@ -743,15 +799,8 @@ export function MultiAgentView() {
         {workflow && (
           <WorkflowStageHeader
             workflow={workflow}
-            onRetryWorkflow={() => void retryWorkflow()}
-            onRecoverTimeout={(phaseId) => {
-              recoverApprovalTimeout(phaseId)
-              setDismissedApprovalPhaseIds((prev) => {
-                const next = new Set(prev)
-                next.delete(phaseId)
-                return next
-              })
-            }}
+            onRetryWorkflow={handleRetryWorkflow}
+            onRecoverTimeout={handleRecoverTimeout}
           />
         )}
 
@@ -832,24 +881,11 @@ export function MultiAgentView() {
         <PrimaryDecision
           pendingPhase={pendingApprovalPhase}
           workflow={workflow}
-          agents={agents.map(a => ({ id: a.id, threadId: a.threadId, status: a.status }))}
+          agents={agentsForPrimaryDecision}
           onApprovePhase={handleApproval}
-          onRejectPhase={() => {
-            if (pendingApprovalPhase) {
-              setDismissedApprovalPhaseIds((prev) => {
-                const next = new Set(prev)
-                next.delete(pendingApprovalPhase.id)
-                return next
-              })
-            }
-            setShowReviewInbox(true)
-          }}
-          onOpenReviewInbox={() => setShowReviewInbox(true)}
-          onRecoverTimeout={() => {
-            if (pendingApprovalPhase) {
-              recoverApprovalTimeout(pendingApprovalPhase.id)
-            }
-          }}
+          onRejectPhase={handleRejectPhase}
+          onOpenReviewInbox={handleOpenReviewInbox}
+          onRecoverTimeout={handleRecoverTimeoutForPhase}
           onOpenApprovalPanel={pendingApprovalPhase ? undefined : undefined}
         />
 
@@ -934,9 +970,9 @@ export function MultiAgentView() {
                   agents={agents}
                   onViewDetails={handleViewDetails}
                   onCancel={handleRequestCancel}
-                  onPause={(id) => void handlePause(id)}
-                  onResume={(id) => void handleResume(id)}
-                  onRetry={(id) => void handleRetry(id)}
+                  onPause={handlePause}
+                  onResume={handleResume}
+                  onRetry={handleRetry}
                   operatingAgentIds={operatingAgentIds}
                 />
               )}

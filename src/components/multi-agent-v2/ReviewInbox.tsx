@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { X, CheckSquare, FileCode, ChevronRight, Clock, RotateCcw, AlertTriangle, ChevronDown, ChevronUp, SkipForward, XCircle, Info } from 'lucide-react'
 import { useMultiAgentStore } from '../../stores/multi-agent-v2'
 import { useDecisionQueue } from '../../hooks/useDecisionQueue'
@@ -13,7 +13,7 @@ interface ReviewInboxProps {
   onOpenPhaseApproval: () => void
 }
 
-export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApproval }: ReviewInboxProps) {
+export const ReviewInbox = memo(function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApproval }: ReviewInboxProps) {
   const recoverApprovalTimeout = useMultiAgentStore((state) => state.recoverApprovalTimeout)
   const recoverCancelledWorkflow = useMultiAgentStore((state) => state.recoverCancelledWorkflow)
   const retryAgent = useMultiAgentStore((state) => state.retryAgent)
@@ -241,7 +241,7 @@ export function ReviewInbox({ isOpen, onClose, onSelectAgent, onOpenPhaseApprova
       </div>
     </>
   )
-}
+})
 
 interface FailedAgentCardProps {
   agent: {
@@ -379,11 +379,11 @@ function FailedAgentCard({ agent, onRetry, onSkip, onCancelWorkflow }: FailedAge
               
               const handleClick = () => {
                 if (action.action === 'retry') {
-                  handleAction('retry', onRetry)
+                  void handleAction('retry', onRetry)
                 } else if (action.action === 'skip') {
-                  handleAction('skip', onSkip)
+                  void handleAction('skip', onSkip)
                 } else if (action.action === 'cancel') {
-                  handleAction('cancel', onCancelWorkflow)
+                  void handleAction('cancel', onCancelWorkflow)
                 }
               }
               

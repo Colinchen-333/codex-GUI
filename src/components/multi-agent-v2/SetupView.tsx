@@ -15,6 +15,7 @@ import { createPlanModeWorkflow } from '../../lib/workflows/plan-mode'
 import { useModelsStore } from '../../stores/models'
 import { useProjectsStore } from '../../stores/projects'
 import { cn } from '../../lib/utils'
+import { parseError } from '../../lib/errorUtils'
 
 interface SetupViewProps {
   onComplete: () => void
@@ -25,7 +26,7 @@ function resolveProjectId(
   dir: string,
   projects: Array<{ id: string; path: string }>,
   selectedProjectId: string
-): string {
+): { projectId: string; needsCreate: boolean; path: string } {
   const normalizedDir = dir.replace(/\\/g, '/').replace(/\/+$/, '')
   const candidates = projects.filter((project) => {
     const normalizedPath = project.path.replace(/\\/g, '/').replace(/\/+$/, '')
@@ -33,17 +34,30 @@ function resolveProjectId(
   })
 
   if (candidates.length === 0) {
-    return selectedProjectId || ''
+    // No matching project found - need to create one
+    // Fall back to selectedProjectId only if it's valid, otherwise mark as needs create
+    if (selectedProjectId) {
+      return { projectId: selectedProjectId, needsCreate: false, path: normalizedDir }
+    }
+    return { projectId: '', needsCreate: true, path: normalizedDir }
   }
 
   candidates.sort((a, b) => b.path.length - a.path.length)
-  return candidates[0].id
+  return { projectId: candidates[0].id, needsCreate: false, path: normalizedDir }
 }
 
 export function SetupView({ onComplete }: SetupViewProps) {
-  const { setWorkingDirectory, setConfig, startWorkflow, clearWorkflow, clearAgents } = useMultiAgentStore()
-  const { models, fetchModels, isLoading: isModelsLoading } = useModelsStore()
-  const { projects, selectedProjectId } = useProjectsStore()
+  const setWorkingDirectory = useMultiAgentStore((state) => state.setWorkingDirectory)
+  const setConfig = useMultiAgentStore((state) => state.setConfig)
+  const startWorkflow = useMultiAgentStore((state) => state.startWorkflow)
+  const clearWorkflow = useMultiAgentStore((state) => state.clearWorkflow)
+  const clearAgents = useMultiAgentStore((state) => state.clearAgents)
+  const models = useModelsStore((state) => state.models)
+  const fetchModels = useModelsStore((state) => state.fetchModels)
+  const isModelsLoading = useModelsStore((state) => state.isLoading)
+  const projects = useProjectsStore((state) => state.projects)
+  const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
+  const addProject = useProjectsStore((state) => state.addProject)
 
   // Form state
   const [workingDir, setWorkingDir] = useState<string>('')
@@ -111,7 +125,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
           setDirError(null)
         } catch (validationError) {
           console.error('Directory validation failed:', validationError)
-          setDirError(`无法访问目录: ${validationError instanceof Error ? validationError.message : String(validationError)}`)
+          setDirError(`无法访问目录: ${parseError(validationError)}`)
           setWorkingDir('')
         } finally {
           setIsValidatingDir(false)
@@ -119,7 +133,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
       }
     } catch (err) {
       console.error('Failed to select directory:', err)
-      setDirError(`选择目录失败: ${err instanceof Error ? err.message : String(err)}`)
+      setDirError(`选择目录失败: ${parseError(err)}`)
     }
   }
 
@@ -137,11 +151,27 @@ export function SetupView({ onComplete }: SetupViewProps) {
       // Custom mode - clear old state first, then apply config and complete
       clearWorkflow()
       await clearAgents()
+      
+      // Resolve or create project
+      const resolved = resolveProjectId(workingDir, projects, selectedProjectId ?? '')
+      let projectId = resolved.projectId
+      
+      if (resolved.needsCreate) {
+        try {
+          const newProject = await addProject(resolved.path)
+          projectId = newProject.id
+        } catch (err) {
+          console.error('Failed to create project:', err)
+          setError(`创建项目失败：${parseError(err)}`)
+          return
+        }
+      }
+      
       setConfig({
         model: globalConfig.model,
         approvalPolicy: globalConfig.approvalPolicy,
         timeout: globalConfig.timeout,
-        projectId: resolveProjectId(workingDir, projects, selectedProjectId ?? ''),
+        projectId,
       })
       setWorkingDirectory(workingDir)
       onComplete()
@@ -158,35 +188,46 @@ export function SetupView({ onComplete }: SetupViewProps) {
     setError(null)
 
     try {
-      // Clear old state before starting new workflow
       clearWorkflow()
       await clearAgents()
 
-      // Apply global config and working directory
+      // Resolve or create project
+      const resolved = resolveProjectId(workingDir, projects, selectedProjectId ?? '')
+      let projectId = resolved.projectId
+      
+      if (resolved.needsCreate) {
+        try {
+          const newProject = await addProject(resolved.path)
+          projectId = newProject.id
+        } catch (err) {
+          console.error('Failed to create project:', err)
+          setError(`创建项目失败：${parseError(err)}`)
+          setIsStarting(false)
+          return
+        }
+      }
+
       setConfig({
         model: globalConfig.model,
         approvalPolicy: globalConfig.approvalPolicy,
         timeout: globalConfig.timeout,
-        projectId: resolveProjectId(workingDir, projects, selectedProjectId ?? ''),
+        projectId,
+        cwd: workingDir,
       })
-      setWorkingDirectory(workingDir)
 
-      // Create Plan Mode workflow
       const workflow = createPlanModeWorkflow(taskDescription, {
         workingDirectory: workingDir,
         userTask: taskDescription,
         globalConfig: globalConfig as Record<string, unknown>,
       })
 
-      // Start workflow - this will initialize the first phase
-      // Note: startWorkflow is async but we wait for it to complete initial setup
       await startWorkflow(workflow)
-
+      setWorkingDirectory(workingDir)
       setShowTaskDialog(false)
       onComplete()
     } catch (err) {
       console.error('Failed to start multi-agent mode:', err)
-      setError(`启动失败：${err instanceof Error ? err.message : String(err)}`)
+      setError(`启动失败：${parseError(err)}`)
       setIsStarting(false)
     }
   }
@@ -282,8 +323,9 @@ export function SetupView({ onComplete }: SetupViewProps) {
       )}
 
       {/* Main Setup View */}
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="w-full max-w-2xl mx-4">
+      <div className="h-screen overflow-y-auto bg-background">
+        <div className="min-h-full flex items-center justify-center py-8">
+          <div className="w-full max-w-2xl px-4">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary text-primary-foreground rounded-2xl mb-4">
@@ -523,46 +565,46 @@ export function SetupView({ onComplete }: SetupViewProps) {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex items-center justify-end space-x-4">
-          <button
-            onClick={() => void handleStart()}
-            disabled={!workingDir || isStarting || isValidatingDir || !!dirError}
-            className={cn(
-              'px-6 py-3 rounded-lg font-semibold transition-all flex items-center space-x-2',
-              !workingDir || isStarting || isValidatingDir || dirError
-                ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl'
-            )}
-          >
-            {isStarting ? (
-              <>
-                <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                <span>启动中...</span>
-              </>
-            ) : (
-              <>
-                <span>开始协作</span>
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </button>
-        </div>
+          {/* Error Display */}
+          {error && !showTaskDialog && (
+            <div className="mt-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
 
-        {/* Error Display */}
-        {error && !showTaskDialog && (
-          <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
-            <p className="text-sm text-destructive">{error}</p>
+          {/* Help Text */}
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            <p>
+              提示：Plan Mode 适合复杂任务，系统会自动规划并执行 4 个阶段的工作流
+            </p>
           </div>
-        )}
 
-        {/* Help Text */}
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>
-            提示：Plan Mode 适合复杂任务，系统会自动规划并执行 4 个阶段的工作流
-          </p>
+          <div className="mt-8 pt-6 border-t border-border flex items-center justify-end">
+            <button
+              onClick={() => void handleStart()}
+              disabled={!workingDir || isStarting || isValidatingDir || !!dirError}
+              className={cn(
+                'px-6 py-3 rounded-lg font-semibold transition-all flex items-center space-x-2',
+                !workingDir || isStarting || isValidatingDir || dirError
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl'
+              )}
+            >
+              {isStarting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                  <span>启动中...</span>
+                </>
+              ) : (
+                <>
+                  <span>开始协作</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
         </div>
         </div>
       </div>

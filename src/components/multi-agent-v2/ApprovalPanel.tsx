@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { CheckCircle, XCircle, RotateCcw, ChevronDown, ChevronRight, Terminal, FileCode, AlertCircle, Loader2, X, AlertTriangle, Lightbulb, Copy } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { classifyRisk } from '../../lib/safety-utils'
@@ -24,7 +25,7 @@ const REJECTION_REASONS = [
   "缺少回滚方案"
 ]
 
-export function ApprovalPanel({
+export const ApprovalPanel = memo(function ApprovalPanel({
   phase,
   agents,
   onApprove,
@@ -42,7 +43,7 @@ export function ApprovalPanel({
     return initial
   })
   const { showToast } = useToast()
-  const threads = useThreadStore((state) => state.threads)
+  const threads = useThreadStore(useShallow((state) => state.threads))
 
   const phaseAgents = agents.filter((a) => phase.agentIds.includes(a.id))
   const hasErrors = phaseAgents.some((a) => a.status === 'error')
@@ -92,14 +93,14 @@ export function ApprovalPanel({
     return () => clearTimeout(timer)
   }, [])
 
-  const handleApproveClick = () => {
+  const handleApproveClick = useCallback(() => {
     if (isHighRisk && !confirmApprove) {
       setConfirmApprove(true)
       return
     }
     onApprove()
     setConfirmApprove(false)
-  }
+  }, [isHighRisk, confirmApprove, onApprove, setConfirmApprove])
   
   const enterRejectMode = () => {
     setConfirmApprove(false)
@@ -149,7 +150,7 @@ export function ApprovalPanel({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isRejectMode, isHighRisk, confirmApprove, onApprove, onClose])
+  }, [isRejectMode, isHighRisk, confirmApprove, onApprove, onClose, handleApproveClick])
 
   const toggleAgentExpanded = (agentId: string) => {
     setExpandedAgents((prev) => ({
@@ -463,7 +464,7 @@ export function ApprovalPanel({
       </div>
     </div>
   )
-}
+})
 
 interface FileChangeContent {
   changes: Array<{

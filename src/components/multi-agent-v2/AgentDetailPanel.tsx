@@ -9,7 +9,7 @@
  * - Closeable/minimizable
  */
 
-import { useRef, useEffect, useState, useMemo } from 'react'
+import { useRef, useEffect, useState, useMemo, memo, useCallback } from 'react'
 import { X, Minimize2, Terminal, AlertCircle, Wrench, User, Bot, ChevronDown, FileCode, Check, XCircle, ArrowDown, Play, RotateCcw } from 'lucide-react'
 import { useMultiAgentStore, type AgentDescriptor } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
@@ -30,7 +30,7 @@ interface AgentDetailPanelProps {
   onMinimize?: () => void
 }
 
-export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPanelProps) {
+export const AgentDetailPanel = memo(function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPanelProps) {
   // Get thread state for this agent
   const threadState = useThreadStore((state) => state.threads[agent.threadId])
   const retryAgent = useMultiAgentStore((state) => state.retryAgent)
@@ -60,7 +60,7 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
   useEffect(() => {
     if (threadState?.itemOrder.length) {
       if (isScrollLocked) {
-        setHasNewMessages(true)
+        queueMicrotask(() => setHasNewMessages(true))
       } else if (scrollBottomRef.current) {
         scrollBottomRef.current.scrollIntoView({ behavior: 'smooth' })
       }
@@ -102,19 +102,19 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
     return { files, commands, errors, pendingApprovals, firstFileId, firstCommandId, firstErrorId, firstPendingApprovalId }
   }, [threadState])
 
-  useEffect(() => {
-    if (stats?.firstPendingApprovalId) {
-      setTimeout(() => scrollToId(stats.firstPendingApprovalId), 100)
-    }
-  }, [agent.id])
-
-  const scrollToId = (id: string | null) => {
+  const scrollToId = useCallback((id: string | null) => {
     if (!id) return
     const element = document.getElementById(`msg-${id}`)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (stats?.firstPendingApprovalId) {
+      setTimeout(() => scrollToId(stats.firstPendingApprovalId), 100)
+    }
+  }, [agent.id, stats?.firstPendingApprovalId, scrollToId])
 
   // Render message based on type
   const renderMessage = (itemId: string) => {
@@ -651,4 +651,4 @@ export function AgentDetailPanel({ agent, onClose, onMinimize }: AgentDetailPane
       </div>
     </div>
   )
-}
+})

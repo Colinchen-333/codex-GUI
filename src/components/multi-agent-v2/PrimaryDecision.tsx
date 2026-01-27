@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { CheckCircle, XCircle, Clock, Shield, AlertTriangle, ChevronRight, Layers, FileCode, Terminal, AlertCircle } from 'lucide-react'
 import type { WorkflowPhase, Workflow } from '../../stores/multi-agent-v2'
 import { useThreadStore } from '../../stores/thread'
@@ -27,7 +28,7 @@ function PrimaryDecisionComponent({
   onRecoverTimeout,
   onOpenApprovalPanel,
 }: PrimaryDecisionProps) {
-  const threadStoreState = useThreadStore((state) => state.threads)
+  const threadStoreState = useThreadStore(useShallow((state) => state.threads))
   const { counts } = useDecisionQueue()
 
   const safetyApprovalInfo = useMemo(() => {

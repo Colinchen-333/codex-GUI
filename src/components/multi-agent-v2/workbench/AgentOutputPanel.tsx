@@ -91,7 +91,7 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
                   return (
                     <div key={itemId} className="bg-[#2a2a2a] rounded-md p-3 border border-zinc-700/50 overflow-hidden">
                       <div className="flex items-center gap-2 text-xs text-zinc-400 mb-2 font-mono border-b border-zinc-700/50 pb-2">
-                        <span className="text-blue-400">$</span>
+                        <span className="text-emerald-400">$</span>
                         <span>{content.command}</span>
                       </div>
                       {content.output && (
@@ -147,7 +147,7 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
       {activeAgent && (
         <div className="h-1 bg-zinc-800 w-full">
           <div 
-            className="h-full bg-blue-500 transition-all duration-500 ease-out"
+            className="h-full bg-emerald-500 transition-all duration-500 ease-out"
             style={{ 
               width: `${activeAgent.progress.total > 0 
                 ? Math.min(100, (activeAgent.progress.current / activeAgent.progress.total) * 100) 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useAgents } from '@/hooks/useMultiAgent'
+import { useAgents, useWorkflow } from '@/hooks/useMultiAgent'
 import { useMultiAgentStore } from '@/stores/multi-agent-v2'
 import { useSettingsStore } from '@/stores/settings'
 import { useProjectsStore } from '@/stores/projects'
@@ -7,6 +7,7 @@ import { useModelsStore } from '@/stores/models'
 import { createPlanModeWorkflow } from '@/lib/workflows/plan-mode'
 import { parseError } from '@/lib/errorUtils'
 import { useToast } from '@/components/ui/useToast'
+import { WorkflowStageHeader } from './WorkflowStageHeader'
 import {
   WorkbenchLayout,
   AgentOutputPanel,
@@ -36,6 +37,7 @@ function resolveProjectId(
 
 export function MultiAgentViewContainer() {
   const agents = useAgents()
+  const workflow = useWorkflow()
   const workingDirectory = useMultiAgentStore((s) => s.workingDirectory)
   const setWorkingDirectory = useMultiAgentStore((s) => s.setWorkingDirectory)
   const setConfig = useMultiAgentStore((s) => s.setConfig)
@@ -149,16 +151,29 @@ export function MultiAgentViewContainer() {
   }
 
   return (
-    <WorkbenchLayout>
-      <AgentOutputPanel
-        activeAgentId={activeAgentId}
-        onAgentSelect={setActiveAgentId}
-      />
-      <MainConversation
-        activeAgentId={activeAgentId}
-        onSendTask={handleSendTask}
-      />
-      <WorkbenchStatusBar />
-    </WorkbenchLayout>
+    <div className="flex flex-col h-screen">
+      {workflow && (
+        <WorkflowStageHeader 
+          workflow={workflow}
+          onRecoverTimeout={(phaseId) => {
+            useMultiAgentStore.getState().recoverApprovalTimeout(phaseId)
+          }}
+        />
+      )}
+      
+      <div className="flex-1 overflow-hidden">
+        <WorkbenchLayout>
+          <AgentOutputPanel
+            activeAgentId={activeAgentId}
+            onAgentSelect={setActiveAgentId}
+          />
+          <MainConversation
+            activeAgentId={activeAgentId}
+            onSendTask={handleSendTask}
+          />
+          <WorkbenchStatusBar />
+        </WorkbenchLayout>
+      </div>
+    </div>
   )
 }

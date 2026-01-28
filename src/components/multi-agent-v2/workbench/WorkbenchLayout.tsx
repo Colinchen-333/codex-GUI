@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ReviewInbox } from '../ReviewInbox';
+import { useDecisionQueue } from '@/hooks/useDecisionQueue';
 
 interface WorkbenchLayoutProps {
   children: React.ReactNode;
   className?: string;
+  onSelectAgent?: (agentId: string) => void;
+  onOpenPhaseApproval?: () => void;
 }
 
 const STORAGE_KEY = 'codex-workbench-panel-width';
@@ -11,11 +16,17 @@ const DEFAULT_RATIO = 0.4;
 const MIN_RATIO = 0.2;
 const MAX_RATIO = 0.8;
 
-export function WorkbenchLayout({ children, className }: WorkbenchLayoutProps) {
+export function WorkbenchLayout({ children, className, onSelectAgent, onOpenPhaseApproval }: WorkbenchLayoutProps) {
   const childrenArray = React.Children.toArray(children);
   const leftPanel = childrenArray[0];
   const rightPanel = childrenArray[1];
   const statusBar = childrenArray[2];
+
+  const [showReviewInbox, setShowReviewInbox] = useState(false);
+  const { counts } = useDecisionQueue();
+
+  const handleOpenReviewInbox = useCallback(() => setShowReviewInbox(true), []);
+  const handleCloseReviewInbox = useCallback(() => setShowReviewInbox(false), []);
 
   const [leftRatio, setLeftRatio] = useState(() => {
     try {
@@ -113,6 +124,34 @@ export function WorkbenchLayout({ children, className }: WorkbenchLayoutProps) {
 
   return (
     <div className={cn("flex h-screen w-full flex-col bg-[#1a1a1a] text-white overflow-hidden", className)}>
+      <div className="flex-shrink-0 h-10 bg-zinc-900 border-b border-zinc-800 flex items-center justify-end px-4">
+        <button
+          onClick={handleOpenReviewInbox}
+          className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
+        >
+          <Inbox className="w-4 h-4" />
+          <span>审批队列</span>
+          {counts.total > 0 && (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-medium bg-amber-500 text-black rounded-full">
+              {counts.total}
+            </span>
+          )}
+        </button>
+      </div>
+
+      <ReviewInbox
+        isOpen={showReviewInbox}
+        onClose={handleCloseReviewInbox}
+        onSelectAgent={(agentId) => {
+          onSelectAgent?.(agentId);
+          handleCloseReviewInbox();
+        }}
+        onOpenPhaseApproval={() => {
+          onOpenPhaseApproval?.();
+          handleCloseReviewInbox();
+        }}
+      />
+
       <div 
         ref={containerRef}
         className="flex-1 flex overflow-hidden relative w-full"

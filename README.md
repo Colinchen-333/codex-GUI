@@ -109,17 +109,21 @@ src/lib/workflows/
 └── plan-mode.ts                  # 4-phase workflow implementation
 
 src/components/multi-agent-v2/
-├── MultiAgentView.tsx            # Main orchestration view
+├── MultiAgentViewContainer.tsx   # Main container with workflow header
 ├── WorkflowStageHeader.tsx       # Phase progress visualization
-├── AgentGridView.tsx             # Parallel agent monitoring
-├── ApprovalDialog.tsx            # Phase review with diff display
-├── ReviewInbox.tsx               # Unified approval queue
-└── AgentDetailPanel.tsx          # Agent output inspection
+├── ReviewInbox.tsx               # Unified approval queue sidebar
+├── ApprovalPanel.tsx             # Phase review with diff display
+└── workbench/
+    ├── WorkbenchLayout.tsx       # Resizable dual-pane layout
+    ├── AgentOutputPanel.tsx      # Agent output with inline approvals
+    ├── MainConversation.tsx      # Timeline and input area
+    └── WorkbenchStatusBar.tsx    # Status with working directory
 ```
 
 The orchestration engine provides:
 - **Parallel Execution** — Multiple agents run simultaneously with dependency management
 - **Phase Gating** — Approval checkpoints between workflow stages
+- **Inline Approvals** — Accept/reject file changes directly in the agent output stream
 - **State Persistence** — Workflows survive app restarts via localStorage
 - **Recovery** — Graceful handling of timeouts and failures
 
@@ -157,10 +161,11 @@ The Multi-Agent Orchestration mode enables a "Commanding from Above" experience 
 | **Implement** | 1x Coder + 1x Tester | Execute changes and run tests |
 
 **Key Features:**
-- **Review Inbox** — Unified panel for all pending approvals (phase + file changes)
+- **Dual-Pane Workbench** — Resizable layout with agent output and conversation timeline
+- **Inline Approvals** — Accept/reject file changes directly in the output stream
+- **Review Inbox** — Unified sidebar for all pending approvals (phase + file changes)
 - **Real-time Progress** — Watch agents work in parallel with live status updates
-- **One-Click Approval** — Approve or reject phases with keyboard shortcuts (Enter/R)
-- **Reject & Retry** — Provide feedback and let agents try again
+- **One-Click Approval** — Approve or reject with keyboard shortcuts (Enter/R)
 - **State Persistence** — Resume workflows after app restart
 
 ### Advanced Features
@@ -352,17 +357,21 @@ src/lib/workflows/
 └── plan-mode.ts                  # 4阶段工作流实现
 
 src/components/multi-agent-v2/
-├── MultiAgentView.tsx            # 主编排视图
+├── MultiAgentViewContainer.tsx   # 主容器（含工作流头部）
 ├── WorkflowStageHeader.tsx       # 阶段进度可视化
-├── AgentGridView.tsx             # 并行代理监控
-├── ApprovalDialog.tsx            # 阶段审查与差异展示
-├── ReviewInbox.tsx               # 统一审批队列
-└── AgentDetailPanel.tsx          # 代理输出检查
+├── ReviewInbox.tsx               # 统一审批队列侧边栏
+├── ApprovalPanel.tsx             # 阶段审查与差异展示
+└── workbench/
+    ├── WorkbenchLayout.tsx       # 可调整的双面板布局
+    ├── AgentOutputPanel.tsx      # 代理输出（含内联审批）
+    ├── MainConversation.tsx      # 时间线与输入区
+    └── WorkbenchStatusBar.tsx    # 状态栏（含工作目录）
 ```
 
 编排引擎提供：
 - **并行执行** — 多个代理同时运行，支持依赖管理
 - **阶段门控** — 工作流阶段之间的审批检查点
+- **内联审批** — 直接在代理输出流中接受/拒绝文件变更
 - **状态持久化** — 工作流通过 localStorage 在应用重启后存活
 - **故障恢复** — 优雅处理超时和失败
 
@@ -400,10 +409,11 @@ src/components/multi-agent-v2/
 | **实施** | 1x 编码 + 1x 测试 | 执行变更并运行测试 |
 
 **核心特性:**
-- **审批收件箱** — 统一面板管理所有待审批项（阶段审批 + 文件变更）
+- **双面板工作台** — 可调整布局，左侧代理输出，右侧对话时间线
+- **内联审批** — 直接在输出流中接受/拒绝文件变更
+- **审批收件箱** — 统一侧边栏管理所有待审批项（阶段审批 + 文件变更）
 - **实时进度** — 观看代理并行工作，实时状态更新
 - **一键审批** — 键盘快捷键审批或拒绝（Enter/R）
-- **拒绝重试** — 提供反馈，让代理重新尝试
 - **状态持久化** — 应用重启后可恢复工作流
 
 ### 高级特性

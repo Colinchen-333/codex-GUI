@@ -3,6 +3,7 @@ import { useAgents, useAgent } from '@/hooks/useMultiAgent'
 import { useThreadStore } from '@/stores/thread'
 import { getAgentTypeIcon, getAgentTypeDisplayName } from '@/lib/agent-utils'
 import { cn } from '@/lib/utils'
+import { Check, XCircle } from 'lucide-react'
 
 interface AgentOutputPanelProps {
   activeAgentId: string | null
@@ -110,18 +111,45 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
                 }
 
                 if (item.type === 'fileChange') {
-                  const content = item.content as { changes?: Array<{ path?: string; kind?: string }> } | undefined
+                  const content = item.content as { 
+                    changes?: Array<{ path?: string; kind?: string }>
+                    needsApproval?: boolean
+                    approved?: boolean
+                  } | undefined
                   const changes = content?.changes
+                  const needsApproval = content?.needsApproval && !content?.approved
                   if (!changes || !Array.isArray(changes)) return null
                   return (
-                    <div key={itemId} className="bg-[#2a2a2a] rounded-md p-3 border border-zinc-700/50 space-y-2">
-                      {changes.map((change, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs text-zinc-400">
-                          <span className="text-yellow-500">📝</span>
-                          <span className="font-mono">{change?.path ?? 'unknown'}</span>
-                          <span className="ml-auto opacity-50 uppercase text-[10px]">{change?.kind ?? ''}</span>
+                    <div key={itemId} className="bg-[#2a2a2a] rounded-md border border-zinc-700/50 overflow-hidden">
+                      <div className="p-3 space-y-2">
+                        {changes.map((change, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs text-zinc-400">
+                            <span className="text-yellow-500">📝</span>
+                            <span className="font-mono">{change?.path ?? 'unknown'}</span>
+                            <span className="ml-auto opacity-50 uppercase text-[10px]">{change?.kind ?? ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {needsApproval && (
+                        <div className="px-3 py-2 border-t border-zinc-700/50 bg-zinc-800/50 flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              void useThreadStore.getState().respondToApprovalInThread(activeAgent.threadId, itemId, 'accept')
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
+                          >
+                            <Check className="w-3 h-3" /> 应用
+                          </button>
+                          <button
+                            onClick={() => {
+                              void useThreadStore.getState().respondToApprovalInThread(activeAgent.threadId, itemId, 'decline')
+                            }}
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors"
+                          >
+                            <XCircle className="w-3 h-3" /> 拒绝
+                          </button>
                         </div>
-                      ))}
+                      )}
                     </div>
                   )
                 }

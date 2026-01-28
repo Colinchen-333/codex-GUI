@@ -3,14 +3,15 @@ import { useAgents, useAgent } from '@/hooks/useMultiAgent'
 import { useThreadStore } from '@/stores/thread'
 import { getAgentTypeIcon, getAgentTypeDisplayName } from '@/lib/agent-utils'
 import { cn } from '@/lib/utils'
-import { Check, XCircle } from 'lucide-react'
+import { Check, XCircle, Eye } from 'lucide-react'
 
 interface AgentOutputPanelProps {
   activeAgentId: string | null
   onAgentSelect: (agentId: string) => void
+  onViewDetail?: (agentId: string) => void
 }
 
-export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPanelProps) {
+export function AgentOutputPanel({ activeAgentId, onAgentSelect, onViewDetail }: AgentOutputPanelProps) {
   const agents = useAgents()
   const activeAgent = useAgent(activeAgentId || '')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -148,6 +149,14 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPa
                           >
                             <XCircle className="w-3 h-3" /> 拒绝
                           </button>
+                          {onViewDetail && (
+                            <button
+                              onClick={() => onViewDetail(activeAgent.id)}
+                              className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-400 border border-zinc-600/50 rounded hover:bg-zinc-700/50 transition-colors"
+                            >
+                              <Eye className="w-3 h-3" /> 查看详情
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

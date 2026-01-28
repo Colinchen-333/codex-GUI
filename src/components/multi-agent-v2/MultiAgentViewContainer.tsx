@@ -162,7 +162,9 @@ export function MultiAgentViewContainer() {
       )}
       
       <div className="flex-1 overflow-hidden">
-        <WorkbenchLayout>
+        <WorkbenchLayout
+          onSelectAgent={setActiveAgentId}
+        >
           <AgentOutputPanel
             activeAgentId={activeAgentId}
             onAgentSelect={setActiveAgentId}

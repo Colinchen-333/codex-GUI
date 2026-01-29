@@ -1,20 +1,29 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAgents, useAgent } from '@/hooks/useMultiAgent'
 import { useThreadStore } from '@/stores/thread'
 import { getAgentTypeIcon, getAgentTypeDisplayName } from '@/lib/agent-utils'
 import { cn } from '@/lib/utils'
 import { Check, XCircle, Eye } from 'lucide-react'
+import { FileChangeDiffModal } from './FileChangeDiffModal'
+
+interface FileChange {
+  path: string
+  kind: string
+  diff?: string
+  oldPath?: string
+}
 
 interface AgentOutputPanelProps {
   activeAgentId: string | null
   onAgentSelect: (agentId: string) => void
-  onViewDetail?: (agentId: string) => void
 }
 
-export function AgentOutputPanel({ activeAgentId, onAgentSelect, onViewDetail }: AgentOutputPanelProps) {
+export function AgentOutputPanel({ activeAgentId, onAgentSelect }: AgentOutputPanelProps) {
   const agents = useAgents()
   const activeAgent = useAgent(activeAgentId || '')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [diffModalOpen, setDiffModalOpen] = useState(false)
+  const [diffModalChanges, setDiffModalChanges] = useState<FileChange[]>([])
   
   const threadState = useThreadStore((state) => 
     activeAgent?.threadId ? state.threads[activeAgent.threadId] : undefined
@@ -149,14 +158,21 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect, onViewDetail }:
                           >
                             <XCircle className="w-3 h-3" /> 拒绝
                           </button>
-                          {onViewDetail && (
-                            <button
-                              onClick={() => onViewDetail(activeAgent.id)}
-                              className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-400 border border-zinc-600/50 rounded hover:bg-zinc-700/50 transition-colors"
-                            >
-                              <Eye className="w-3 h-3" /> 查看详情
-                            </button>
-                          )}
+                          <button
+                            onClick={() => {
+                              const fileChanges = (changes as Array<{ path?: string; kind?: string; diff?: string; oldPath?: string }>).map(c => ({
+                                path: c.path ?? 'unknown',
+                                kind: c.kind ?? 'modify',
+                                diff: c.diff,
+                                oldPath: c.oldPath,
+                              }))
+                              setDiffModalChanges(fileChanges)
+                              setDiffModalOpen(true)
+                            }}
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-400 border border-zinc-600/50 rounded hover:bg-zinc-700/50 transition-colors"
+                          >
+                            <Eye className="w-3 h-3" /> 查看详情
+                          </button>
                         </div>
                       )}
                     </div>
@@ -202,6 +218,12 @@ export function AgentOutputPanel({ activeAgentId, onAgentSelect, onViewDetail }:
           />
         </div>
       )}
+
+      <FileChangeDiffModal
+        isOpen={diffModalOpen}
+        onClose={() => setDiffModalOpen(false)}
+        changes={diffModalChanges}
+      />
     </div>
   )
 }

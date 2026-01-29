@@ -53,11 +53,13 @@ export function FileChangeDiffModal({
     }
   }
 
-  if (!isOpen) return null
+  const { addCount, modifyCount, deleteCount } = useMemo(() => ({
+    addCount: changes.filter((c) => c.kind === 'add').length,
+    modifyCount: changes.filter((c) => c.kind === 'modify').length,
+    deleteCount: changes.filter((c) => c.kind === 'delete').length,
+  }), [changes])
 
-  const addCount = changes.filter((c) => c.kind === 'add').length
-  const modifyCount = changes.filter((c) => c.kind === 'modify').length
-  const deleteCount = changes.filter((c) => c.kind === 'delete').length
+  if (!isOpen) return null
 
   return (
     <div
@@ -120,8 +122,8 @@ export function FileChangeDiffModal({
               没有可显示的差异内容
             </div>
           ) : (
-            fileDiffs.map((diff, index) => (
-              <DiffView key={`${diff.path}-${index}`} diff={diff} />
+            fileDiffs.map((diff) => (
+              <DiffView key={`${diff.path}-${diff.kind}-${diff.oldPath ?? ''}`} diff={diff} />
             ))
           )}
         </div>

@@ -2,6 +2,7 @@ import { useRef, useId, useMemo } from 'react'
 import { X, FileCode } from 'lucide-react'
 import { DiffView, parseDiff, type FileDiff } from '@/components/ui/DiffView'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { cn } from '@/lib/utils'
 
 interface FileChange {
@@ -25,7 +26,9 @@ export function FileChangeDiffModal({
   title = '文件变更详情',
 }: FileChangeDiffModalProps) {
   const titleId = useId()
+  const descriptionId = useId()
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   const containerRef = useFocusTrap<HTMLDivElement>({
     isActive: isOpen,
@@ -71,15 +74,20 @@ export function FileChangeDiffModal({
         ref={containerRef}
         className={cn(
           'w-full max-w-4xl max-h-[85vh] rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl',
-          'flex flex-col overflow-hidden animate-in zoom-in-95 duration-200'
+          'flex flex-col overflow-hidden',
+          !prefersReducedMotion && 'animate-in zoom-in-95 duration-200'
         )}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         tabIndex={-1}
       >
-        {/* Header */}
+        <p id={descriptionId} className="sr-only">
+          显示 {changes.length} 个文件的差异变更
+        </p>
+
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700 bg-zinc-800/50">
           <div className="flex items-center gap-3">
             <FileCode className="w-5 h-5 text-zinc-400" />

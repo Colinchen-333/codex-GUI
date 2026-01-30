@@ -7,7 +7,7 @@
  * - Global configuration (model, timeout, approval policy)
  */
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useId } from 'react'
 import { FolderOpen, Workflow, Settings, ArrowRight, X, Sparkles } from 'lucide-react'
 import { useMultiAgentStore } from '../../stores/multi-agent-v2'
 import type { AgentConfigOverrides } from '../../stores/multi-agent-v2'
@@ -75,6 +75,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
   const [error, setError] = useState<string | null>(null)
   const [dirError, setDirError] = useState<string | null>(null)
   const taskInputRef = useRef<HTMLTextAreaElement>(null)
+  const taskDialogTitleId = useId()
 
   useEffect(() => {
     void fetchModels()
@@ -240,15 +241,21 @@ export function SetupView({ onComplete }: SetupViewProps) {
 
   return (
     <>
-      {/* Task Input Dialog */}
       {showTaskDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-border">
-            {/* Dialog Header */}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          role="presentation"
+        >
+          <div
+            className="bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-border"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={taskDialogTitleId}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-primary">
               <div className="flex items-center space-x-3">
                 <Sparkles className="w-5 h-5 text-primary-foreground" />
-                <h3 className="text-lg font-semibold text-primary-foreground">描述您的任务</h3>
+                <h3 id={taskDialogTitleId} className="text-lg font-semibold text-primary-foreground">描述您的任务</h3>
               </div>
               <button
                 onClick={handleTaskDialogClose}

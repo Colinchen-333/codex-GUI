@@ -10,7 +10,7 @@
  * - Quick start dialogs for workflow/agent creation
  */
 
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect, useId } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { X, Plus, Play, Search, FileCode, Terminal, FileText, TestTube, AlertTriangle, Loader2, Box, User, ChevronDown, ChevronUp, Sparkles, Bot, Clock } from 'lucide-react'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
@@ -95,6 +95,11 @@ export function MultiAgentView() {
 
   const workflowInputRef = useRef<HTMLTextAreaElement>(null)
   const agentInputRef = useRef<HTMLTextAreaElement>(null)
+
+  const cancelDialogTitleId = useId()
+  const restartDialogTitleId = useId()
+  const workflowDialogTitleId = useId()
+  const agentDialogTitleId = useId()
 
   const selectedAgent = selectedAgentId
     ? agents.find((a) => a.id === selectedAgentId)
@@ -388,15 +393,21 @@ export function MultiAgentView() {
         onOpenPhaseApproval={handleOpenPhaseApprovalFromInbox}
       />
 
-      {/* Cancel Confirmation Dialog */}
       {confirmCancelAgentId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Dialog Header */}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          role="presentation"
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={cancelDialogTitleId}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 bg-gray-900 dark:bg-gray-800">
               <div className="flex items-center space-x-3">
                 <AlertTriangle className="w-5 h-5 text-white" />
-                <h3 className="text-lg font-semibold text-white">确认取消代理</h3>
+                <h3 id={cancelDialogTitleId} className="text-lg font-semibold text-white">确认取消代理</h3>
               </div>
               <button
                 onClick={handleCancelCancelDialog}
@@ -459,15 +470,21 @@ export function MultiAgentView() {
         </div>
       )}
 
-      {/* Confirm Restart Dialog - shown when trying to start new workflow while one is running */}
       {showConfirmRestartDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Dialog Header */}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          role="presentation"
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={restartDialogTitleId}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 bg-gray-900 dark:bg-gray-800">
               <div className="flex items-center space-x-3">
                 <AlertTriangle className="w-5 h-5 text-white" />
-                <h3 className="text-lg font-semibold text-white">工作流正在运行</h3>
+                <h3 id={restartDialogTitleId} className="text-lg font-semibold text-white">工作流正在运行</h3>
               </div>
               <button
                 onClick={handleCancelRestart}
@@ -511,15 +528,21 @@ export function MultiAgentView() {
         </div>
       )}
 
-      {/* Workflow Quick Start Dialog - Standard Mode */}
       {showWorkflowDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            {/* Dialog Header */}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          role="presentation"
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={workflowDialogTitleId}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 bg-gray-900 dark:bg-gray-800 flex-shrink-0">
               <div className="flex items-center space-x-3">
                 <Sparkles className="w-5 h-5 text-white" />
-                <h3 className="text-lg font-semibold text-white">开始任务</h3>
+                <h3 id={workflowDialogTitleId} className="text-lg font-semibold text-white">开始任务</h3>
               </div>
               <button
                 onClick={handleCloseWorkflowDialog}
@@ -682,15 +705,21 @@ export function MultiAgentView() {
         </div>
       )}
 
-      {/* Agent Quick Create Dialog */}
       {showAgentDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Dialog Header */}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          role="presentation"
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={agentDialogTitleId}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 bg-gray-900 dark:bg-gray-800">
               <div className="flex items-center space-x-3">
                 <Plus className="w-5 h-5 text-white" />
-                <h3 className="text-lg font-semibold text-white">创建代理</h3>
+                <h3 id={agentDialogTitleId} className="text-lg font-semibold text-white">创建代理</h3>
               </div>
               <button
                 onClick={handleCloseAgentDialog}

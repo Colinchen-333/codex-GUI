@@ -5,6 +5,8 @@
  * Separated from the main store for better maintainability.
  */
 
+import type { StoreApi } from 'zustand'
+import type { WritableDraft } from 'immer'
 import type {
   AgentStatus,
   AgentProgress,
@@ -17,6 +19,24 @@ import type {
   WorkflowExecutionContext,
   AgentType,
 } from '../../lib/workflows/types'
+
+/**
+ * Immer-compatible set function type.
+ * Accepts either a partial state or a mutator function that modifies draft state.
+ */
+export type ImmerSet = (
+  fn: MultiAgentState | Partial<MultiAgentState> | ((state: WritableDraft<MultiAgentState>) => void)
+) => void
+
+/**
+ * Slice factory type for modular store composition.
+ * Each slice receives set, get, and api to create a partial store object.
+ */
+export type StoreSlice<T> = (
+  set: ImmerSet,
+  get: StoreApi<MultiAgentState>['getState'],
+  api: StoreApi<MultiAgentState>
+) => T
 
 // Re-export types for backward compatibility
 export type {

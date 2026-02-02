@@ -138,6 +138,8 @@ The orchestration engine provides:
 
 ### Multi-Agent Orchestration Mode 🚀
 
+> **🚧 Under Development** — This feature is currently in active development and not yet available in the release build. Stay tuned for updates!
+
 **Transform from "Code Writer" to "Code Reviewer"**
 
 The Multi-Agent Orchestration mode enables a "Commanding from Above" experience — you provide high-level intent, and specialized agents execute in parallel while you review their work.
@@ -385,6 +387,8 @@ src/components/multi-agent-v2/
 - **审批系统** — 执行前审查文件变更和命令
 
 ### 多智能体编排模式 🚀
+
+> **🚧 开发中** — 此功能正在积极开发中，尚未在发布版本中提供。敬请期待！
 
 **从"代码编写者"变成"代码审查者"**
 

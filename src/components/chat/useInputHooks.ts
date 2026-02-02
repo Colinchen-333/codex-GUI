@@ -8,7 +8,7 @@ import { MAX_TEXTAREA_HEIGHT, MAX_IMAGE_SIZE } from './types'
 import { validateFilePath } from './utils'
 import { useToast } from '../ui/Toast'
 import { log } from '../../lib/logger'
-import { type FileEntry } from '../../lib/api'
+import { projectApi, type FileEntry } from '../../lib/api'
 
 /**
  * P0 Enhancement: Hook for automatic focus restoration
@@ -234,8 +234,7 @@ export function useFileMentionHandler({
       const project = projects.find((p) => p.id === selectedProjectId)
       if (!project) return
 
-      const fullPath = validateFilePath(project.path, file.path)
-      if (!fullPath) {
+      if (!validateFilePath(project.path, file.path)) {
         showToast(`Invalid file path: ${file.path}`, 'error')
         return
       }
@@ -245,19 +244,16 @@ export function useFileMentionHandler({
 
       if (imageExts.includes(ext)) {
         try {
-          const { readFile, stat } = await import('@tauri-apps/plugin-fs')
-
-          const fileInfo = await stat(fullPath)
-          if (fileInfo.size > MAX_IMAGE_SIZE) {
+          const bytes = await projectApi.readProjectFile(project.id, file.path)
+          if (bytes.length > MAX_IMAGE_SIZE) {
             showToast(
-              `Image too large: ${(fileInfo.size / 1024 / 1024).toFixed(1)}MB (max 5MB)`,
+              `Image too large: ${(bytes.length / 1024 / 1024).toFixed(1)}MB (max 5MB)`,
               'error'
             )
             return
           }
 
-          const bytes = await readFile(fullPath)
-          const blob = new Blob([bytes], { type: `image/${ext.slice(1)}` })
+          const blob = new Blob([new Uint8Array(bytes)], { type: `image/${ext.slice(1)}` })
           const reader = new FileReader()
           // P1 Fix: Add comprehensive error handling for FileReader
           reader.onerror = () => {

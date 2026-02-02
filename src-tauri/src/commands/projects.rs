@@ -153,6 +153,47 @@ fn validate_git_file_path(path: &str) -> Result<()> {
     Ok(())
 }
 
+/// Validate a project-relative file path
+/// Prevents path traversal and absolute paths
+fn validate_relative_project_path(path: &str) -> Result<String> {
+    if path.is_empty() {
+        return Err(crate::Error::InvalidPath(
+            "File path cannot be empty".to_string(),
+        ));
+    }
+
+    if path.contains('\0') {
+        return Err(crate::Error::InvalidPath(
+            "File path cannot contain null bytes".to_string(),
+        ));
+    }
+
+    let normalized = path.replace('\\', "/");
+
+    // Reject absolute paths
+    if normalized.starts_with('/') {
+        return Err(crate::Error::InvalidPath(
+            "File path must be relative".to_string(),
+        ));
+    }
+
+    // Reject Windows drive paths like C:\...
+    if normalized.len() >= 2 && normalized.chars().nth(1) == Some(':') {
+        return Err(crate::Error::InvalidPath(
+            "File path must be relative".to_string(),
+        ));
+    }
+
+    // Reject traversal segments
+    if normalized.split('/').any(|segment| segment == "..") {
+        return Err(crate::Error::InvalidPath(
+            "File path cannot contain '..'".to_string(),
+        ));
+    }
+
+    Ok(normalized)
+}
+
 /// Validate and sanitize a numeric limit parameter
 fn validate_limit(limit: u32) -> Result<u32> {
     const MAX_LIMIT: u32 = 1000;
@@ -168,6 +209,20 @@ fn validate_limit(limit: u32) -> Result<u32> {
     }
 
     Ok(limit)
+}
+
+/// Validate a directory path selected by the user
+#[tauri::command]
+pub async fn validate_project_directory(path: String) -> Result<String> {
+    let canonical_path = crate::utils::validate_and_canonicalize_path(&path)?;
+    let metadata = std::fs::metadata(&canonical_path)?;
+    if !metadata.is_dir() {
+        return Err(crate::Error::InvalidPath(
+            "Selected path is not a directory".to_string(),
+        ));
+    }
+
+    Ok(canonical_path.to_string_lossy().to_string())
 }
 
 /// List all projects
@@ -501,6 +556,53 @@ pub async fn list_project_files(
     });
 
     Ok(files)
+}
+
+/// Read a file inside a project directory (restricted to project root)
+#[tauri::command]
+pub async fn read_project_file(
+    state: State<'_, AppState>,
+    project_id: String,
+    relative_path: String,
+) -> Result<Vec<u8>> {
+    validate_id(&project_id, "project_id")?;
+    let normalized_path = validate_relative_project_path(&relative_path)?;
+
+    let project = state
+        .database
+        .get_project(&project_id)?
+        .ok_or_else(|| crate::Error::ProjectNotFound(project_id.clone()))?;
+
+    let project_root = crate::utils::validate_and_canonicalize_path(&project.path)?;
+    let resolved_path = project_root.join(normalized_path);
+    let canonical_file = resolved_path
+        .canonicalize()
+        .map_err(|_| crate::Error::InvalidPath(format!(
+            "File does not exist: {relative_path}"
+        )))?;
+
+    if !canonical_file.starts_with(&project_root) {
+        return Err(crate::Error::InvalidPath(
+            "File is outside project directory".to_string(),
+        ));
+    }
+
+    let metadata = std::fs::metadata(&canonical_file)?;
+    if metadata.is_dir() {
+        return Err(crate::Error::InvalidPath(
+            "Path is a directory".to_string(),
+        ));
+    }
+
+    const MAX_IMAGE_SIZE_BYTES: u64 = 5 * 1024 * 1024;
+    if metadata.len() > MAX_IMAGE_SIZE_BYTES {
+        let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+        return Err(crate::Error::Other(format!(
+            "File too large: {size_mb:.1}MB (max 5MB)"
+        )));
+    }
+
+    Ok(std::fs::read(&canonical_file)?)
 }
 
 #[allow(clippy::too_many_arguments)]

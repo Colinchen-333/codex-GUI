@@ -289,5 +289,25 @@ export async function executeCommand(
     return { handled: true }
   }
 
+  const NOT_YET_IMPLEMENTED: Record<string, string> = {
+    'permissions': 'Use /approvals to configure approval policies',
+    'setup-elevated-sandbox': 'Sandbox elevation is configured via CLI',
+    'experimental': 'Experimental features are configured via CLI',
+    'personality': 'Personality settings are configured via CLI',
+    'apps': 'App management is not yet available',
+    'ps': 'Background terminal listing is not yet available',
+    'plan': 'Plan mode is an experimental CLI feature',
+    'collab': 'Collaboration mode is an experimental CLI feature',
+    'agent': 'Agent switching is an experimental CLI feature',
+    'fork': 'Session forking is not yet available',
+    'rename': 'Use the sidebar context menu to rename sessions',
+  }
+
+  const notImplementedHint = NOT_YET_IMPLEMENTED[command.name]
+  if (notImplementedHint) {
+    context.showToast?.(`/${command.name} is not available in Codex Desktop. ${notImplementedHint}`, 'info')
+    return { handled: true }
+  }
+
   return { handled: false }
 }

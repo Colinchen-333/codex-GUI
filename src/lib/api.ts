@@ -337,6 +337,10 @@ export const projectApi = {
     invokeWithTimeout<GitDiffResponse>('get_project_git_diff', { path }, 20000), // 20s timeout for git diff
   listFiles: (path: string, query?: string, limit?: number) =>
     invoke<FileEntry[]>('list_project_files', { path, query, limit }),
+  validateDirectory: (path: string) =>
+    invoke<string>('validate_project_directory', { path }),
+  readProjectFile: (projectId: string, relativePath: string) =>
+    invoke<number[]>('read_project_file', { projectId, relativePath }),
   getGitBranches: (path: string) => invoke<GitBranch[]>('get_git_branches', { path }),
   getGitCommits: (path: string, limit?: number) =>
     invoke<GitCommit[]>('get_git_commits', { path, limit }),

@@ -134,7 +134,7 @@ export function SlashCommandPopup({
   // Scroll selected item into view
   useEffect(() => {
     if (!listRef.current) return
-    const selectedEl = listRef.current.children[selectedIndex] as HTMLElement
+    const selectedEl = listRef.current.querySelector(`[data-index="${selectedIndex}"]`) as HTMLElement
     if (selectedEl) {
       selectedEl.scrollIntoView({ block: 'nearest' })
     }
@@ -236,6 +236,7 @@ export function SlashCommandPopup({
                   return (
                     <button
                       key={cmd.name}
+                      data-index={currentIndex}
                       className={cn(
                         'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all duration-150',
                         currentIndex === selectedIndex

@@ -108,6 +108,20 @@ export function ReviewSelectorDialog({
     }
   }
 
+  const getSubmitHint = () => {
+    if (canSubmit()) return undefined
+    switch (activeTab) {
+      case 'branch':
+        return 'Select a branch to compare'
+      case 'commit':
+        return 'Select a commit to review'
+      case 'custom':
+        return 'Enter review instructions'
+      default:
+        return undefined
+    }
+  }
+
   if (!isOpen) return null
 
   const tabs: { id: TabType; label: string; icon: string }[] = [
@@ -273,9 +287,10 @@ export function ReviewSelectorDialog({
           </button>
           <button
             ref={startReviewButtonRef}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSelect}
             disabled={!canSubmit()}
+            title={getSubmitHint()}
           >
             Start Review
           </button>

@@ -8,6 +8,7 @@ import {
   type ToastInput,
 } from './ToastContext'
 import { useToast } from './useToast'
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react'
 
 // ============================================================================
 // Helper Functions
@@ -143,13 +144,15 @@ function ToastContainer() {
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+      className="fixed bottom-4 right-4 z-50 flex flex-col-reverse gap-3 pointer-events-none"
       role="region"
       aria-label="Notifications"
       aria-live="polite"
     >
       {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} onDismiss={() => removeToast(toast.id)} />
+        <div key={toast.id} className="pointer-events-auto">
+          <ToastItem toast={toast} onDismiss={() => removeToast(toast.id)} />
+        </div>
       ))}
     </div>
   )
@@ -159,91 +162,143 @@ function ToastContainer() {
 // Toast Item
 // ============================================================================
 
-const TOAST_ICONS: Record<Toast['type'], string> = {
-  info: 'i',
-  success: '\u2713',
-  warning: '!',
-  error: '\u2717',
-}
+const TOAST_ICONS = {
+  info: Info,
+  success: CheckCircle2,
+  warning: AlertTriangle,
+  error: AlertCircle,
+} as const
 
-const TOAST_COLORS: Record<Toast['type'], string> = {
-  info: 'border-blue-500 bg-blue-50 dark:bg-blue-950/30',
-  success: 'border-green-500 bg-green-50 dark:bg-green-950/30',
-  warning: 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30',
-  error: 'border-red-500 bg-red-50 dark:bg-red-950/30',
-}
-
-const TOAST_ICON_COLORS: Record<Toast['type'], string> = {
-  info: 'bg-blue-500 text-white',
-  success: 'bg-green-500 text-white',
-  warning: 'bg-yellow-500 text-white',
-  error: 'bg-red-500 text-white',
+const TOAST_STYLES: Record<Toast['type'], { bg: string; border: string; icon: string; progress: string }> = {
+  info: {
+    bg: 'bg-card/95 backdrop-blur-sm',
+    border: 'border-blue-500/50',
+    icon: 'text-blue-500',
+    progress: 'bg-blue-500',
+  },
+  success: {
+    bg: 'bg-card/95 backdrop-blur-sm',
+    border: 'border-green-500/50',
+    icon: 'text-green-500',
+    progress: 'bg-green-500',
+  },
+  warning: {
+    bg: 'bg-card/95 backdrop-blur-sm',
+    border: 'border-yellow-500/50',
+    icon: 'text-yellow-500',
+    progress: 'bg-yellow-500',
+  },
+  error: {
+    bg: 'bg-card/95 backdrop-blur-sm',
+    border: 'border-red-500/50',
+    icon: 'text-red-500',
+    progress: 'bg-red-500',
+  },
 }
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
-  // P1 Fix: Use ref to store latest onDismiss to avoid timer resets on callback changes
   const onDismissRef = useRef(onDismiss)
+  const [isPaused, setIsPaused] = useState(false)
+  const [progress, setProgress] = useState(100)
+  const startTimeRef = useRef(Date.now())
+  const remainingTimeRef = useRef(toast.duration ?? 5000)
 
-  // Sync ref in layout effect to avoid render-time ref access
   useLayoutEffect(() => {
     onDismissRef.current = onDismiss
   })
 
   useEffect(() => {
     const duration = toast.duration ?? 5000
-    if (duration > 0) {
-      const timer = setTimeout(() => onDismissRef.current(), duration)
-      return () => clearTimeout(timer)
+    if (duration <= 0) return
+
+    let animationFrame: number
+
+    const updateProgress = () => {
+      if (isPaused) return
+
+      const elapsed = Date.now() - startTimeRef.current
+      const remaining = Math.max(0, remainingTimeRef.current - elapsed)
+      const newProgress = (remaining / duration) * 100
+
+      setProgress(newProgress)
+
+      if (remaining <= 0) {
+        onDismissRef.current()
+      } else {
+        animationFrame = requestAnimationFrame(updateProgress)
+      }
     }
-  }, [toast.duration, toast.timestamp]) // P1 Fix: Removed onDismiss from deps
+
+    if (!isPaused) {
+      startTimeRef.current = Date.now()
+      animationFrame = requestAnimationFrame(updateProgress)
+    }
+
+    return () => {
+      if (animationFrame) cancelAnimationFrame(animationFrame)
+    }
+  }, [toast.duration, toast.timestamp, isPaused])
+
+  const handleMouseEnter = useCallback(() => {
+    const elapsed = Date.now() - startTimeRef.current
+    remainingTimeRef.current = Math.max(0, remainingTimeRef.current - elapsed)
+    setIsPaused(true)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    startTimeRef.current = Date.now()
+    setIsPaused(false)
+  }, [])
 
   const showCount = toast.count !== undefined && toast.count > 1
+  const styles = TOAST_STYLES[toast.type]
+  const IconComponent = TOAST_ICONS[toast.type]
 
   return (
     <div
       className={cn(
-        'flex min-w-[300px] max-w-[400px] items-start gap-3 rounded-lg border-l-4 p-4 shadow-lg',
-        TOAST_COLORS[toast.type],
-        'animate-in slide-in-from-right duration-300'
+        'relative flex min-w-[320px] max-w-[420px] items-start gap-3 rounded-xl border p-4 shadow-xl overflow-hidden',
+        styles.bg,
+        styles.border,
+        'animate-in slide-in-from-right-full fade-in duration-300'
       )}
       role="alert"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Icon */}
-      <span
-        className={cn(
-          'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-          TOAST_ICON_COLORS[toast.type]
-        )}
-      >
-        {TOAST_ICONS[toast.type]}
-      </span>
+      <IconComponent className={cn('h-5 w-5 shrink-0 mt-0.5', styles.icon)} />
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="font-medium truncate">{toast.title}</p>
+          <p className="font-medium text-sm text-foreground">{toast.title}</p>
           {showCount && (
-            <span className="shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium">
-              {toast.count}
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              ×{toast.count}
             </span>
           )}
         </div>
         {toast.message && (
-          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{toast.message}</p>
+          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{toast.message}</p>
         )}
       </div>
 
-      {/* Dismiss button */}
       <button
         type="button"
-        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+        className="shrink-0 p-1 -m-1 text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
         onClick={onDismiss}
         aria-label="Dismiss notification"
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <X className="h-4 w-4" />
       </button>
+
+      {(toast.duration ?? 5000) > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/30">
+          <div
+            className={cn('h-full transition-all duration-100', styles.progress)}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
     </div>
   )
 }

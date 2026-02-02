@@ -1,66 +1,55 @@
-// Slash Commands Configuration
-// Based on Codex CLI slash commands
-// Uses Lucide icon names for consistent styling
-
 export interface SlashCommand {
   name: string
   description: string
   aliases?: string[]
-  icon: string // Lucide icon name
-  category: 'general' | 'tools' | 'settings' | 'workflow'
+  icon: string
+  category: 'general' | 'tools' | 'settings' | 'workflow' | 'experimental'
+  experimental?: boolean
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
-  // Settings commands
   {
     name: 'model',
-    description: 'Switch to a different model',
+    description: 'Choose what model and reasoning effort to use',
     category: 'settings',
     icon: 'cpu',
   },
   {
     name: 'approvals',
-    description: 'Change approval policy and safety settings',
+    description: 'Choose what Codex can do without approval',
     category: 'settings',
     icon: 'shield-check',
   },
-
-  // Tools commands
+  {
+    name: 'permissions',
+    description: 'Choose what Codex is allowed to do',
+    category: 'settings',
+    icon: 'lock',
+  },
+  {
+    name: 'setup-elevated-sandbox',
+    description: 'Set up elevated agent sandbox',
+    aliases: ['elevate-sandbox'],
+    category: 'settings',
+    icon: 'shield-alert',
+  },
+  {
+    name: 'experimental',
+    description: 'Toggle experimental features',
+    category: 'settings',
+    icon: 'flask-conical',
+  },
+  {
+    name: 'personality',
+    description: 'Choose a communication style for Codex',
+    category: 'settings',
+    icon: 'smile',
+  },
   {
     name: 'skills',
-    description: 'List available skills and usage',
+    description: 'Use skills to improve how Codex performs specific tasks',
     category: 'tools',
     icon: 'wrench',
-  },
-  {
-    name: 'review',
-    description: 'Review changes: /review [branch|sha|instructions]',
-    category: 'workflow',
-    icon: 'eye',
-  },
-  {
-    name: 'new',
-    description: 'Start a new chat session',
-    category: 'general',
-    icon: 'plus-circle',
-  },
-  {
-    name: 'resume',
-    description: 'Resume a saved chat session',
-    category: 'general',
-    icon: 'history',
-  },
-  {
-    name: 'init',
-    description: 'Create an AGENTS.md guide',
-    category: 'workflow',
-    icon: 'compass',
-  },
-  {
-    name: 'compact',
-    description: 'Summarize and compact conversation context',
-    category: 'general',
-    icon: 'package',
   },
   {
     name: 'diff',
@@ -70,15 +59,9 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     name: 'mention',
-    description: 'Mention a file (insert @)',
+    description: 'Mention a file',
     category: 'tools',
     icon: 'at-sign',
-  },
-  {
-    name: 'status',
-    description: 'Show current session status',
-    category: 'general',
-    icon: 'activity',
   },
   {
     name: 'mcp',
@@ -86,19 +69,104 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     category: 'tools',
     icon: 'plug',
   },
-
-  // General commands
   {
-    name: 'sessions',
-    description: 'Browse and resume previous sessions',
+    name: 'apps',
+    description: 'Manage apps',
+    category: 'tools',
+    icon: 'layout-grid',
+  },
+  {
+    name: 'ps',
+    description: 'List background terminals',
+    category: 'tools',
+    icon: 'terminal',
+  },
+  {
+    name: 'review',
+    description: 'Review my current changes and find issues',
+    category: 'workflow',
+    icon: 'eye',
+  },
+  {
+    name: 'init',
+    description: 'Create an AGENTS.md file with instructions for Codex',
+    category: 'workflow',
+    icon: 'compass',
+  },
+  {
+    name: 'plan',
+    description: 'Switch to Plan mode',
+    category: 'workflow',
+    icon: 'list-todo',
+    experimental: true,
+  },
+  {
+    name: 'collab',
+    description: 'Change collaboration mode',
+    category: 'workflow',
+    icon: 'users',
+    experimental: true,
+  },
+  {
+    name: 'agent',
+    description: 'Switch the active agent thread',
+    category: 'workflow',
+    icon: 'bot',
+    experimental: true,
+  },
+  {
+    name: 'new',
+    description: 'Start a new chat during a conversation',
+    category: 'general',
+    icon: 'plus-circle',
+  },
+  {
+    name: 'resume',
+    description: 'Resume a saved chat',
     category: 'general',
     icon: 'history',
   },
   {
+    name: 'fork',
+    description: 'Fork the current chat',
+    category: 'general',
+    icon: 'git-fork',
+  },
+  {
+    name: 'rename',
+    description: 'Rename the current thread',
+    category: 'general',
+    icon: 'pencil',
+  },
+  {
+    name: 'compact',
+    description: 'Summarize conversation to prevent hitting the context limit',
+    category: 'general',
+    icon: 'package',
+  },
+  {
+    name: 'status',
+    description: 'Show current session configuration and token usage',
+    category: 'general',
+    icon: 'activity',
+  },
+  {
+    name: 'sessions',
+    description: 'Open the sessions panel',
+    category: 'general',
+    icon: 'folder-open',
+  },
+  {
     name: 'bug',
-    description: 'Report a bug with session info',
-    category: 'workflow',
+    description: 'Report a bug on GitHub',
+    category: 'general',
     icon: 'bug',
+  },
+  {
+    name: 'feedback',
+    description: 'Send logs to maintainers',
+    category: 'general',
+    icon: 'message-circle',
   },
   {
     name: 'logout',
@@ -108,34 +176,10 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     name: 'quit',
-    description: 'Quit Codex Desktop',
+    description: 'Exit Codex Desktop',
+    aliases: ['exit'],
     category: 'general',
     icon: 'power',
-  },
-  {
-    name: 'exit',
-    description: 'Quit Codex Desktop',
-    category: 'general',
-    icon: 'power',
-  },
-  // Workflow commands
-  {
-    name: 'feedback',
-    description: 'Send feedback to maintainers',
-    category: 'workflow',
-    icon: 'message-circle',
-  },
-  {
-    name: 'rollout',
-    description: 'Show rollout file path',
-    category: 'workflow',
-    icon: 'flask-conical',
-  },
-  {
-    name: 'test-approval',
-    description: 'Test approval request',
-    category: 'workflow',
-    icon: 'test-tube-2',
   },
   {
     name: 'help',
@@ -145,7 +189,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     name: 'clear',
-    description: 'Clear the conversation',
+    description: 'Clear the conversation display',
     category: 'general',
     icon: 'trash-2',
   },
@@ -190,8 +234,9 @@ export function isCompleteCommand(input: string): SlashCommand | null {
  * Get command categories with icons
  */
 export const COMMAND_CATEGORIES: Record<SlashCommand['category'], { label: string; icon: string }> = {
-  general: { label: 'General', icon: 'layout-grid' },
-  tools: { label: 'Tools', icon: 'wrench' },
   settings: { label: 'Settings', icon: 'settings' },
+  tools: { label: 'Tools', icon: 'wrench' },
   workflow: { label: 'Workflow', icon: 'git-branch' },
+  general: { label: 'General', icon: 'layout-grid' },
+  experimental: { label: 'Experimental', icon: 'flask-conical' },
 }

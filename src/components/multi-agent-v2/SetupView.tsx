@@ -16,6 +16,7 @@ import { useModelsStore } from '../../stores/models'
 import { useProjectsStore } from '../../stores/projects'
 import { cn } from '../../lib/utils'
 import { parseError } from '../../lib/errorUtils'
+import { projectApi } from '../../lib/api'
 
 interface SetupViewProps {
   onComplete: () => void
@@ -105,24 +106,8 @@ export function SetupView({ onComplete }: SetupViewProps) {
 
         try {
           // Validate directory exists and is accessible
-          const { exists, stat } = await import('@tauri-apps/plugin-fs')
-          const dirExists = await exists(selected)
-
-          if (!dirExists) {
-            setDirError('选择的目录不存在')
-            setWorkingDir('')
-            return
-          }
-
-          // Check if it's actually a directory
-          const statResult = await stat(selected)
-          if (!statResult.isDirectory) {
-            setDirError('选择的路径不是目录')
-            setWorkingDir('')
-            return
-          }
-
-          setWorkingDir(selected)
+          const canonicalPath = await projectApi.validateDirectory(selected)
+          setWorkingDir(canonicalPath)
           setDirError(null)
         } catch (validationError) {
           console.error('Directory validation failed:', validationError)

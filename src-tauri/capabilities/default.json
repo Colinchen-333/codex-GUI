@@ -6,22 +6,10 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
-    "shell:allow-execute",
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",
     "dialog:allow-ask",
-    "dialog:allow-confirm",
-    "fs:allow-exists",
-    "fs:allow-stat",
-    "fs:allow-read-file",
-    "fs:allow-read-dir",
-    {
-      "identifier": "fs:scope",
-      "allow": [
-        { "path": "$HOME/**" },
-        { "path": "**" }
-      ]
-    }
+    "dialog:allow-confirm"
   ]
 }

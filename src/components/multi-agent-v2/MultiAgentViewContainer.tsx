@@ -7,6 +7,7 @@ import { useModelsStore } from '@/stores/models'
 import { createPlanModeWorkflow } from '@/lib/workflows/plan-mode'
 import { parseError } from '@/lib/errorUtils'
 import { useToast } from '@/components/ui/useToast'
+import { projectApi } from '@/lib/api'
 import { WorkflowStageHeader } from './WorkflowStageHeader'
 import {
   WorkbenchLayout,
@@ -85,13 +86,14 @@ export function MultiAgentViewContainer() {
           toast.error('请先选择工作目录')
           return
         }
-        const { exists } = await import('@tauri-apps/plugin-fs')
-        if (!(await exists(selected))) {
-          toast.error('目录不存在')
+        try {
+          const canonicalPath = await projectApi.validateDirectory(selected)
+          setWorkingDirectory(canonicalPath)
+          await executeWorkflow(task, canonicalPath, settingsStore, projectsStore, modelsStore)
+        } catch (validationError) {
+          toast.error(`目录不可用: ${parseError(validationError)}`)
           return
         }
-        setWorkingDirectory(selected)
-        await executeWorkflow(task, selected, settingsStore, projectsStore, modelsStore)
       } catch (err) {
         toast.error(`选择目录失败: ${parseError(err)}`)
       }

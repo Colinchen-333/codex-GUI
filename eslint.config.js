@@ -6,7 +6,15 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'src-tauri/target', 'node_modules', 'codex', 'codex-desktop', 'src/test/test-utils.tsx']),
+  globalIgnores([
+    'coverage',
+    'dist',
+    'src-tauri/target',
+    'node_modules',
+    'codex',
+    'codex-desktop',
+    'src/test/test-utils.tsx',
+  ]),
 
   // Main source files with full TypeScript checking
   {

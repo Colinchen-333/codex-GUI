@@ -26,6 +26,23 @@ async function invokeWithTimeout<T>(
   return Promise.race([invoke<T>(command, args), timeoutPromise])
 }
 
+function isTauriAvailable(): boolean {
+  if (typeof window === 'undefined') return false
+  return typeof (window as { __TAURI__?: { core?: { invoke?: unknown } } }).__TAURI__?.core?.invoke === 'function'
+}
+
+function invokeOrFallback<T>(
+  fallback: T,
+  command: string,
+  args?: Record<string, unknown>,
+  timeoutMs?: number
+): Promise<T> {
+  if (!isTauriAvailable()) return Promise.resolve(fallback)
+  return typeof timeoutMs === 'number'
+    ? invokeWithTimeout<T>(command, args, timeoutMs)
+    : invoke<T>(command, args)
+}
+
 // ==================== Types ====================
 
 export interface Project {
@@ -323,7 +340,7 @@ export interface Snapshot {
 // ==================== Project API ====================
 
 export const projectApi = {
-  list: () => invoke<Project[]>('list_projects'),
+  list: () => invokeOrFallback<Project[]>([], 'list_projects'),
 
   add: (path: string) => invoke<Project>('add_project', { path }),
 
@@ -520,13 +537,13 @@ export const snapshotApi = {
 // ==================== App Server API ====================
 
 export const serverApi = {
-  getStatus: () => invoke<ServerStatus>('get_server_status'),
+  getStatus: () => invokeOrFallback<ServerStatus>({ isRunning: false, version: null }, 'get_server_status'),
 
   restart: () => invoke<void>('restart_server'),
 
-  getAccountInfo: () => invoke<AccountInfo>('get_account_info'),
+  getAccountInfo: () => invokeOrFallback<AccountInfo>({ account: null, requiresOpenaiAuth: false }, 'get_account_info'),
 
-  getAccountRateLimits: () => invoke<AccountRateLimitsResponse>('get_account_rate_limits'),
+  getAccountRateLimits: () => invokeOrFallback<AccountRateLimitsResponse>({ rateLimits: {} }, 'get_account_rate_limits'),
 
   startLogin: (loginType: 'chatgpt' | 'apiKey' = 'chatgpt', apiKey?: string) =>
     invoke<LoginResponse>('start_login', { loginType, apiKey }),
@@ -548,7 +565,7 @@ export const serverApi = {
   getModels: () =>
     withCache(
       CACHE_KEYS.MODELS,
-      () => invoke<ModelListResponse>('get_models'),
+      () => invokeOrFallback<ModelListResponse>({ data: [], nextCursor: null }, 'get_models'),
       CACHE_TTL.MODELS
     ),
 
@@ -568,7 +585,7 @@ export const serverApi = {
     }
     return withCache(
       cacheKey,
-      () => invoke<SkillsListResponse>('list_skills', { cwds, forceReload }),
+      () => invokeOrFallback<SkillsListResponse>({ data: [] }, 'list_skills', { cwds, forceReload }),
       CACHE_TTL.SKILLS
     )
   },
@@ -580,7 +597,7 @@ export const serverApi = {
   listMcpServers: () =>
     withCache(
       CACHE_KEYS.MCP_SERVERS,
-      () => invoke<McpServerStatusResponse>('list_mcp_servers'),
+      () => invokeOrFallback<McpServerStatusResponse>({ data: [], nextCursor: null }, 'list_mcp_servers'),
       CACHE_TTL.MCP_SERVERS
     ),
 

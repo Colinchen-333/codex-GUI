@@ -200,7 +200,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const onDismissRef = useRef(onDismiss)
   const [isPaused, setIsPaused] = useState(false)
   const [progress, setProgress] = useState(100)
-  const startTimeRef = useRef(Date.now())
+  const startTimeRef = useRef(0)
   const remainingTimeRef = useRef(toast.duration ?? 5000)
 
   useLayoutEffect(() => {

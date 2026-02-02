@@ -8,11 +8,11 @@ test.describe('Onboarding 流程测试', () => {
 
   test('欢迎页面显示正确', async ({ page }) => {
     // 检查欢迎标题
-    const title = page.locator('text=Welcome to Codex')
+    const title = page.locator('text=Welcome to Codex Desktop')
     await expect(title).toBeVisible()
 
     // 检查描述文字
-    const description = page.locator('text=AI-powered coding')
+    const description = page.locator('text=The official GUI for Codex CLI')
     await expect(description).toBeVisible()
 
     // 检查开始按钮

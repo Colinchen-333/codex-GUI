@@ -266,6 +266,9 @@ export type EventHandlers = {
 export async function setupEventListeners(
   handlers: EventHandlers
 ): Promise<UnlistenFn[]> {
+  if (typeof window === 'undefined') return []
+  const tauriEvent = (window as { __TAURI__?: { event?: { listen?: unknown } } }).__TAURI__?.event?.listen
+  if (typeof tauriEvent !== 'function') return []
   log.info('setupEventListeners called', 'Events')
 
   // Define all event-handler pairs for parallel registration

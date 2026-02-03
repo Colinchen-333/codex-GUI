@@ -19,13 +19,13 @@ export const SidebarTabs = memo(function SidebarTabs({
   onTabChange,
 }: SidebarTabsProps) {
   return (
-    <div className="flex mb-4 rounded-lg bg-secondary/50 p-1" role="tablist">
+    <div className="flex mb-4 rounded-md bg-surface-hover/[0.08] p-1 border border-stroke/20" role="tablist">
       <button
         className={cn(
-          'flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+          'flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
           activeTab === 'projects'
-            ? 'bg-card text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-surface-solid text-text-1 shadow-[var(--shadow-1)]'
+            : 'text-text-3 hover:text-text-1'
         )}
         onClick={() => onTabChange('projects')}
         role="tab"
@@ -37,10 +37,10 @@ export const SidebarTabs = memo(function SidebarTabs({
       </button>
       <button
         className={cn(
-          'flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+          'flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
           activeTab === 'sessions'
-            ? 'bg-card text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-surface-solid text-text-1 shadow-[var(--shadow-1)]'
+            : 'text-text-3 hover:text-text-1'
         )}
         onClick={() => onTabChange('sessions')}
         role="tab"

@@ -18,7 +18,7 @@ export function InputStatusHint() {
   return (
     <div
       id="input-hint"
-      className="mt-2 flex items-center justify-center gap-3 text-[10px] text-muted-foreground/60 select-none"
+      className="mt-2 flex items-center justify-center gap-3 text-[10px] text-text-3 select-none"
     >
       {tokenUsage.totalTokens > 0 && (
         <span className="flex items-center gap-1.5">
@@ -30,7 +30,7 @@ export function InputStatusHint() {
       <button
         type="button"
         onClick={() => setKeyboardShortcutsOpen(true)}
-        className="text-[10px] text-muted-foreground/70 hover:text-foreground transition-colors"
+        className="text-[10px] text-text-3 hover:text-text-1 transition-colors"
       >
         ? for shortcuts
       </button>

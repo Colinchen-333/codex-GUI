@@ -163,7 +163,7 @@ export const BaseCard = memo(
     defaultExpanded = true,
     expandable = true,
     onExpandChange,
-    headerBgClass = 'bg-secondary/30',
+    headerBgClass = 'bg-surface-hover/[0.06]',
     iconAnimated = false,
     iconActiveBgClass,
     maxWidthClass = 'max-w-2xl',
@@ -203,10 +203,10 @@ export const BaseCard = memo(
 
     // Determine icon container classes
     const iconContainerClass = cn(
-      'rounded-md p-1 shadow-sm transition-colors',
+      'rounded-md p-1 shadow-[var(--shadow-1)] transition-colors',
       iconActiveBgClass && (status === 'running' || iconAnimated)
         ? iconActiveBgClass
-        : 'bg-background text-muted-foreground'
+        : 'bg-surface-solid text-text-3'
     )
 
     return (
@@ -219,7 +219,7 @@ export const BaseCard = memo(
       >
         <div
           className={cn(
-            'w-full overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
+            'w-full overflow-hidden rounded-xl border bg-surface-solid shadow-[var(--shadow-1)] transition-all',
             maxWidthClass,
             getBorderClass(status, borderColor)
           )}
@@ -227,7 +227,7 @@ export const BaseCard = memo(
           {/* Header */}
           <div
             className={cn(
-              'flex items-center justify-between border-b border-border/40 px-4 py-2.5',
+              'flex items-center justify-between border-b border-stroke/20 px-4 py-2.5',
               headerBgClass,
               expandable && 'cursor-pointer select-none'
             )}
@@ -251,9 +251,9 @@ export const BaseCard = memo(
               <div className={iconContainerClass}>
                 <span className={cn(iconAnimated && 'animate-pulse')}>{icon}</span>
               </div>
-              <span className="text-xs font-medium text-foreground truncate">{title}</span>
+              <span className="text-xs font-semibold text-text-1 truncate">{title}</span>
               {subtitle && (
-                <code className="text-xs font-medium text-foreground font-mono truncate max-w-md">
+                <code className="text-xs font-medium text-text-2 font-mono truncate max-w-md">
                   {subtitle}
                 </code>
               )}
@@ -271,14 +271,14 @@ export const BaseCard = memo(
 
               {/* Timestamp */}
               {timestamp !== undefined && (
-                <span className="text-[10px] text-muted-foreground/60">
+                <span className="text-[10px] text-text-3/70">
                   {formatTimestamp(timestamp)}
                 </span>
               )}
 
               {/* Expand/Collapse chevron */}
               {expandable && (
-                <span className="text-muted-foreground text-xs">
+                <span className="text-text-3 text-xs">
                   {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </span>
               )}
@@ -300,14 +300,14 @@ export const BaseCard = memo(
 
           {/* Collapsed preview */}
           {!isExpanded && collapsedPreview && (
-            <div className="px-4 py-2 text-xs text-muted-foreground truncate border-t border-border/20">
+            <div className="px-4 py-2 text-xs text-text-3 truncate border-t border-stroke/20">
               {collapsedPreview}
             </div>
           )}
 
           {/* Footer actions */}
           {actions && isExpanded && (
-            <div className="border-t border-border/40 bg-secondary/10 p-4">{actions}</div>
+            <div className="border-t border-stroke/30 bg-surface-hover/[0.04] p-4">{actions}</div>
           )}
         </div>
       </div>
@@ -354,7 +354,7 @@ interface CardSectionProps {
  */
 export const CardSection = memo(function CardSection({
   title,
-  titleColor = 'text-muted-foreground',
+  titleColor = 'text-text-3',
   children,
   className,
 }: CardSectionProps) {
@@ -392,8 +392,8 @@ export const CardOutput = memo(function CardOutput({
         'overflow-auto rounded-lg p-3 font-mono text-xs scrollbar-thin scrollbar-thumb-border whitespace-pre-wrap',
         maxHeight,
         error
-          ? 'bg-red-50/50 dark:bg-red-900/10 text-red-800 dark:text-red-300'
-          : 'bg-black/[0.03] dark:bg-white/[0.03] text-muted-foreground',
+          ? 'bg-red-50/40 dark:bg-red-900/10 text-red-700 dark:text-red-300'
+          : 'bg-surface-hover/[0.08] text-text-2',
         className
       )}
     >

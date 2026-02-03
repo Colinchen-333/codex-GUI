@@ -71,7 +71,7 @@ const ApprovalUI = memo(function ApprovalUI({
   }
 
   return (
-    <div className="mt-5 pt-3 border-t border-border/40">
+    <div className="mt-5 pt-3 border-t border-stroke/20">
       {/* Explanation Mode */}
       {approvalMode === 'explain' && (
         <div className="animate-in fade-in duration-100">
@@ -79,14 +79,14 @@ const ApprovalUI = memo(function ApprovalUI({
             Command Explanation:
           </div>
           {isExplaining ? (
-            <div className="text-sm text-muted-foreground italic">
+            <div className="text-sm text-text-3 italic">
               Generating explanation...
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">{explanation}</div>
+            <div className="text-sm text-text-3">{explanation}</div>
           )}
           <button
-            className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="mt-3 text-xs text-text-3 hover:text-text-1 transition-colors"
             onClick={() => setApprovalMode('select')}
           >
             &larr; Back to options
@@ -97,7 +97,7 @@ const ApprovalUI = memo(function ApprovalUI({
       {/* Feedback Mode */}
       {approvalMode === 'feedback' && (
         <div className="animate-in fade-in duration-100">
-          <div className="mb-2 text-sm">Give the model feedback (Enter to submit):</div>
+          <div className="mb-2 text-sm text-text-2">Give the model feedback (Enter to submit):</div>
           <div className="flex gap-2">
             <input
               ref={feedbackInputRef}
@@ -106,21 +106,21 @@ const ApprovalUI = memo(function ApprovalUI({
               onChange={(e) => setFeedbackText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleFeedbackSubmit()}
               placeholder="Explain why you’re declining or how to fix it…"
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/15"
               autoFocus
             />
             <button
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-1)]"
               onClick={handleFeedbackSubmit}
             >
               Submit
             </button>
           </div>
-          <div className="mt-2 text-xs text-muted-foreground">
+          <div className="mt-2 text-xs text-text-3">
             Default: Decline and continue without feedback
           </div>
           <button
-            className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="mt-2 text-xs text-text-3 hover:text-text-1 transition-colors"
             onClick={() => setApprovalMode('select')}
           >
             &larr; Back to options
@@ -134,21 +134,21 @@ const ApprovalUI = memo(function ApprovalUI({
           {/* Primary Actions */}
           <div className="flex gap-2">
             <button
-              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+              className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)]"
               onClick={() => onApprove('accept')}
               title="Keyboard: Y"
             >
               Yes (y)
             </button>
             <button
-              className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => onApprove('acceptForSession')}
               title="Keyboard: A"
             >
               Always (a)
             </button>
             <button
-              className="rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+              className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors"
               onClick={() => onApprove('decline')}
               title="Keyboard: N"
             >
@@ -159,7 +159,7 @@ const ApprovalUI = memo(function ApprovalUI({
           {/* Secondary Actions */}
           <div className="mt-2 flex gap-2">
             <button
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-[11px] font-medium text-muted-foreground hover:bg-secondary transition-colors"
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-[11px] font-medium text-text-2 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => {
                 setApprovalMode('explain')
                 void onExplain()
@@ -169,7 +169,7 @@ const ApprovalUI = memo(function ApprovalUI({
               Explain (x)
             </button>
             <button
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-[11px] font-medium text-muted-foreground hover:bg-secondary transition-colors"
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-[11px] font-medium text-text-2 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => {
                 setApprovalMode('feedback')
                 setTimeout(() => feedbackInputRef.current?.focus(), 100)
@@ -183,7 +183,7 @@ const ApprovalUI = memo(function ApprovalUI({
           {/* Advanced Options Toggle */}
           {proposedExecpolicyAmendment && (
             <button
-              className="mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              className="mt-2 text-[10px] text-text-3 hover:text-text-1 transition-colors"
               onClick={() => setShowAdvanced(!showAdvanced)}
             >
               {showAdvanced ? '\u25BC Hide options' : '\u25B6 More options'}
@@ -334,7 +334,7 @@ export const CommandExecutionCard = memo(
           />
         )}
         {content.durationMs !== undefined && (
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-text-3">
             {formatDuration(content.durationMs)}
           </span>
         )}
@@ -356,20 +356,20 @@ export const CommandExecutionCard = memo(
         iconActiveBgClass="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
       >
         {/* Working directory */}
-        <div className="text-[11px] text-muted-foreground font-mono mb-3">
-          <span className="text-muted-foreground/70">cwd:</span> {content.cwd}
+        <div className="text-[11px] text-text-3 font-mono mb-3">
+          <span className="text-text-3/70">cwd:</span> {content.cwd}
         </div>
 
         {/* Command Actions Tags */}
         {content.commandActions && content.commandActions.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-1.5">
             {content.commandActions.map((action: string, i: number) => (
-              <span
-                key={i}
-                className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/50"
-              >
-                {action}
-              </span>
+                <span
+                  key={i}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover/[0.12] text-text-3 border border-stroke/20"
+                >
+                  {action}
+                </span>
             ))}
           </div>
         )}
@@ -403,17 +403,17 @@ export const CommandExecutionCard = memo(
             {/* Truncation indicator */}
             {isOutputTruncated && !content.isRunning && (
               <button
-                className="mt-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                className="mt-1 text-[10px] text-text-3 hover:text-text-1 transition-colors flex items-center gap-1"
                 onClick={() => setShowFullOutput(true)}
               >
                 <span className="text-yellow-600 dark:text-yellow-400">...</span>+{omittedLines}{' '}
                 lines hidden
-                <span className="text-blue-500 hover:underline">Show all</span>
+                <span className="text-text-2 hover:underline">Show all</span>
               </button>
             )}
             {showFullOutput && rawOutput.split('\n').length > MAX_OUTPUT_LINES && (
               <button
-                className="mt-1 text-[10px] text-blue-500 hover:underline"
+                className="mt-1 text-[10px] text-text-2 hover:underline"
                 onClick={() => setShowFullOutput(false)}
               >
                 Collapse output
@@ -433,7 +433,7 @@ export const CommandExecutionCard = memo(
 
         {/* Reason */}
         {content.reason && (
-          <div className="mt-3 text-xs text-muted-foreground">Reason: {content.reason}</div>
+          <div className="mt-3 text-xs text-text-3">Reason: {content.reason}</div>
         )}
 
         {/* Approval UI */}

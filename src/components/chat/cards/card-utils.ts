@@ -65,9 +65,9 @@ export const STATUS_CONFIG: Record<CardStatus, StatusConfig> = {
 export function getBorderClass(status?: CardStatus, customColor?: string): string {
   if (customColor) return customColor
   if (status && STATUS_CONFIG[status]) {
-    return `border-l-4 ${STATUS_CONFIG[status].borderColor} border-y-border/50 border-r-border/50`
+    return `border-l-4 ${STATUS_CONFIG[status].borderColor} border-y-stroke/20 border-r-stroke/20`
   }
-  return 'border-border/50'
+  return 'border-stroke/20'
 }
 
 /**

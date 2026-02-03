@@ -143,18 +143,18 @@ export function ProjectSettingsDialog({
   if (!isOpen || !project) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-background shadow-xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold">Project Settings</h2>
-            <p className="text-sm text-muted-foreground truncate max-w-[300px]">
+            <h2 className="text-lg font-semibold text-text-1">Project Settings</h2>
+            <p className="text-sm text-text-3 truncate max-w-[300px]">
               {project.displayName || project.path}
             </p>
           </div>
           <button
-            className="text-muted-foreground hover:text-foreground"
+            className="text-text-3 hover:text-text-1"
             onClick={onClose}
           >
             ✕
@@ -166,10 +166,10 @@ export function ProjectSettingsDialog({
           {/* Model Override */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Model</label>
+              <label className="text-sm font-medium text-text-1">Model</label>
               {settings.model && (
                 <button
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  className="text-xs text-text-3 hover:text-text-1"
                   onClick={() => clearSetting('model', 'Model')}
                 >
                   Reset to Global
@@ -184,7 +184,7 @@ export function ProjectSettingsDialog({
                   model: e.target.value || undefined,
                 }))
               }
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Inherit from global settings</option>
               {models.map((model) => (
@@ -198,10 +198,10 @@ export function ProjectSettingsDialog({
           {/* Sandbox Mode Override */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Sandbox Mode</label>
+              <label className="text-sm font-medium text-text-1">Sandbox Mode</label>
               {settings.sandboxMode && (
                 <button
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  className="text-xs text-text-3 hover:text-text-1"
                   onClick={() => clearSetting('sandboxMode', 'Sandbox Mode')}
                 >
                   Reset to Global
@@ -216,7 +216,7 @@ export function ProjectSettingsDialog({
                   sandboxMode: e.target.value || undefined,
                 }))
               }
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Inherit from global settings</option>
               {SANDBOX_MODE_OPTIONS.map((opt) => (
@@ -230,10 +230,10 @@ export function ProjectSettingsDialog({
           {/* Approval Policy Override */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Approval Policy</label>
+              <label className="text-sm font-medium text-text-1">Approval Policy</label>
               {settings.askForApproval && (
                 <button
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  className="text-xs text-text-3 hover:text-text-1"
                   onClick={() => clearSetting('askForApproval', 'Approval Policy')}
                 >
                   Reset to Global
@@ -248,7 +248,7 @@ export function ProjectSettingsDialog({
                   askForApproval: e.target.value || undefined,
                 }))
               }
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Inherit from global settings</option>
               {APPROVAL_POLICY_OPTIONS.map((opt) => (
@@ -262,10 +262,10 @@ export function ProjectSettingsDialog({
           {/* Working Directory Override */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Working Directory</label>
+              <label className="text-sm font-medium text-text-1">Working Directory</label>
               {settings.cwd && (
                 <button
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  className="text-xs text-text-3 hover:text-text-1"
                   onClick={() => clearSetting('cwd', 'Working Directory')}
                 >
                   Reset to Global
@@ -282,30 +282,30 @@ export function ProjectSettingsDialog({
                 }))
               }
               placeholder={project.path}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-text-3 mt-1">
               Leave empty to use project root
             </p>
           </div>
 
           {/* Environment Variables */}
           <div>
-            <label className="text-sm font-medium block mb-2">
+            <label className="text-sm font-medium text-text-1 block mb-2">
               Environment Variables
             </label>
             <div className="space-y-2 mb-2">
               {Object.entries(settings.envVars || {}).map(([key, value]) => (
                 <div
                   key={key}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-3 py-2"
+                  className="flex items-center gap-2 rounded-lg border border-stroke/20 bg-surface-hover/[0.06] px-3 py-2"
                 >
-                  <code className="text-sm font-mono">{key}</code>
-                  <span className="text-muted-foreground">=</span>
-                  <code className="text-sm font-mono flex-1 truncate">{value}</code>
+                  <code className="text-sm font-mono text-text-1">{key}</code>
+                  <span className="text-text-3">=</span>
+                  <code className="text-sm font-mono flex-1 truncate text-text-2">{value}</code>
                   <button
                     onClick={() => handleRemoveEnvVar(key)}
-                    className="text-muted-foreground hover:text-destructive text-xs"
+                    className="text-text-3 hover:text-destructive text-xs"
                   >
                     Remove
                   </button>
@@ -318,7 +318,7 @@ export function ProjectSettingsDialog({
                 value={newEnvKey}
                 onChange={(e) => setNewEnvKey(e.target.value)}
                 placeholder="KEY"
-                className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-32 rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm font-mono text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <input
                 type="text"
@@ -326,12 +326,12 @@ export function ProjectSettingsDialog({
                 onChange={(e) => setNewEnvValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddEnvVar()}
                 placeholder="value"
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <button
                 onClick={handleAddEnvVar}
                 disabled={!newEnvKey.trim()}
-                className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50"
+                className="rounded-lg border border-stroke/30 bg-surface-hover/[0.12] px-4 py-2 text-sm font-medium text-text-1 hover:bg-surface-hover/[0.18] disabled:opacity-50"
               >
                 Add
               </button>
@@ -340,16 +340,16 @@ export function ProjectSettingsDialog({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+        <div className="flex justify-end gap-3 border-t border-stroke/20 px-6 py-4">
           <button
-            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+            className="rounded-lg border border-stroke/30 bg-surface-hover/[0.1] px-4 py-2 text-sm font-medium text-text-2 hover:text-text-1"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
             ref={saveButtonRef}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+            className="rounded-lg bg-surface-selected/[0.2] px-4 py-2 text-sm font-medium text-text-1 hover:bg-surface-selected/[0.28] disabled:opacity-50 flex items-center gap-2"
             onClick={handleSave}
             disabled={isSaving}
           >

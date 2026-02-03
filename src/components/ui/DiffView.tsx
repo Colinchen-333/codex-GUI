@@ -91,19 +91,19 @@ export function DiffView({
   )
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
+    <div className="rounded-lg border border-stroke/20 overflow-hidden bg-surface-solid">
       {/* Header */}
       <div
-        className="flex items-center justify-between bg-secondary/50 px-3 py-2 cursor-pointer hover:bg-secondary/80"
+        className="flex items-center justify-between bg-surface-hover/[0.06] px-3 py-2 cursor-pointer hover:bg-surface-hover/[0.12]"
         onClick={onToggleCollapse}
       >
         <div className="flex items-center gap-2">
           <span className={cn('font-mono text-sm', kindColor[diff.kind])}>
             {kindIcon[diff.kind]}
           </span>
-          <span className="font-mono text-sm">{diff.path}</span>
+          <span className="font-mono text-sm text-text-1">{diff.path}</span>
           {diff.oldPath && diff.kind === 'rename' && (
-            <span className="text-muted-foreground text-sm">
+            <span className="text-text-3 text-sm">
               (from {diff.oldPath})
             </span>
           )}
@@ -115,7 +115,7 @@ export function DiffView({
           <button
             className={cn(
               'px-2 py-0.5 text-xs rounded',
-              viewMode === 'unified' ? 'bg-primary text-primary-foreground' : 'bg-secondary'
+              viewMode === 'unified' ? 'bg-primary text-primary-foreground' : 'bg-surface-hover/[0.12] text-text-2'
             )}
             onClick={(e) => {
               e.stopPropagation()
@@ -127,7 +127,7 @@ export function DiffView({
           <button
             className={cn(
               'px-2 py-0.5 text-xs rounded',
-              viewMode === 'split' ? 'bg-primary text-primary-foreground' : 'bg-secondary'
+              viewMode === 'split' ? 'bg-primary text-primary-foreground' : 'bg-surface-hover/[0.12] text-text-2'
             )}
             onClick={(e) => {
               e.stopPropagation()
@@ -136,7 +136,7 @@ export function DiffView({
           >
             Split
           </button>
-          <span className="text-muted-foreground">
+          <span className="text-text-3">
             {collapsed ? '▶' : '▼'}
           </span>
         </div>
@@ -146,7 +146,7 @@ export function DiffView({
       {!collapsed && (
         <div className="overflow-x-auto">
           {diff.hunks.length === 0 && diff.raw ? (
-            <pre className="p-3 text-xs text-muted-foreground whitespace-pre-wrap font-mono">
+            <pre className="p-3 text-xs text-text-3 whitespace-pre-wrap font-mono">
               {diff.raw}
             </pre>
           ) : viewMode === 'unified' ? (
@@ -192,7 +192,7 @@ function HunkActions({ hunkIndex, hunkState, enableHunkActions, onHunkAction }: 
       {hunkState !== 'accept' && (
         <button
           onClick={() => onHunkAction(hunkIndex, 'accept')}
-          className="p-1 rounded hover:bg-green-200 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400"
+          className="p-1 rounded hover:bg-green-200/60 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400"
           title="Accept this change"
         >
           <Check size={14} />
@@ -201,7 +201,7 @@ function HunkActions({ hunkIndex, hunkState, enableHunkActions, onHunkAction }: 
       {hunkState !== 'reject' && (
         <button
           onClick={() => onHunkAction(hunkIndex, 'reject')}
-          className="p-1 rounded hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400"
+          className="p-1 rounded hover:bg-red-200/60 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400"
           title="Reject this change"
         >
           <X size={14} />
@@ -210,7 +210,7 @@ function HunkActions({ hunkIndex, hunkState, enableHunkActions, onHunkAction }: 
       {hunkState !== 'pending' && (
         <button
           onClick={() => onHunkAction(hunkIndex, 'pending')}
-          className="text-[10px] px-1.5 py-0.5 rounded bg-secondary hover:bg-secondary/80"
+          className="text-[10px] px-1.5 py-0.5 rounded bg-surface-hover/[0.12] text-text-2 hover:bg-surface-hover/[0.18]"
           title="Reset"
         >
           Reset

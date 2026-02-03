@@ -7,7 +7,7 @@ const THEME_KEY = 'codex-desktop-theme'
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem(THEME_KEY)
-    return parseTheme(saved, 'system')
+    return parseTheme(saved, 'dark')
   })
 
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark')

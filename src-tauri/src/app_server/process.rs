@@ -315,6 +315,7 @@ impl AppServerProcess {
         T: Serialize,
         R: DeserializeOwned,
     {
+        self.ensure_running()?;
         let id = self.request_counter.fetch_add(1, Ordering::SeqCst);
 
         let request = JsonRpcRequest {
@@ -409,6 +410,7 @@ impl AppServerProcess {
 
     /// Send a JSON-RPC response to a server-initiated request
     pub async fn send_response<T: Serialize>(&mut self, request_id: u64, result: T) -> Result<()> {
+        self.ensure_running()?;
         #[derive(Serialize)]
         struct JsonRpcResponseMsg<T> {
             id: u64,
@@ -438,6 +440,7 @@ impl AppServerProcess {
 
     /// Send a JSON-RPC notification (no response expected)
     pub async fn send_notification<T: Serialize>(&mut self, method: &str, params: T) -> Result<()> {
+        self.ensure_running()?;
         #[derive(Serialize)]
         struct JsonRpcNotification<T> {
             method: String,
@@ -471,6 +474,14 @@ impl AppServerProcess {
             Ok(None) => true,  // Still running
             Ok(Some(_)) => false,  // Exited
             Err(_) => false,
+        }
+    }
+
+    fn ensure_running(&mut self) -> Result<()> {
+        if self.is_running() {
+            Ok(())
+        } else {
+            Err(Error::AppServer("App server is not running".to_string()))
         }
     }
 

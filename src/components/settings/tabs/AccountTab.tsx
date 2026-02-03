@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useRef, useCallback } from 'react'
 import { serverApi, type AccountInfo } from '../../../lib/api'
 import { log } from '../../../lib/logger'
 import { ConfirmDialog } from '../../ui/ConfirmDialog'
+import { SettingsSection, SettingsCard, SettingsList, SettingsRow } from '../SettingsLayout'
 
 interface AccountTabProps {
   accountInfo: AccountInfo | null
@@ -44,20 +45,20 @@ const ApiKeyLoginForm = memo(function ApiKeyLoginForm({
         onChange={(e) => setApiKey(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
         placeholder="Enter your API key"
-        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2.5 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
         autoFocus
       />
       {apiKeyError && <p className="text-xs text-destructive">{apiKeyError}</p>}
       <div className="flex gap-2">
         <button
-          className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-surface-hover/[0.18] px-4 py-2.5 text-sm font-medium text-text-1 hover:bg-surface-hover/[0.24] disabled:opacity-50"
           onClick={handleSubmit}
           disabled={isLoggingIn || !apiKey.trim()}
         >
           {isLoggingIn ? 'Verifying...' : 'Login with API Key'}
         </button>
         <button
-          className="rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+          className="rounded-lg border border-stroke/30 bg-surface-hover/[0.1] px-4 py-2.5 text-sm font-medium text-text-2 hover:text-text-1"
           onClick={onCancel}
         >
           Cancel
@@ -80,23 +81,23 @@ const LoggedInView = memo(function LoggedInView({
   onLogout: () => void
 }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-lg border border-stroke/20 bg-surface-hover/[0.06] p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg text-primary-foreground">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-selected/[0.2] text-lg text-text-1">
             {accountInfo.account?.email?.charAt(0).toUpperCase() || '?'}
           </div>
           <div>
-            <div className="font-medium">{accountInfo.account?.email}</div>
+            <div className="font-medium text-text-1">{accountInfo.account?.email}</div>
             {accountInfo.account?.planType && (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-text-3">
                 Plan: {accountInfo.account.planType}
               </div>
             )}
           </div>
         </div>
         <button
-          className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50"
+          className="rounded-lg border border-stroke/30 bg-surface-hover/[0.1] px-4 py-2 text-sm font-medium text-text-2 hover:text-text-1 disabled:opacity-50"
           onClick={onLogout}
           disabled={isLoggingOut}
         >
@@ -126,14 +127,14 @@ const LoginView = memo(function LoginView({
   onHideApiKeyInput: () => void
 }) {
   return (
-    <div className="rounded-lg border border-border p-4 space-y-4">
-      <p className="text-muted-foreground">
+    <div className="rounded-lg border border-stroke/20 bg-surface-hover/[0.06] p-4 space-y-4">
+      <p className="text-text-3">
         Log in to use Codex with your account.
       </p>
 
       {/* Browser OAuth Login */}
       <button
-        className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        className="w-full rounded-lg bg-surface-hover/[0.18] px-4 py-3 text-sm font-medium text-text-1 hover:bg-surface-hover/[0.24] disabled:opacity-50"
         onClick={onBrowserLogin}
         disabled={isLoggingIn}
       >
@@ -145,10 +146,10 @@ const LoginView = memo(function LoginView({
       {/* Divider */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
+          <span className="w-full border-t border-stroke/20" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Or</span>
+          <span className="bg-surface-solid px-2 text-text-3">Or</span>
         </div>
       </div>
 
@@ -161,7 +162,7 @@ const LoginView = memo(function LoginView({
         />
       ) : (
         <button
-          className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+          className="w-full rounded-lg border border-stroke/30 bg-surface-solid px-4 py-3 text-sm font-medium text-text-1 hover:bg-surface-hover/[0.12] transition-colors"
           onClick={onShowApiKeyInput}
           disabled={isLoggingIn}
         >
@@ -169,9 +170,9 @@ const LoginView = memo(function LoginView({
         </button>
       )}
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-center text-xs text-text-3">
         Or use terminal:{' '}
-        <code className="rounded bg-secondary px-1.5 py-0.5">codex login</code>
+        <code className="rounded bg-surface-hover/[0.12] px-1.5 py-0.5">codex login</code>
       </p>
     </div>
   )
@@ -307,39 +308,43 @@ export const AccountTab = memo(function AccountTab({
   }, [])
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium">Account</h3>
+    <div className="space-y-8">
+      <SettingsSection title="Account" description="Manage your login status.">
+        <SettingsCard>
+          {accountInfo?.account ? (
+            <LoggedInView
+              accountInfo={accountInfo}
+              isLoggingOut={isLoggingOut}
+              onLogout={handleLogout}
+            />
+          ) : (
+            <LoginView
+              isLoggingIn={isLoggingIn}
+              showApiKeyInput={showApiKeyInput}
+              onBrowserLogin={handleBrowserLogin}
+              onApiKeyLogin={handleApiKeyLogin}
+              onShowApiKeyInput={() => setShowApiKeyInput(true)}
+              onHideApiKeyInput={() => setShowApiKeyInput(false)}
+            />
+          )}
+        </SettingsCard>
 
-      {accountInfo?.account ? (
-        <LoggedInView
-          accountInfo={accountInfo}
-          isLoggingOut={isLoggingOut}
-          onLogout={handleLogout}
-        />
-      ) : (
-        <LoginView
-          isLoggingIn={isLoggingIn}
-          showApiKeyInput={showApiKeyInput}
-          onBrowserLogin={handleBrowserLogin}
-          onApiKeyLogin={handleApiKeyLogin}
-          onShowApiKeyInput={() => setShowApiKeyInput(true)}
-          onHideApiKeyInput={() => setShowApiKeyInput(false)}
-        />
-      )}
-
-      {/* Data & Privacy */}
-      <div>
-        <h4 className="mb-2 text-sm font-medium">Data & Privacy</h4>
-        <button
-          className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
-          onClick={() => setShowClearDataConfirm(true)}
-        >
-          Clear Local Data
-        </button>
-        <p className="mt-1 text-xs text-muted-foreground">
-          This will clear all local settings and data
-        </p>
-      </div>
+        <SettingsCard>
+          <SettingsList>
+            <SettingsRow
+              title="Clear local data"
+              description="Removes local settings and cached data."
+            >
+              <button
+                className="rounded-md border border-stroke/30 bg-surface-hover/[0.1] px-3 py-1.5 text-xs font-medium text-text-2 hover:text-text-1"
+                onClick={() => setShowClearDataConfirm(true)}
+              >
+                Clear data
+              </button>
+            </SettingsRow>
+          </SettingsList>
+        </SettingsCard>
+      </SettingsSection>
 
       {/* Clear Local Data Confirmation Dialog */}
       <ConfirmDialog

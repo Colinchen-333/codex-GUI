@@ -16,21 +16,21 @@ export const AgentMessage = memo(
     }
     const content = item.content
     return (
-      <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-200">
-        <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-card px-5 py-4 shadow-md border border-border/30 backdrop-blur-sm">
+      <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
+        <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-surface-hover/[0.06] px-5 py-4 shadow-[var(--shadow-1)] border border-stroke/20">
           <Markdown content={content.text} />
           {content.isStreaming && (
             <div className="mt-2 flex items-center gap-1.5">
               <span
-                className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce"
+                className="h-1.5 w-1.5 rounded-full bg-text-2/70 animate-bounce"
                 style={{ animationDelay: '0ms' }}
               />
               <span
-                className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce"
+                className="h-1.5 w-1.5 rounded-full bg-text-2/70 animate-bounce"
                 style={{ animationDelay: '150ms' }}
               />
               <span
-                className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce"
+                className="h-1.5 w-1.5 rounded-full bg-text-2/70 animate-bounce"
                 style={{ animationDelay: '300ms' }}
               />
             </div>

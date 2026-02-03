@@ -93,14 +93,14 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
       role="presentation"
       aria-hidden="false"
     >
       <div
         ref={containerRef}
-        className={`w-full max-w-md rounded-[2rem] bg-card p-8 shadow-2xl border border-border/50 ${animationClass}`}
+        className={`w-full max-w-md rounded-2xl bg-surface-solid p-7 shadow-[var(--shadow-2)] border border-stroke/30 ${animationClass}`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         role="dialog"
@@ -129,7 +129,7 @@ export function ConfirmDialog({
         {/* Title */}
         <h2
           id={titleId}
-          className="mb-3 text-xl font-bold tracking-tight text-center"
+          className="mb-3 text-xl font-semibold tracking-tight text-center text-text-1"
         >
           {title}
         </h2>
@@ -137,7 +137,7 @@ export function ConfirmDialog({
         {/* Message */}
         <p
           id={descriptionId}
-          className="mb-6 text-center text-muted-foreground leading-relaxed"
+          className="mb-6 text-center text-text-3 leading-relaxed"
         >
           {message}
         </p>
@@ -147,7 +147,7 @@ export function ConfirmDialog({
           <button
             ref={cancelButtonRef}
             type="button"
-            className="rounded-xl px-6 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors min-w-[100px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="rounded-md px-6 py-2.5 text-sm font-medium text-text-2 hover:bg-surface-hover/[0.12] transition-colors min-w-[100px] focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-2"
             onClick={onCancel}
             aria-label={`${cancelText}, close dialog`}
           >
@@ -156,10 +156,10 @@ export function ConfirmDialog({
           <button
             ref={confirmButtonRef}
             type="button"
-            className={`rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition-all min-w-[100px] shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            className={`rounded-md px-6 py-2.5 text-sm font-semibold text-white transition-all min-w-[100px] shadow-[var(--shadow-1)] focus:outline-none focus:ring-2 focus:ring-offset-2 ${
               isDanger
-                ? 'bg-destructive hover:bg-destructive/90 shadow-destructive/20 focus:ring-destructive'
-                : 'bg-warning hover:bg-warning/90 shadow-warning/20 focus:ring-warning'
+                ? 'bg-destructive hover:bg-destructive/90 focus:ring-destructive'
+                : 'bg-warning hover:bg-warning/90 focus:ring-warning'
             }`}
             onClick={onConfirm}
             aria-label={`${confirmText}, ${isDanger ? 'this action cannot be undone' : 'proceed with action'}`}

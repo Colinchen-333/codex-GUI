@@ -165,7 +165,7 @@ export function SlashCommandPopup({
           role="alert"
           aria-live="polite"
           className={cn(
-            'rounded-xl border border-border/50 bg-card shadow-xl backdrop-blur-sm',
+            'rounded-xl border border-stroke/20 bg-surface-solid shadow-[var(--shadow-2)] backdrop-blur-sm',
             prefersReducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-200'
           )}
         >
@@ -173,15 +173,15 @@ export function SlashCommandPopup({
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm">Unable to load commands</h3>
-                <p className="text-xs text-muted-foreground mt-1">{error}</p>
+                <h3 className="font-medium text-sm text-text-1">Unable to load commands</h3>
+                <p className="text-xs text-text-3 mt-1">{error}</p>
               </div>
               <button
                 onClick={handleRetry}
                 disabled={isRetrying}
                 className={cn(
                   'shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                  'bg-primary text-primary-foreground hover:bg-primary/90',
+                  'bg-surface-hover/[0.18] text-text-1 hover:bg-surface-hover/[0.24]',
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
@@ -206,14 +206,14 @@ export function SlashCommandPopup({
         role="listbox"
         aria-label="Slash commands"
         className={cn(
-          'max-h-80 overflow-y-auto rounded-xl border border-border/50 bg-card shadow-xl backdrop-blur-sm',
+          'max-h-80 overflow-y-auto rounded-xl border border-stroke/20 bg-surface-solid shadow-[var(--shadow-2)] backdrop-blur-sm',
           prefersReducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-200'
         )}
       >
-        <div className="sticky top-0 z-10 flex items-center gap-2 p-3 text-xs font-medium text-muted-foreground border-b border-border/30 bg-card/95 backdrop-blur-sm">
+        <div className="sticky top-0 z-10 flex items-center gap-2 p-3 text-xs font-medium text-text-3 border-b border-stroke/20 bg-surface-solid/95 backdrop-blur-sm">
           <Terminal size={14} />
           <span>Commands</span>
-          <span className="ml-auto text-[10px] opacity-60">
+          <span className="ml-auto text-[10px] opacity-70">
             {commands.length} available
           </span>
         </div>
@@ -225,8 +225,8 @@ export function SlashCommandPopup({
 
             return (
               <div key={category}>
-                <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
-                  <CategoryIcon size={12} className="opacity-50" />
+                <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-semibold text-text-3 uppercase tracking-wider">
+                  <CategoryIcon size={12} className="opacity-60" />
                   <span>{categoryInfo.label}</span>
                 </div>
                 {cmds.map((cmd) => {
@@ -240,8 +240,8 @@ export function SlashCommandPopup({
                       className={cn(
                         'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all duration-150',
                         currentIndex === selectedIndex
-                          ? 'bg-primary/10 text-foreground'
-                          : 'text-foreground/80 hover:bg-secondary/50 hover:text-foreground'
+                          ? 'bg-surface-selected/[0.16] text-text-1'
+                          : 'text-text-2 hover:bg-surface-hover/[0.12] hover:text-text-1'
                       )}
                       onClick={() => onSelect(cmd)}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}
@@ -249,8 +249,8 @@ export function SlashCommandPopup({
                       <span className={cn(
                         'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors',
                         currentIndex === selectedIndex
-                          ? 'bg-primary/20 text-primary'
-                          : 'bg-secondary/50 text-muted-foreground'
+                          ? 'bg-surface-selected/[0.3] text-text-1'
+                          : 'bg-surface-hover/[0.12] text-text-3'
                       )}>
                         <Icon size={15} />
                       </span>
@@ -258,17 +258,17 @@ export function SlashCommandPopup({
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm font-mono">/{cmd.name}</span>
                           {cmd.aliases && cmd.aliases.length > 0 && (
-                            <span className="text-[10px] text-muted-foreground/50">
+                            <span className="text-[10px] text-text-3">
                               ({cmd.aliases.map((a) => `/${a}`).join(', ')})
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        <p className="text-xs text-text-3 truncate mt-0.5">
                           {cmd.description}
                         </p>
                       </div>
                       {currentIndex === selectedIndex && (
-                        <span className="flex-shrink-0 text-[10px] text-muted-foreground bg-secondary/80 px-2 py-1 rounded-md font-mono">
+                        <span className="flex-shrink-0 text-[10px] text-text-3 bg-surface-hover/[0.16] px-2 py-1 rounded-md font-mono">
                           ↵
                         </span>
                       )}

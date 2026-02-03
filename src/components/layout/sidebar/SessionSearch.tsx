@@ -92,7 +92,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
         <input
           type="text"
           placeholder="Search all sessions..."
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none pr-8"
+          className="w-full rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 placeholder:text-text-3 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/15 pr-8"
           value={localSearchQuery}
           onChange={(e) => handleSearchChange(e.target.value)}
           aria-label="Search sessions"
@@ -114,7 +114,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
         )}
         {localSearchQuery && !isSearching && (
           <button
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-md text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12] transition-colors"
             onClick={handleClearSearch}
             aria-label="Clear search"
           >
@@ -125,7 +125,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
       {isGlobalSearch && searchResults.length > 0 && (
         <div
           id="search-results-count"
-          className="mt-1.5 text-xs text-muted-foreground"
+          className="mt-1.5 text-xs text-text-3"
           aria-live="polite"
         >
           Found {searchResults.length} session(s) across all projects

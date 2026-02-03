@@ -109,10 +109,10 @@ export function DialogSkeleton({ title = 'Loading...', className }: DialogSkelet
  */
 export function SettingsDialogSkeleton() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-8">
-      <div className="flex h-[600px] w-full max-w-4xl overflow-hidden rounded-[2rem] bg-card shadow-2xl border border-border/50 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-8">
+      <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-[22px] bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-200">
         {/* Sidebar skeleton */}
-        <div className="w-60 bg-secondary/30 p-6 border-r border-border/50 flex flex-col gap-1">
+        <div className="w-60 bg-surface-solid/80 p-6 border-r border-stroke/20 flex flex-col gap-1">
           <div className="mb-6 px-2 py-2">
             <Skeleton className="h-7 w-24" />
           </div>
@@ -127,7 +127,7 @@ export function SettingsDialogSkeleton() {
         {/* Content skeleton */}
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6">
               <Skeleton className="h-8 w-32" />
               <div className="space-y-4">
                 <Skeleton className="h-12 w-full rounded-lg" />
@@ -136,7 +136,7 @@ export function SettingsDialogSkeleton() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-3 border-t border-border/50 bg-background/50 px-6 py-4">
+          <div className="flex justify-end gap-3 border-t border-stroke/20 bg-surface-solid/60 px-6 py-4">
             <Skeleton className="h-10 w-20 rounded-lg" />
           </div>
         </div>
@@ -150,11 +150,11 @@ export function SettingsDialogSkeleton() {
  */
 export function ListDialogSkeleton({ title = 'Loading...' }: { title?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-background shadow-xl max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-lg font-semibold text-muted-foreground">{title}</h2>
+        <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
+          <h2 className="text-lg font-semibold text-text-2">{title}</h2>
           <Skeleton className="h-6 w-6 rounded" />
         </div>
 
@@ -163,7 +163,7 @@ export function ListDialogSkeleton({ title = 'Loading...' }: { title?: string })
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center gap-3 rounded-lg border border-border p-3"
+              className="flex items-center gap-3 rounded-lg border border-stroke/20 p-3"
             >
               <Skeleton className="h-8 w-8 rounded" />
               <div className="flex-1 space-y-2">

@@ -23,34 +23,34 @@ export function McpToolCard({ item }: MessageItemProps) {
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
       <div
         className={cn(
-          'w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
+          'w-full max-w-2xl overflow-hidden rounded-xl border bg-surface-solid shadow-[var(--shadow-1)] transition-all',
           content.isRunning
-            ? 'border-l-4 border-l-cyan-500 border-y-border/50 border-r-border/50'
+            ? 'border-l-4 border-l-cyan-500 border-y-stroke/20 border-r-stroke/20'
             : content.error
-              ? 'border-l-4 border-l-red-500 border-y-border/50 border-r-border/50'
-              : 'border-border/50'
+              ? 'border-l-4 border-l-red-500 border-y-stroke/20 border-r-stroke/20'
+              : 'border-stroke/20'
         )}
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between border-b border-border/40 bg-cyan-50/50 dark:bg-cyan-900/10 px-4 py-2.5 cursor-pointer select-none"
+          className="flex items-center justify-between border-b border-stroke/20 bg-surface-hover/[0.06] px-4 py-2.5 cursor-pointer select-none"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center gap-2">
             <div
               className={cn(
-                'rounded-md p-1 shadow-sm',
+                'rounded-md p-1 shadow-[var(--shadow-1)]',
                 content.isRunning
                   ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400'
-                  : 'bg-background text-muted-foreground'
+                  : 'bg-surface-solid text-text-3'
               )}
             >
               <Wrench size={14} className={content.isRunning ? 'animate-spin' : ''} />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground">{content.server}</span>
-              <span className="text-muted-foreground/50">/</span>
-              <code className="text-xs font-medium text-foreground font-mono">{content.tool}</code>
+              <span className="text-[10px] text-text-3">{content.server}</span>
+              <span className="text-text-3/70">/</span>
+              <code className="text-xs font-medium text-text-1 font-mono">{content.tool}</code>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -66,17 +66,17 @@ export function McpToolCard({ item }: MessageItemProps) {
               </span>
             )}
             {!content.isRunning && !content.error && content.durationMs !== undefined && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[10px] text-text-3">
                 {content.durationMs < 1000
                   ? `${content.durationMs}ms`
                   : `${(content.durationMs / 1000).toFixed(1)}s`}
               </span>
             )}
             {/* Timestamp */}
-            <span className="text-[10px] text-muted-foreground/60">
+            <span className="text-[10px] text-text-3/70">
               {formatTimestamp(item.createdAt)}
             </span>
-            <span className="text-muted-foreground text-xs">
+            <span className="text-text-3 text-xs">
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           </div>
@@ -87,10 +87,10 @@ export function McpToolCard({ item }: MessageItemProps) {
           <div className="p-4 space-y-3">
             {content.progress && content.progress.length > 0 && (
               <div>
-                <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-[11px] font-medium text-text-3 uppercase tracking-wider">
                   Progress
                 </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
+                <div className="space-y-1 text-xs text-text-3">
                   {content.progress.map((line: string, i: number) => (
                     <div key={i}>{line}</div>
                   ))}
@@ -100,10 +100,10 @@ export function McpToolCard({ item }: MessageItemProps) {
             {/* Arguments */}
             {argumentsJson && (
               <div>
-                <div className="mb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-[11px] font-medium text-text-3 uppercase tracking-wider">
                   Arguments
                 </div>
-                <pre className="max-h-40 overflow-auto rounded-lg bg-secondary/50 p-3 font-mono text-xs text-muted-foreground">
+                <pre className="max-h-40 overflow-auto rounded-lg bg-surface-hover/[0.08] p-3 font-mono text-xs text-text-2 border border-stroke/20">
                   {argumentsJson}
                 </pre>
               </div>
@@ -115,7 +115,7 @@ export function McpToolCard({ item }: MessageItemProps) {
                 <div className="mb-1 text-[11px] font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
                   Result
                 </div>
-                <pre className="max-h-60 overflow-auto rounded-lg bg-green-50/50 dark:bg-green-900/10 p-3 font-mono text-xs text-foreground">
+                <pre className="max-h-60 overflow-auto rounded-lg bg-green-50/50 dark:bg-green-900/10 p-3 font-mono text-xs text-text-1 border border-stroke/20">
                   {typeof content.result === 'string' ? content.result : resultJson}
                 </pre>
               </div>
@@ -127,7 +127,7 @@ export function McpToolCard({ item }: MessageItemProps) {
                 <div className="mb-1 text-[11px] font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
                   Error
                 </div>
-                <pre className="max-h-40 overflow-auto rounded-lg bg-red-50/50 dark:bg-red-900/10 p-3 font-mono text-xs text-red-800 dark:text-red-300">
+                <pre className="max-h-40 overflow-auto rounded-lg bg-red-50/50 dark:bg-red-900/10 p-3 font-mono text-xs text-red-700 dark:text-red-300 border border-stroke/20">
                   {content.error}
                 </pre>
               </div>

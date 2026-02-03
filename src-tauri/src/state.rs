@@ -48,10 +48,20 @@ impl AppState {
     /// Start the app server process
     pub async fn start_app_server(&self) -> Result<()> {
         let mut server = self.app_server.write().await;
-        if server.is_none() {
-            let process = AppServerProcess::spawn(self.app_handle.clone()).await?;
-            *server = Some(process);
-            tracing::info!("App server started");
+        match server.as_mut() {
+            None => {
+                let process = AppServerProcess::spawn(self.app_handle.clone()).await?;
+                *server = Some(process);
+                tracing::info!("App server started");
+            }
+            Some(existing) => {
+                if !existing.is_running() {
+                    tracing::warn!("App server was not running, respawning...");
+                    let process = AppServerProcess::spawn(self.app_handle.clone()).await?;
+                    *server = Some(process);
+                    tracing::info!("App server restarted");
+                }
+            }
         }
         Ok(())
     }

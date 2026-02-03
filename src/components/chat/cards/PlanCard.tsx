@@ -22,7 +22,7 @@ export function PlanCard({ item }: MessageItemProps) {
       case 'failed':
         return <XCircle size={14} className="text-red-500" />
       default:
-        return <Circle size={14} className="text-muted-foreground/50" />
+        return <Circle size={14} className="text-text-3/70" />
     }
   }
 
@@ -35,21 +35,21 @@ export function PlanCard({ item }: MessageItemProps) {
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
       <div
         className={cn(
-          'w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-sm transition-all',
+          'w-full max-w-2xl overflow-hidden rounded-xl border bg-surface-solid shadow-[var(--shadow-1)] transition-all',
           content.isActive
-            ? 'border-l-4 border-l-blue-500 border-y-border/50 border-r-border/50'
-            : 'border-border/50'
+            ? 'border-l-4 border-l-blue-500 border-y-stroke/20 border-r-stroke/20'
+            : 'border-stroke/20'
         )}
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between border-b border-border/40 bg-blue-50/50 dark:bg-blue-900/10 px-4 py-2.5 cursor-pointer select-none"
+          className="flex items-center justify-between border-b border-stroke/20 bg-surface-hover/[0.06] px-4 py-2.5 cursor-pointer select-none"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center gap-2">
             <div
               className={cn(
-                'rounded-md p-1 shadow-sm',
+                'rounded-md p-1 shadow-[var(--shadow-1)]',
                 content.isActive
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                   : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
@@ -57,16 +57,16 @@ export function PlanCard({ item }: MessageItemProps) {
             >
               <ListChecks size={14} />
             </div>
-            <span className="text-xs font-medium text-foreground">
+            <span className="text-xs font-semibold text-text-1">
               {content.isActive ? 'Executing Plan' : 'Plan Completed'}
             </span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10px] text-text-3">
               {completedSteps}/{totalSteps} steps
             </span>
           </div>
           <div className="flex items-center gap-2">
             {/* Progress bar */}
-            <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
+            <div className="w-20 h-1.5 bg-surface-hover/[0.12] rounded-full overflow-hidden">
               <div
                 className={cn(
                   'h-full transition-all duration-150',
@@ -76,10 +76,10 @@ export function PlanCard({ item }: MessageItemProps) {
               />
             </div>
             {/* Timestamp */}
-            <span className="text-[10px] text-muted-foreground/60">
+            <span className="text-[10px] text-text-3/70">
               {formatTimestamp(item.createdAt)}
             </span>
-            <span className="text-muted-foreground text-xs">
+            <span className="text-text-3 text-xs">
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           </div>
@@ -90,7 +90,7 @@ export function PlanCard({ item }: MessageItemProps) {
           <div className="p-4 space-y-3">
             {/* Explanation */}
             {content.explanation && (
-              <p className="text-sm text-muted-foreground mb-3">{content.explanation}</p>
+              <p className="text-sm text-text-3 mb-3">{content.explanation}</p>
             )}
 
             {/* Steps */}
@@ -100,7 +100,7 @@ export function PlanCard({ item }: MessageItemProps) {
                   key={index}
                   className={cn(
                     'flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors',
-                    step.status === 'in_progress' && 'bg-blue-50/50 dark:bg-blue-900/10',
+                    step.status === 'in_progress' && 'bg-blue-50/40 dark:bg-blue-900/10',
                     step.status === 'completed' && 'opacity-70'
                   )}
                 >
@@ -108,10 +108,10 @@ export function PlanCard({ item }: MessageItemProps) {
                   <span
                     className={cn(
                       'text-sm leading-relaxed',
-                      step.status === 'completed' && 'line-through text-muted-foreground',
+                      step.status === 'completed' && 'line-through text-text-3',
                       step.status === 'in_progress' && 'text-blue-700 dark:text-blue-300 font-medium',
                       step.status === 'failed' && 'text-red-700 dark:text-red-300',
-                      step.status === 'pending' && 'text-muted-foreground'
+                      step.status === 'pending' && 'text-text-3'
                     )}
                   >
                     {step.step}

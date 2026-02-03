@@ -86,7 +86,7 @@ export function SessionTabs({ onNewSession }: SessionTabsProps) {
 
   return (
     <>
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-border/50 bg-card/30 backdrop-blur-sm overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/50">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-stroke/30 bg-surface-hover/[0.04] backdrop-blur-sm overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/50">
         {threadEntries.map(([threadId, threadState]) => {
           const sessionMeta = sessions.find(s => s.sessionId === threadId)
           return (
@@ -112,7 +112,7 @@ export function SessionTabs({ onNewSession }: SessionTabsProps) {
             onClick={handleNewSessionClick}
             className={cn(
               'flex items-center gap-1 px-2 py-1 rounded-md text-xs',
-              'text-muted-foreground hover:text-foreground hover:bg-secondary/50',
+              'text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12]',
               'transition-colors duration-150'
             )}
             title={`New Session (${threadEntries.length}/${maxSessions})`}
@@ -122,7 +122,7 @@ export function SessionTabs({ onNewSession }: SessionTabsProps) {
         )}
 
         {/* Session count indicator */}
-        <span className="ml-auto text-[10px] text-muted-foreground/60 tabular-nums">
+        <span className="ml-auto text-[10px] text-text-3/70 tabular-nums">
           {threadEntries.length}/{maxSessions}
         </span>
       </div>
@@ -204,12 +204,12 @@ const SessionTab = memo(function SessionTab({
     <div
       onClick={handleClick}
       className={cn(
-        'group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium',
+        'group flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium',
         'transition-all duration-150 min-w-[100px] max-w-[200px]',
         'relative overflow-hidden',
         isActive
-          ? 'bg-primary/10 text-primary border border-primary/30'
-          : 'bg-secondary/30 text-muted-foreground hover:bg-secondary/60 hover:text-foreground border border-transparent',
+          ? 'bg-surface-selected/[0.12] text-text-1 border border-stroke/30'
+          : 'bg-transparent text-text-3 hover:bg-surface-hover/[0.12] hover:text-text-1 border border-transparent',
         isLoading && 'cursor-not-allowed opacity-70',
         !isLoading && 'cursor-pointer'
       )}

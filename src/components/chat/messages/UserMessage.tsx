@@ -144,7 +144,7 @@ export const UserMessage = memo(
     return (
       <>
         <div
-          className="flex justify-end pl-12 animate-in slide-in-from-bottom-2 duration-200"
+          className="flex justify-end pl-12 animate-in slide-in-from-bottom-2 duration-150"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -155,7 +155,7 @@ export const UserMessage = memo(
                 <button
                   type="button"
                   onClick={handleEditClick}
-                  className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                  className="p-1.5 rounded-md hover:bg-surface-hover/[0.12] text-text-3 hover:text-text-1 transition-colors"
                   title="Edit message"
                   aria-label="Edit message"
                 >
@@ -164,7 +164,7 @@ export const UserMessage = memo(
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  className="p-1.5 rounded-md hover:bg-destructive/10 text-text-3 hover:text-destructive transition-colors"
                   title="Delete message"
                   aria-label="Delete message"
                 >
@@ -173,7 +173,7 @@ export const UserMessage = memo(
               </div>
             )}
 
-            <div className="rounded-2xl rounded-tr-sm bg-primary px-5 py-4 text-primary-foreground shadow-md">
+            <div className="rounded-2xl rounded-tr-sm bg-surface-solid px-5 py-4 text-text-1 shadow-[var(--shadow-1)] border border-stroke/30">
               {/* Images */}
               {content.images && content.images.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -184,7 +184,7 @@ export const UserMessage = memo(
                       alt={`Attached ${i + 1}`}
                       loading="lazy"
                       decoding="async"
-                      className="h-32 w-32 rounded-xl object-cover border border-primary-foreground/10 bg-black/20 shadow-sm"
+                      className="h-32 w-32 rounded-lg object-cover border border-stroke/20 bg-black/20 shadow-[var(--shadow-1)]"
                     />
                   ))}
                 </div>
@@ -198,18 +198,18 @@ export const UserMessage = memo(
                     value={editedText}
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
-                    className="w-full min-h-[60px] max-h-[200px] bg-primary-foreground/10 text-primary-foreground rounded-lg px-3 py-2 text-[15px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary-foreground/30 placeholder:text-primary-foreground/50"
+                    className="w-full min-h-[60px] max-h-[200px] bg-surface-hover/[0.08] text-text-1 rounded-md px-3 py-2 text-[15px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary/15 placeholder:text-text-3"
                     placeholder="Enter your message..."
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-primary-foreground/60">
+                    <span className="text-xs text-text-3">
                       Press Esc to cancel, Cmd/Ctrl+Enter to save
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={handleCancelEdit}
-                        className="p-1.5 rounded-lg hover:bg-primary-foreground/10 text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                        className="p-1.5 rounded-md hover:bg-surface-hover/[0.12] text-text-3 hover:text-text-1 transition-colors"
                         title="Cancel edit"
                         aria-label="Cancel edit"
                       >
@@ -219,7 +219,7 @@ export const UserMessage = memo(
                         type="button"
                         onClick={handleSaveEdit}
                         disabled={!editedText.trim()}
-                        className="p-1.5 rounded-lg hover:bg-primary-foreground/10 text-primary-foreground/70 hover:text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-1.5 rounded-md hover:bg-surface-hover/[0.12] text-text-3 hover:text-text-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Save edit"
                         aria-label="Save edit"
                       >
@@ -232,13 +232,13 @@ export const UserMessage = memo(
                 /* Display mode */
                 <>
                   {content.text && (
-                    <p className="whitespace-pre-wrap text-[15px] leading-relaxed selection:bg-primary-foreground/30">
+                    <p className="whitespace-pre-wrap text-[15px] leading-relaxed selection:bg-surface-hover/[0.3]">
                       {content.text}
                     </p>
                   )}
                   {/* Edited indicator */}
                   {editedAt && (
-                    <p className="mt-2 text-xs text-primary-foreground/50 italic">
+                    <p className="mt-2 text-xs text-text-3 italic">
                       edited {formatEditedTime(editedAt)}
                     </p>
                   )}

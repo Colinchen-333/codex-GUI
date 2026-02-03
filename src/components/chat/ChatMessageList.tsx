@@ -197,7 +197,7 @@ export default memo(function ChatMessageList({
   return (
     <div
       ref={scrollAreaRef}
-      className="flex-1 overflow-y-auto p-4"
+      className="flex-1 overflow-y-auto px-6 md:px-8 py-6 md:py-7"
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -207,7 +207,7 @@ export default memo(function ChatMessageList({
       aria-label="Chat messages"
       aria-live="polite"
     >
-      <div className="mx-auto max-w-3xl h-full">
+      <div className="mx-auto max-w-[880px] h-full leading-[1.65] text-text-1">
         {filteredItemOrder.length > 0 ? (
           <List<VirtualizedRowCustomProps & { dynamicHeight?: DynamicRowHeight }>
             key={threadId ?? 'no-thread'}

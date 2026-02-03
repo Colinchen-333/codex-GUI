@@ -54,10 +54,10 @@ const ImagePreview = memo(function ImagePreview({
             alt={`Attached ${i + 1}`}
             loading="lazy"
             decoding="async"
-            className="h-14 w-14 rounded-xl object-cover border border-border/50 shadow-sm"
+            className="h-14 w-14 rounded-lg object-cover border border-stroke/30 shadow-[var(--shadow-1)]"
           />
           <button
-            className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-background shadow-md text-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
+            className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-surface-solid shadow-[var(--shadow-1)] text-text-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
             onClick={() => onRemove(i)}
             aria-label={`Remove image ${i + 1}`}
           >
@@ -87,7 +87,7 @@ const SendButton = memo(function SendButton({
     <div className="flex items-center gap-1 mb-1">
       {turnStatus === 'running' && (
         <button
-          className="h-10 w-10 flex items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-100"
+          className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-hover/[0.12] text-text-2 hover:bg-destructive/80 hover:text-destructive-foreground transition-all duration-100"
           onClick={onInterrupt}
           title="Stop generation (Esc)"
           aria-label="Stop generation"
@@ -97,10 +97,10 @@ const SendButton = memo(function SendButton({
       )}
       <button
         className={cn(
-          'h-10 w-10 flex items-center justify-center rounded-full transition-all duration-100 shadow-sm',
+          'h-10 w-10 flex items-center justify-center rounded-full transition-all duration-100 shadow-[var(--shadow-1)]',
           !canSend
-            ? 'bg-secondary text-muted-foreground cursor-not-allowed opacity-50'
-            : 'bg-primary text-primary-foreground hover:scale-105 hover:shadow-md'
+            ? 'bg-surface-hover/[0.08] text-text-3 cursor-not-allowed opacity-50'
+            : 'bg-surface-selected/[0.22] text-text-1 hover:bg-surface-selected/[0.3]'
         )}
         onClick={onSend}
         disabled={!canSend}
@@ -256,18 +256,18 @@ export default memo(function ChatInputArea({
   const canSend = inputValue.trim() || attachedImages.length > 0
 
   return (
-    <div className="p-4 bg-transparent" role="form" aria-label="Message composer">
-      <div className="mx-auto max-w-3xl">
+    <div className="px-6 md:px-8 pb-6 pt-3 bg-transparent" role="form" aria-label="Message composer">
+      <div className="mx-auto max-w-[880px]">
         <RateLimitWarning />
         <WorkingStatusBar />
         <QueuedMessagesDisplay />
 
         <div
           className={cn(
-            'relative rounded-2xl bg-card/80 backdrop-blur-md shadow-lg border border-border/40 p-2.5 transition-all duration-200',
-            'hover:shadow-xl hover:border-border/60',
-            isFocused && 'ring-2 ring-primary/20 border-primary/30 shadow-xl',
-            isDragging && 'scale-[1.02] ring-2 ring-primary ring-offset-2'
+            'relative rounded-lg bg-surface-solid border border-stroke/30 p-2.5 transition-all duration-200 shadow-[var(--shadow-1)]',
+            'hover:border-stroke/40',
+            isFocused && 'ring-2 ring-primary/10 border-stroke/50 shadow-[var(--shadow-2)]',
+            isDragging && 'scale-[1.01] ring-2 ring-primary/20 ring-offset-2'
           )}
         >
           <SlashCommandPopup
@@ -304,7 +304,7 @@ export default memo(function ChatInputArea({
               }}
             />
             <button
-              className="mb-2 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors"
+              className="mb-2 p-2 text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12] rounded-md transition-colors"
               onClick={() => {
                 document.getElementById('image-upload')?.click()
               }}
@@ -316,7 +316,7 @@ export default memo(function ChatInputArea({
 
             <textarea
               ref={inputRef}
-              className="flex-1 max-h-[200px] min-h-[44px] resize-none bg-transparent py-3 text-sm focus:outline-none placeholder:text-muted-foreground/70"
+              className="flex-1 max-h-[200px] min-h-[44px] resize-none bg-transparent py-3 text-sm text-text-1 focus:outline-none placeholder:text-text-3/70"
               placeholder={
                 turnStatus === 'running'
                   ? 'Type to queue next message...'

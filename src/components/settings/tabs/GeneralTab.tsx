@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { useTheme } from '../../../hooks/useTheme'
+import { SettingsSection, SettingsCard, SettingsList, SettingsRow } from '../SettingsLayout'
 
 const THEME_OPTIONS = [
   { value: 'light' as const, label: 'Light', icon: Sun },
@@ -22,50 +23,53 @@ export const GeneralTab = memo(function GeneralTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium">General Settings</h3>
-
-      {/* Theme Selection */}
-      <div>
-        <label className="mb-2 block text-sm font-medium">Theme</label>
-        <div className="flex gap-2">
-          {THEME_OPTIONS.map((option) => {
-            const Icon = option.icon
-            return (
+    <div className="space-y-8">
+      <SettingsSection
+        title="General"
+        description="Core appearance and behavior settings."
+      >
+        <SettingsCard>
+          <SettingsList>
+            <SettingsRow
+              title="Theme"
+              description="Use light, dark, or match your system."
+            >
+              <div className="inline-flex items-center rounded-lg border border-stroke/20 bg-surface-hover/[0.08] p-1">
+                {THEME_OPTIONS.map((option) => {
+                  const Icon = option.icon
+                  const isActive = theme === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                        isActive
+                          ? 'bg-surface-solid text-text-1 shadow-[var(--shadow-1)]'
+                          : 'text-text-3 hover:text-text-1'
+                      )}
+                      onClick={() => setTheme(option.value)}
+                    >
+                      <Icon size={14} />
+                      <span>{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </SettingsRow>
+            <SettingsRow
+              title="Reset onboarding"
+              description="Show the welcome flow on next launch."
+            >
               <button
-                key={option.value}
-                className={cn(
-                  'flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all',
-                  theme === option.value
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border hover:border-primary/50 hover:bg-accent'
-                )}
-                onClick={() => setTheme(option.value)}
+                className="rounded-md border border-stroke/30 bg-surface-hover/[0.1] px-3 py-1.5 text-xs font-medium text-text-2 hover:text-text-1"
+                onClick={handleResetOnboarding}
               >
-                <Icon size={16} />
-                <span>{option.label}</span>
+                Show onboarding
               </button>
-            )
-          })}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Choose your preferred color theme. System will automatically match your OS settings.
-        </p>
-      </div>
-
-      {/* Reset Onboarding */}
-      <div>
-        <label className="mb-2 block text-sm font-medium">Reset Onboarding</label>
-        <button
-          className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
-          onClick={handleResetOnboarding}
-        >
-          Show Onboarding Again
-        </button>
-        <p className="mt-1 text-xs text-muted-foreground">
-          This will show the welcome flow on next launch
-        </p>
-      </div>
+            </SettingsRow>
+          </SettingsList>
+        </SettingsCard>
+      </SettingsSection>
     </div>
   )
 })

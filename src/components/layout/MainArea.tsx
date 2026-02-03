@@ -13,6 +13,8 @@ import { logError } from '../../lib/errorUtils'
 import { SessionTabs } from '../sessions/SessionTabs'
 import { parseError } from '../../lib/errorUtils'
 import { log } from '../../lib/logger'
+import { useToast } from '../ui/Toast'
+import { open } from '@tauri-apps/plugin-dialog'
 
 // Timeout for resume operations to prevent permanent blocking
 const RESUME_TIMEOUT_MS = 30000
@@ -360,19 +362,43 @@ export function MainArea() {
 
 // Welcome View when no project is selected
 function WelcomeView() {
+  const { addProject } = useProjectsStore()
+  const { showToast } = useToast()
+
+  const handleAddProject = async () => {
+    try {
+      const selected = await open({ directory: true, multiple: false, title: 'Select Project Folder' })
+      if (selected && typeof selected === 'string') {
+        await addProject(selected)
+      }
+    } catch (error) {
+      log.error(`Failed to add project: ${error}`, 'MainArea')
+      showToast('Failed to add project', 'error')
+    }
+  }
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-8">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 md:px-8 py-10">
       <div className="max-w-md text-center">
-        <h1 className="mb-4 text-3xl font-bold text-foreground">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
+          <span className="text-lg">✨</span>
+        </div>
+        <h1 className="mb-3 text-2xl font-semibold text-text-1">
           Welcome to Codex Desktop
         </h1>
-        <p className="mb-8 text-muted-foreground">
+        <p className="mb-6 text-sm text-text-3">
           Select a project from the sidebar or add a new project to get started.
         </p>
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="mb-2 text-lg font-semibold">Quick Start</h2>
-          <ol className="text-left text-sm text-muted-foreground">
-            <li className="mb-2">1. Click "Add Project" to select a folder</li>
+        <button
+          className="mb-6 w-full rounded-md border border-stroke/40 bg-surface-solid px-4 py-2.5 text-sm font-semibold text-text-1 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08]"
+          onClick={handleAddProject}
+        >
+          Add Project
+        </button>
+        <div className="rounded-md border border-stroke/30 bg-surface-solid p-5 text-left">
+          <h2 className="mb-2 text-sm font-semibold text-text-1">Quick Start</h2>
+          <ol className="text-sm text-text-3">
+            <li className="mb-2">1. Add a project folder</li>
             <li className="mb-2">2. Start a new session to chat with Codex</li>
             <li>3. Review and apply changes safely</li>
           </ol>
@@ -455,32 +481,35 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
   const displayError = localError || globalError
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-8">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 md:px-8 py-10">
       <div className="max-w-md text-center">
         <div className="mb-6">
-          <h1 className="mb-2 text-2xl font-bold text-foreground">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
+            <span className="text-lg">💡</span>
+          </div>
+          <h1 className="mb-1 text-xl font-semibold text-text-1">
             {project.displayName || project.path.split('/').pop()}
           </h1>
-          <p className="text-sm text-muted-foreground">{project.path}</p>
+          <p className="text-xs text-text-3">{project.path}</p>
         </div>
 
         {/* Git Info */}
         {info?.isGitRepo && (
-          <div className="mb-6 rounded-lg border border-border bg-card p-4">
+          <div className="mb-6 rounded-md border border-stroke/30 bg-surface-solid p-4 text-left">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Branch:</span>
+              <span className="text-text-3">Branch:</span>
               <span className="font-mono">{info.branch}</span>
             </div>
             {info.isDirty !== null && (
               <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Status:</span>
+                <span className="text-text-3">Status:</span>
                 <span className={info.isDirty ? 'text-yellow-500' : 'text-green-500'}>
                   {info.isDirty ? 'Uncommitted changes' : 'Clean'}
                 </span>
               </div>
             )}
             {info.lastCommit && (
-              <div className="mt-2 text-xs text-muted-foreground">
+              <div className="mt-2 text-xs text-text-3">
                 Last commit: {info.lastCommit}
               </div>
             )}
@@ -489,16 +518,16 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
 
         {/* Error Display */}
         {displayError && (
-          <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-left">
+          <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-left">
             <div className="flex items-start gap-2">
               <span className="text-destructive">Warning</span>
               <div className="flex-1">
                 <p className="text-sm font-medium text-destructive">Failed to start session</p>
                 <p className="mt-1 text-xs text-destructive/80 break-words">{displayError}</p>
                 {displayError.includes('Codex CLI not found') && (
-                  <div className="mt-2 text-xs text-muted-foreground">
+                  <div className="mt-2 text-xs text-text-3">
                     <p>Please install Codex CLI first:</p>
-                    <code className="mt-1 block rounded bg-secondary px-2 py-1 font-mono">
+                    <code className="mt-1 block rounded bg-surface-hover/[0.08] px-2 py-1 font-mono">
                       npm install -g @anthropic/codex
                     </code>
                   </div>
@@ -509,7 +538,7 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
         )}
 
         <button
-          className="w-full rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full rounded-md border border-stroke/40 bg-surface-solid px-6 py-3 text-sm font-semibold text-text-1 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08] disabled:opacity-50 flex items-center justify-center gap-2"
           onClick={handleStartSession}
           disabled={isLoading || !canAddSession()}
         >
@@ -536,7 +565,7 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
 
         {/* Session count warning */}
         {!canAddSession() && (
-          <div className="mt-4 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3">
+          <div className="mt-4 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
             <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
               <span>Warning</span>
               <span>Maximum sessions ({maxSessions}) reached. Close a session to start a new one.</span>
@@ -546,7 +575,7 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
 
         {/* Server Status Warning */}
         {serverReady === false && (
-          <div className="mt-4 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3">
+          <div className="mt-4 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
             <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
               <span>Warning</span>
               <span>Codex engine is not running. It will start automatically when you begin a session.</span>
@@ -555,12 +584,12 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
         )}
 
         {/* Model Info */}
-        <div className="mt-4 text-xs text-muted-foreground">
-          Model: <span className="font-medium">{effectiveSettings.model || 'default'}</span>
+        <div className="mt-4 text-xs text-text-3">
+          Model: <span className="font-medium text-text-2">{effectiveSettings.model || 'default'}</span>
           {' | '}
-          Sandbox: <span className="font-medium">{effectiveSettings.sandboxMode}</span>
+          Sandbox: <span className="font-medium text-text-2">{effectiveSettings.sandboxMode}</span>
           {' | '}
-          Sessions: <span className="font-medium">{currentSessionCount}/{maxSessions}</span>
+          Sessions: <span className="font-medium text-text-2">{currentSessionCount}/{maxSessions}</span>
           {project?.settingsJson && (
             <span className="text-blue-500 ml-2">(project settings active)</span>
           )}

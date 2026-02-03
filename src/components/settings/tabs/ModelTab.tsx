@@ -7,6 +7,7 @@ import {
   REASONING_SUMMARY_OPTIONS,
 } from '../../../stores/settings'
 import { useModelsStore, modelSupportsReasoning } from '../../../stores/models'
+import { SettingsSection, SettingsCard, SettingsList, SettingsRow } from '../SettingsLayout'
 
 interface ModelTabProps {
   settings: Settings
@@ -79,143 +80,144 @@ export const ModelTab = memo(function ModelTab({
   }
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium">Model Settings</h3>
+    <div className="space-y-8">
+      <SettingsSection
+        title="Model"
+        description="Choose your default model and reasoning behavior."
+      >
+        <SettingsCard>
+          <div className="text-sm font-medium text-text-2">Default model</div>
+          <div className="mt-3">
+            {isLoading ? (
+              <LoadingSpinner />
+            ) : error ? (
+              <div className="text-sm text-destructive py-2">
+                Failed to load models: {error}
+                <button className="ml-2 text-primary underline" onClick={handleRetry}>
+                  Retry
+                </button>
+              </div>
+            ) : models.length === 0 ? (
+              <div className="text-sm text-text-3 py-2">
+                No models available. Make sure Codex CLI is running.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {models.map((model) => {
+                  const isSelected =
+                    settings.model === model.model ||
+                    (!settings.model && model.isDefault)
+                  return (
+                    <label
+                      key={model.id}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 rounded-lg border border-stroke/20 bg-surface-hover/[0.06] p-3 transition-colors',
+                        isSelected
+                          ? 'bg-surface-selected/[0.16] border-stroke/40'
+                          : 'hover:bg-surface-hover/[0.12]'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="model"
+                        value={model.model}
+                        checked={isSelected}
+                        onChange={(e) => updateSetting('model', e.target.value)}
+                        className="mt-0.5 h-4 w-4"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-text-1">
+                            {model.displayName}
+                          </span>
+                          {model.isDefault && (
+                            <span className="text-[10px] rounded bg-surface-hover/[0.18] px-1.5 py-0.5 text-text-2">
+                              Default
+                            </span>
+                          )}
+                          {modelSupportsReasoning(model) && (
+                            <span className="text-[10px] rounded bg-surface-hover/[0.18] px-1.5 py-0.5 text-text-2">
+                              Reasoning
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-text-3">
+                          {model.description}
+                        </div>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </SettingsCard>
 
-      {/* Model Selection */}
-      <div>
-        <label className="mb-2 block text-sm font-medium">Default Model</label>
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : error ? (
-          <div className="text-sm text-destructive py-2">
-            Failed to load models: {error}
-            <button className="ml-2 text-primary underline" onClick={handleRetry}>
-              Retry
-            </button>
-          </div>
-        ) : models.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-2">
-            No models available. Make sure Codex CLI is running.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {models.map((model) => {
-              const isSelected =
-                settings.model === model.model ||
-                (!settings.model && model.isDefault)
-              return (
-                <label
-                  key={model.id}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-3 rounded-lg border p-3',
-                    isSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="model"
-                    value={model.model}
-                    checked={isSelected}
-                    onChange={(e) => updateSetting('model', e.target.value)}
-                    className="h-4 w-4"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{model.displayName}</span>
-                      {model.isDefault && (
-                        <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded">
-                          Default
-                        </span>
+        {supportsReasoning && reasoningEffortOptions.length > 0 && (
+          <SettingsCard>
+            <SettingsList>
+              <SettingsRow
+                title="Reasoning effort"
+                description="Higher effort improves quality but increases response time."
+                align="start"
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {reasoningEffortOptions.map((option) => (
+                    <button
+                      key={option.reasoningEffort}
+                      className={cn(
+                        'rounded-lg border border-stroke/20 px-3 py-2 text-left text-xs transition-colors',
+                        settings.reasoningEffort === option.reasoningEffort
+                          ? 'bg-surface-selected/[0.18] text-text-1'
+                          : 'text-text-3 hover:bg-surface-hover/[0.12] hover:text-text-1'
                       )}
-                      {modelSupportsReasoning(model) && (
-                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded">
-                          Reasoning
-                        </span>
+                      onClick={() => {
+                        const validated = parseReasoningEffort(
+                          option.reasoningEffort,
+                          settings.reasoningEffort
+                        )
+                        updateSetting('reasoningEffort', validated)
+                      }}
+                    >
+                      <div className="text-sm font-medium capitalize text-text-1">
+                        {option.reasoningEffort.replace('_', ' ')}
+                      </div>
+                      <div className="text-[10px] text-text-3 line-clamp-2">
+                        {option.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </SettingsRow>
+              <SettingsRow
+                title="Reasoning summary"
+                description="Control how much reasoning is shown in responses."
+                align="start"
+              >
+                <div className="flex gap-2">
+                  {REASONING_SUMMARY_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      className={cn(
+                        'flex-1 rounded-lg border border-stroke/20 px-3 py-2 text-center text-xs transition-colors',
+                        settings.reasoningSummary === option.value
+                          ? 'bg-surface-selected/[0.18] text-text-1'
+                          : 'text-text-3 hover:bg-surface-hover/[0.12] hover:text-text-1'
                       )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {model.description}
-                    </div>
-                  </div>
-                </label>
-              )
-            })}
-          </div>
+                      onClick={() => updateSetting('reasoningSummary', option.value)}
+                    >
+                      <div className="text-sm font-medium">{option.label}</div>
+                      <div className="text-[10px] text-text-3">
+                        {option.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </SettingsRow>
+            </SettingsList>
+          </SettingsCard>
         )}
-      </div>
-
-      {/* Reasoning Effort - only shown for models that support it */}
-      {supportsReasoning && reasoningEffortOptions.length > 0 && (
-        <>
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Reasoning Effort
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {reasoningEffortOptions.map((option) => (
-                <button
-                  key={option.reasoningEffort}
-                  className={cn(
-                    'rounded-lg border px-3 py-2 text-left transition-colors',
-                    settings.reasoningEffort === option.reasoningEffort
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:border-primary/50'
-                  )}
-                  onClick={() => {
-                    const validated = parseReasoningEffort(
-                      option.reasoningEffort,
-                      settings.reasoningEffort
-                    )
-                    updateSetting('reasoningEffort', validated)
-                  }}
-                >
-                  <div className="text-sm font-medium capitalize">
-                    {option.reasoningEffort.replace('_', ' ')}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground line-clamp-2">
-                    {option.description}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              How deeply the model should think before responding. Higher effort
-              may improve quality but increases response time.
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Reasoning Summary
-            </label>
-            <div className="flex gap-2">
-              {REASONING_SUMMARY_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={cn(
-                    'flex-1 rounded-lg border px-3 py-2 text-center transition-colors',
-                    settings.reasoningSummary === option.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:border-primary/50'
-                  )}
-                  onClick={() => updateSetting('reasoningSummary', option.value)}
-                >
-                  <div className="text-sm font-medium">{option.label}</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {option.description}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              How much of the model's reasoning process to include in responses.
-            </p>
-          </div>
-        </>
-      )}
+      </SettingsSection>
     </div>
   )
 })

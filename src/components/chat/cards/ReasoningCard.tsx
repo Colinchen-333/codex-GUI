@@ -24,24 +24,24 @@ export function ReasoningCard({ item }: MessageItemProps) {
 
   return (
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm transition-all">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)] transition-all">
         {/* Header */}
         <div
-          className="flex items-center justify-between border-b border-border/40 bg-purple-50/50 dark:bg-purple-900/10 px-4 py-2.5 cursor-pointer select-none"
+          className="flex items-center justify-between border-b border-stroke/20 bg-surface-hover/[0.06] px-4 py-2.5 cursor-pointer select-none"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center gap-2">
-            <div className="rounded-md p-1 shadow-sm bg-background text-muted-foreground">
+            <div className="rounded-md p-1 shadow-[var(--shadow-1)] bg-surface-solid text-text-3">
               <Brain size={14} />
             </div>
-            <span className="text-xs font-medium text-foreground">Reasoning</span>
+            <span className="text-xs font-semibold text-text-1">Reasoning</span>
           </div>
           <div className="flex items-center gap-2">
             {/* Timestamp */}
-            <span className="text-[10px] text-muted-foreground/60">
+            <span className="text-[10px] text-text-3/70">
               {formatTimestamp(item.createdAt)}
             </span>
-            <span className="text-muted-foreground text-xs">
+            <span className="text-text-3 text-xs">
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </span>
           </div>
@@ -61,8 +61,8 @@ export function ReasoningCard({ item }: MessageItemProps) {
                   className={cn(
                     'px-2 py-0.5 rounded transition-colors',
                     !showFullContent
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                      : 'text-muted-foreground hover:bg-secondary'
+                      ? 'bg-surface-hover/[0.12] text-text-1'
+                      : 'text-text-3 hover:bg-surface-hover/[0.08]'
                   )}
                 >
                   Summary
@@ -75,8 +75,8 @@ export function ReasoningCard({ item }: MessageItemProps) {
                   className={cn(
                     'px-2 py-0.5 rounded transition-colors',
                     showFullContent
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                      : 'text-muted-foreground hover:bg-secondary'
+                      ? 'bg-surface-hover/[0.12] text-text-1'
+                      : 'text-text-3 hover:bg-surface-hover/[0.08]'
                   )}
                 >
                   Full Thinking
@@ -88,7 +88,7 @@ export function ReasoningCard({ item }: MessageItemProps) {
             {(!showFullContent || !hasFullContent) && parsedSummaries.length > 0 && (
               <div className="space-y-2">
                 {parsedSummaries.map((text, i) => (
-                  <div key={i} className="text-sm text-muted-foreground leading-relaxed">
+                  <div key={i} className="text-sm text-text-3 leading-relaxed">
                     • {text}
                   </div>
                 ))}
@@ -99,7 +99,7 @@ export function ReasoningCard({ item }: MessageItemProps) {
             {showFullContent && hasFullContent && (
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {content.fullContent!.map((text, i) => (
-                  <p key={i} className="text-sm text-foreground/80 leading-relaxed">
+                  <p key={i} className="text-sm text-text-2 leading-relaxed">
                     {text}
                   </p>
                 ))}
@@ -110,7 +110,7 @@ export function ReasoningCard({ item }: MessageItemProps) {
 
         {/* Collapsed preview - parsed to remove **header** */}
         {!isExpanded && parsedSummaries.length > 0 && (
-          <div className="px-4 py-2 text-xs text-muted-foreground truncate">
+          <div className="px-4 py-2 text-xs text-text-3 truncate">
             {parsedSummaries[0]?.slice(0, 100)}...
           </div>
         )}

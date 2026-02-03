@@ -132,13 +132,13 @@ export function ReviewSelectorDialog({
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-background shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/30">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-lg font-semibold">Review Target</h2>
+        <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
+          <h2 className="text-lg font-semibold text-text-1">Review Target</h2>
           <button
-            className="text-muted-foreground hover:text-foreground"
+            className="text-text-3 hover:text-text-1"
             onClick={onClose}
           >
             ✕
@@ -146,14 +146,14 @@ export function ReviewSelectorDialog({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-border px-4">
+        <div className="flex border-b border-stroke/20 px-4">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'border-b-2 border-primary text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'border-b-2 border-stroke/40 text-text-1'
+                  : 'text-text-3 hover:text-text-1'
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -166,22 +166,22 @@ export function ReviewSelectorDialog({
         {/* Content */}
         <div className="h-[300px] overflow-y-auto p-4">
           {loading ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
+            <div className="flex h-full items-center justify-center text-text-3">
               Loading...
             </div>
           ) : (
             <>
               {activeTab === 'uncommitted' && (
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-text-3">
                     Review all uncommitted changes in your working directory.
                   </p>
-                  <div className="rounded-lg border border-border bg-secondary/30 p-4">
+                  <div className="rounded-lg border border-stroke/20 bg-surface-hover/[0.06] p-4">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">📝</span>
                       <div>
-                        <div className="font-medium">Uncommitted Changes</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="font-medium text-text-1">Uncommitted Changes</div>
+                        <div className="text-sm text-text-3">
                           Staged and unstaged changes
                         </div>
                       </div>
@@ -192,31 +192,31 @@ export function ReviewSelectorDialog({
 
               {activeTab === 'branch' && (
                 <div className="space-y-2">
-                  <p className="mb-3 text-sm text-muted-foreground">
+                  <p className="mb-3 text-sm text-text-3">
                     Compare current HEAD against a base branch.
                   </p>
                   {branches.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No branches found.</p>
+                    <p className="text-sm text-text-3">No branches found.</p>
                   ) : (
                     branches.map((branch) => (
                       <button
                         key={branch.name}
                         className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                           selectedBranch === branch.name
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50 hover:bg-secondary/50'
+                            ? 'border-stroke/40 bg-surface-selected/[0.16]'
+                            : 'border-stroke/20 hover:bg-surface-hover/[0.08]'
                         }`}
                         onClick={() => setSelectedBranch(branch.name)}
                       >
                         <span className="text-lg">🌿</span>
                         <div className="flex-1">
-                          <div className="font-medium">{branch.name}</div>
+                          <div className="font-medium text-text-1">{branch.name}</div>
                           {branch.isCurrent && (
-                            <span className="text-xs text-muted-foreground">(current)</span>
+                            <span className="text-xs text-text-3">(current)</span>
                           )}
                         </div>
                         {selectedBranch === branch.name && (
-                          <span className="text-primary">✓</span>
+                          <span className="text-text-1">✓</span>
                         )}
                       </button>
                     ))
@@ -226,33 +226,33 @@ export function ReviewSelectorDialog({
 
               {activeTab === 'commit' && (
                 <div className="space-y-2">
-                  <p className="mb-3 text-sm text-muted-foreground">
+                  <p className="mb-3 text-sm text-text-3">
                     Review a specific commit.
                   </p>
                   {commits.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No commits found.</p>
+                    <p className="text-sm text-text-3">No commits found.</p>
                   ) : (
                     commits.map((commit) => (
                       <button
                         key={commit.sha}
                         className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                           selectedCommit === commit.sha
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50 hover:bg-secondary/50'
+                            ? 'border-stroke/40 bg-surface-selected/[0.16]'
+                            : 'border-stroke/20 hover:bg-surface-hover/[0.08]'
                         }`}
                         onClick={() => setSelectedCommit(commit.sha)}
                       >
-                        <span className="font-mono text-xs text-muted-foreground">
+                        <span className="font-mono text-xs text-text-3">
                           {commit.shortSha}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{commit.title}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="truncate font-medium text-text-1">{commit.title}</div>
+                          <div className="text-xs text-text-3">
                             {commit.author} • {commit.date}
                           </div>
                         </div>
                         {selectedCommit === commit.sha && (
-                          <span className="text-primary">✓</span>
+                          <span className="text-text-1">✓</span>
                         )}
                       </button>
                     ))
@@ -262,11 +262,11 @@ export function ReviewSelectorDialog({
 
               {activeTab === 'custom' && (
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-text-3">
                     Provide custom review instructions.
                   </p>
                   <textarea
-                    className="h-[200px] w-full resize-none rounded-lg border border-border bg-background p-3 text-sm focus:border-primary focus:outline-none"
+                    className="h-[200px] w-full resize-none rounded-lg border border-stroke/30 bg-surface-solid p-3 text-sm text-text-1 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/15"
                     placeholder="Enter custom review instructions..."
                     value={customInstructions}
                     onChange={(e) => setCustomInstructions(e.target.value)}
@@ -278,16 +278,16 @@ export function ReviewSelectorDialog({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+        <div className="flex justify-end gap-3 border-t border-stroke/20 px-6 py-4">
           <button
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-secondary"
+            className="rounded-md border border-stroke/30 px-4 py-2 text-sm font-medium text-text-2 hover:bg-surface-hover/[0.12]"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
             ref={startReviewButtonRef}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-md bg-surface-selected/[0.2] px-4 py-2 text-sm font-medium text-text-1 hover:bg-surface-selected/[0.28] shadow-[var(--shadow-1)] disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSelect}
             disabled={!canSubmit()}
             title={getSubmitHint()}

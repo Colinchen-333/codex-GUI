@@ -40,6 +40,15 @@ export const CONNECTION_RETRY = {
 
   /** Consecutive failures before auto-reconnect */
   FAILURE_THRESHOLD: 2,
+
+  /** Minimum time between restarts */
+  RESTART_COOLDOWN: 20_000, // 20 seconds
+
+  /** Max restarts within window before pausing */
+  MAX_RESTARTS: 3,
+
+  /** Window for restart limit */
+  RESTART_WINDOW: 5 * 60 * 1000, // 5 minutes
 } as const
 
 /**

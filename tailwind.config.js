@@ -8,6 +8,15 @@ export default {
   theme: {
     extend: {
       colors: {
+        bg: "hsl(var(--bg))",
+        surface: "hsl(var(--surface))",
+        "surface-solid": "hsl(var(--surface-solid))",
+        "surface-hover": "hsl(var(--hover))",
+        "surface-selected": "hsl(var(--selected))",
+        stroke: "hsl(var(--stroke))",
+        "text-1": "hsl(var(--text))",
+        "text-2": "hsl(var(--text-2))",
+        "text-3": "hsl(var(--text-3))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -47,9 +56,9 @@ export default {
         ring: "hsl(var(--ring))",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--r-lg)",
+        md: "var(--r-md)",
+        sm: "var(--r-sm)",
       },
     },
   },

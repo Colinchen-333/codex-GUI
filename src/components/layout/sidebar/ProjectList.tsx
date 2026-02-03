@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { Pencil, Settings, FolderOpen, Trash2 } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { ContextMenu, type ContextMenuItem } from '../../ui/ContextMenu'
 
@@ -39,15 +40,21 @@ export const ProjectList = memo(function ProjectList({
 }: ProjectListProps) {
   if (projects.length === 0) {
     return (
-      <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-        No projects yet
+      <div className="flex h-36 items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
+            <span className="text-lg">📁</span>
+          </div>
+          <p className="text-sm font-semibold text-text-1">No projects yet</p>
+          <p className="text-xs text-text-3">Add a project to get started</p>
+        </div>
       </div>
     )
   }
 
   return (
     <div
-      className="space-y-1"
+      className="space-y-0.5"
       role="listbox"
       aria-label="Projects list"
       id="projects-panel"
@@ -61,17 +68,17 @@ export const ProjectList = memo(function ProjectList({
         const contextMenuItems: ContextMenuItem[] = [
           {
             label: 'Rename',
-            icon: '✏️',
+            icon: <Pencil size={14} />,
             onClick: () => onRename(project.id, displayName),
           },
           {
             label: 'Settings',
-            icon: '⚙️',
+            icon: <Settings size={14} />,
             onClick: () => onSettings(project.id),
           },
           {
             label: 'Open in Finder',
-            icon: '📂',
+            icon: <FolderOpen size={14} />,
             onClick: () => {
               // Use Tauri shell to open folder
               void import('@tauri-apps/plugin-shell').then(async ({ open }) => {
@@ -81,7 +88,7 @@ export const ProjectList = memo(function ProjectList({
           },
           {
             label: 'Remove',
-            icon: '🗑️',
+            icon: <Trash2 size={14} />,
             onClick: () => onDelete(project.id, displayName),
             variant: 'danger',
           },
@@ -91,19 +98,19 @@ export const ProjectList = memo(function ProjectList({
           <ContextMenu key={project.id} items={contextMenuItems}>
             <button
               className={cn(
-                'group w-full rounded-lg px-3 py-2.5 text-left transition-all mb-1 relative overflow-hidden',
+                'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
                 isSelected
-                  ? 'bg-primary text-primary-foreground shadow-sm font-medium'
-                  : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground hover:shadow-sm'
+                  ? 'bg-surface-selected/[0.12] text-text-1'
+                  : 'text-text-1 hover:bg-surface-hover/[0.08]'
               )}
               onClick={() => onSelect(project.id)}
               role="option"
               aria-selected={isSelected}
             >
-              <div className="truncate text-sm">{displayName}</div>
+              <div className="truncate text-[14px] leading-tight font-medium">{displayName}</div>
               <div className={cn(
-                "truncate text-xs transition-colors",
-                isSelected ? "text-primary-foreground/70" : "text-muted-foreground/70 group-hover:text-muted-foreground"
+                "truncate text-[12px] leading-tight transition-colors",
+                isSelected ? "text-text-2" : "text-text-3"
               )}>
                 {project.path}
               </div>

@@ -14,6 +14,8 @@ interface ServerConnectionState {
   lastError: string | null
   lastCheckedAt: number | null
   consecutiveFailures: number
+  lastRestartAt: number | null
+  restartHistory: number[]
 
   startMonitoring: () => void
   stopMonitoring: () => void
@@ -42,6 +44,8 @@ export const useServerConnectionStore = create<ServerConnectionState>((set, get)
   lastError: null,
   lastCheckedAt: null,
   consecutiveFailures: 0,
+  lastRestartAt: null,
+  restartHistory: [],
 
   startMonitoring: () => {
     if (monitorInterval) return
@@ -115,8 +119,37 @@ export const useServerConnectionStore = create<ServerConnectionState>((set, get)
             return
           }
 
-          if (options?.forceRestart || attempt >= 1) {
+          const now = Date.now()
+          const restartHistory = get().restartHistory.filter(
+            (timestamp) => now - timestamp < CONNECTION_RETRY.RESTART_WINDOW
+          )
+          if (restartHistory.length !== get().restartHistory.length) {
+            set({ restartHistory })
+          }
+          if (restartHistory.length >= CONNECTION_RETRY.MAX_RESTARTS) {
+            set({
+              isReconnecting: false,
+              lastError: 'Restart paused to avoid repeated crashes.',
+              restartHistory,
+            })
+            log.warn(
+              '[ServerConnection] Restart limit reached; pausing reconnect attempts.',
+              'server-connection'
+            )
+            return
+          }
+
+          const lastRestartAt = get().lastRestartAt ?? 0
+          const canRestart =
+            options?.forceRestart ||
+            now - lastRestartAt >= CONNECTION_RETRY.RESTART_COOLDOWN
+
+          if (canRestart) {
             await serverApi.restart()
+            set({
+              lastRestartAt: now,
+              restartHistory: [...restartHistory, now],
+            })
             const restartedStatus = await serverApi.getStatus()
             if (restartedStatus.isRunning) {
               get().markConnected(restartedStatus)
@@ -161,6 +194,8 @@ export const useServerConnectionStore = create<ServerConnectionState>((set, get)
       lastError: null,
       lastCheckedAt: Date.now(),
       consecutiveFailures: 0,
+      lastRestartAt: null,
+      restartHistory: [],
     }))
   },
 }))

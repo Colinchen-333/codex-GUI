@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback } from 'react'
-import { Star } from 'lucide-react'
+import { Star, Pin, PinOff, Archive, Pencil, Trash2, Copy } from 'lucide-react'
 import { List } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { cn, formatAbsoluteTime } from '../../../lib/utils'
@@ -31,6 +31,7 @@ export interface SessionListProps {
   onSelect: (id: string | null, projectId?: string) => void
   onToggleFavorite: (sessionId: string, isFavorite: boolean) => void
   onRename: (sessionId: string, currentTitle: string) => void
+  onArchive: (sessionId: string, sessionName: string) => void
   onDelete: (sessionId: string, sessionName: string) => void
   isLoading: boolean
   hasProject: boolean
@@ -53,9 +54,11 @@ interface SessionRowCustomProps {
   onSelect: (id: string | null, projectId?: string) => void
   onToggleFavorite: (sessionId: string, isFavorite: boolean) => void
   onRename: (sessionId: string, currentTitle: string) => void
+  onArchive: (sessionId: string, sessionName: string) => void
   onDelete: (sessionId: string, sessionName: string) => void
   getSessionDisplayName: (session: Session) => string
   getProjectName: (projectId: string) => string | null
+  getProjectPath: (projectId: string) => string | null
   isGlobalSearch: boolean
 }
 
@@ -79,9 +82,11 @@ function SessionRowInner({
   onSelect,
   onToggleFavorite,
   onRename,
+  onArchive,
   onDelete,
   getSessionDisplayName,
   getProjectName,
+  getProjectPath,
   isGlobalSearch,
 }: SessionRowProps) {
   const session = sessions[index]
@@ -93,20 +98,40 @@ function SessionRowInner({
   const isSelected = selectedId === session.sessionId
   const projectName = isGlobalSearch ? getProjectName(session.projectId) : null
 
+  const projectPath = getProjectPath(session.projectId)
   const contextMenuItems: ContextMenuItem[] = [
     {
-      label: 'Rename',
-      icon: '✏️',
-      onClick: () => onRename(session.sessionId, displayName),
-    },
-    {
-      label: session.isFavorite ? 'Remove from favorites' : 'Add to favorites',
-      icon: session.isFavorite ? '☆' : '★',
+      label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+      icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
       onClick: () => onToggleFavorite(session.sessionId, session.isFavorite),
     },
     {
+      label: 'Rename thread',
+      icon: <Pencil size={14} />,
+      onClick: () => onRename(session.sessionId, displayName),
+    },
+    {
+      label: 'Archive thread',
+      icon: <Archive size={14} />,
+      onClick: () => onArchive(session.sessionId, displayName),
+    },
+    ...(projectPath
+      ? [
+          {
+            label: 'Copy working directory',
+            icon: <Copy size={14} />,
+            onClick: () => void navigator.clipboard?.writeText(projectPath),
+          },
+        ]
+      : []),
+    {
+      label: 'Copy session id',
+      icon: <Copy size={14} />,
+      onClick: () => void navigator.clipboard?.writeText(session.sessionId),
+    },
+    {
       label: 'Delete',
-      icon: '🗑️',
+      icon: <Trash2 size={14} />,
       onClick: () => onDelete(session.sessionId, displayName),
       variant: 'danger',
     },
@@ -117,13 +142,13 @@ function SessionRowInner({
       <ContextMenu items={contextMenuItems}>
         <button
           className={cn(
-            'group w-full rounded-lg px-3 py-2.5 text-left transition-all relative overflow-hidden',
+            'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
             isSelected
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-foreground hover:bg-secondary/80 hover:shadow-sm',
+              ? 'bg-surface-selected/[0.12] text-text-1'
+              : 'text-text-1 hover:bg-surface-hover/[0.08]',
             isRunning &&
               !isSelected &&
-              'border border-blue-400/30 bg-blue-50/10 dark:bg-blue-950/20'
+              'border border-blue-400/20 bg-blue-500/5'
           )}
           onClick={() => onSelect(session.sessionId, isGlobalSearch ? session.projectId : undefined)}
           role="option"
@@ -135,15 +160,15 @@ function SessionRowInner({
             {session.isFavorite && (
               <Star size={12} className="text-yellow-500 flex-shrink-0 fill-yellow-500" />
             )}
-            <span className={cn("truncate text-sm flex-1", isSelected ? "font-medium" : "font-normal")}>{displayName}</span>
+            <span className={cn("truncate text-[14px] leading-tight flex-1", isSelected ? "font-semibold" : "font-medium")}>{displayName}</span>
             <TaskProgressIndicator tasksJson={session.tasksJson} status={session.status} />
           </div>
           {/* Second row: Status label + Timestamp + Project name */}
-          <div className="flex items-center gap-1.5 mt-1 text-xs">
+          <div className="flex items-center gap-1.5 mt-0.5 text-[12px] leading-tight">
             <span
               className={cn(
-                'text-muted-foreground transition-colors',
-                isSelected && 'text-primary-foreground/70'
+                'text-text-3 transition-colors',
+                isSelected && 'text-text-2'
               )}
             >
               {statusLabel}
@@ -152,16 +177,16 @@ function SessionRowInner({
               <>
                 <span
                   className={cn(
-                    'text-muted-foreground/60',
-                    isSelected && 'text-primary-foreground/50'
+                    'text-text-3/70',
+                    isSelected && 'text-text-3/80'
                   )}
                 >
                   ·
                 </span>
                 <span
                   className={cn(
-                    'text-muted-foreground',
-                    isSelected && 'text-primary-foreground/70'
+                    'text-text-3',
+                    isSelected && 'text-text-2'
                   )}
                 >
                   {timeStr}
@@ -172,16 +197,16 @@ function SessionRowInner({
               <>
                 <span
                   className={cn(
-                    'text-muted-foreground/60',
-                    isSelected && 'text-primary-foreground/50'
+                    'text-text-3/70',
+                    isSelected && 'text-text-3/80'
                   )}
                 >
                   ·
                 </span>
                 <span
                   className={cn(
-                    'px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground truncate max-w-[80px]',
-                    isSelected && 'bg-primary-foreground/20 text-primary-foreground/80'
+                    'px-1.5 py-0.5 rounded bg-surface-hover/[0.12] text-text-3 truncate max-w-[80px]',
+                    isSelected && 'bg-surface-hover/[0.18] text-text-2'
                   )}
                 >
                   {projectName}
@@ -236,6 +261,14 @@ export const SessionList = memo(function SessionList({
     [projects]
   )
 
+  const getProjectPath = useCallback(
+    (projectId: string): string | null => {
+      const project = projects.find((p) => p.id === projectId)
+      return project?.path ?? null
+    },
+    [projects]
+  )
+
   // Memoize sorted sessions to avoid recalculating on every render
   // Sort order: running first, then favorites, then by last accessed or created time
   const sortedSessions = useMemo(() => {
@@ -265,9 +298,11 @@ export const SessionList = memo(function SessionList({
       onSelect,
       onToggleFavorite,
       onRename,
+      onArchive,
       onDelete,
       getSessionDisplayName,
       getProjectName,
+      getProjectPath,
       isGlobalSearch: !!isGlobalSearch,
     }),
     [
@@ -276,21 +311,23 @@ export const SessionList = memo(function SessionList({
       onSelect,
       onToggleFavorite,
       onRename,
+      onArchive,
       onDelete,
       getSessionDisplayName,
       getProjectName,
+      getProjectPath,
       isGlobalSearch,
     ]
   )
 
   // Row height: 80px per row (consistent height)
-  const rowHeight = 80
+  const rowHeight = 48
 
   // Render non-virtualized list for small datasets
   const renderStandardList = () => {
     return (
       <div
-        className="space-y-1"
+        className="space-y-0.5"
         role="listbox"
         aria-label="Sessions list"
         id="sessions-panel"
@@ -308,23 +345,41 @@ export const SessionList = memo(function SessionList({
             ? getProjectName(session.projectId)
             : null
 
+          const projectPath = getProjectPath(session.projectId)
           const contextMenuItems: ContextMenuItem[] = [
             {
-              label: 'Rename',
-              icon: '✏️',
-              onClick: () => onRename(session.sessionId, displayName),
-            },
-            {
-              label: session.isFavorite
-                ? 'Remove from favorites'
-                : 'Add to favorites',
-              icon: session.isFavorite ? '☆' : '★',
+              label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+              icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
               onClick: () =>
                 onToggleFavorite(session.sessionId, session.isFavorite),
             },
             {
+              label: 'Rename thread',
+              icon: <Pencil size={14} />,
+              onClick: () => onRename(session.sessionId, displayName),
+            },
+            {
+              label: 'Archive thread',
+              icon: <Archive size={14} />,
+              onClick: () => onArchive(session.sessionId, displayName),
+            },
+            ...(projectPath
+              ? [
+                  {
+                    label: 'Copy working directory',
+                    icon: <Copy size={14} />,
+                    onClick: () => void navigator.clipboard?.writeText(projectPath),
+                  },
+                ]
+              : []),
+            {
+              label: 'Copy session id',
+              icon: <Copy size={14} />,
+              onClick: () => void navigator.clipboard?.writeText(session.sessionId),
+            },
+            {
               label: 'Delete',
-              icon: '🗑️',
+              icon: <Trash2 size={14} />,
               onClick: () => onDelete(session.sessionId, displayName),
               variant: 'danger',
             },
@@ -334,13 +389,13 @@ export const SessionList = memo(function SessionList({
             <ContextMenu key={session.sessionId} items={contextMenuItems}>
               <button
                 className={cn(
-                  'group w-full rounded-lg px-3 py-2.5 text-left transition-all mb-1 relative overflow-hidden',
+                  'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
                   isSelected
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-foreground hover:bg-secondary/80 hover:shadow-sm',
+                    ? 'bg-surface-selected/[0.12] text-text-1'
+                    : 'text-text-1 hover:bg-surface-hover/[0.08]',
                   isRunning &&
                     !isSelected &&
-                    'border border-blue-400/30 bg-blue-50/10 dark:bg-blue-950/20'
+                    'border border-blue-400/20 bg-blue-500/5'
                 )}
                 onClick={() =>
                   onSelect(
@@ -360,7 +415,7 @@ export const SessionList = memo(function SessionList({
                       className="text-yellow-500 flex-shrink-0 fill-yellow-500"
                     />
                   )}
-                  <span className={cn("truncate text-sm flex-1", isSelected ? "font-medium" : "font-normal")}>
+                  <span className={cn("truncate text-[14px] leading-tight flex-1", isSelected ? "font-semibold" : "font-medium")}>
                     {displayName}
                   </span>
                   {/* Task progress indicator */}
@@ -370,11 +425,11 @@ export const SessionList = memo(function SessionList({
                   />
                 </div>
                 {/* Second row: Status label + Timestamp + Project name (for global search) */}
-                <div className="flex items-center gap-1.5 mt-1 text-xs">
+                <div className="flex items-center gap-1.5 mt-0.5 text-[12px] leading-tight">
                   <span
                     className={cn(
-                      'text-muted-foreground transition-colors',
-                      isSelected && 'text-primary-foreground/70'
+                      'text-text-3 transition-colors',
+                      isSelected && 'text-text-2'
                     )}
                   >
                     {statusLabel}
@@ -383,16 +438,16 @@ export const SessionList = memo(function SessionList({
                     <>
                       <span
                         className={cn(
-                          'text-muted-foreground/60',
-                          isSelected && 'text-primary-foreground/50'
+                          'text-text-3/70',
+                          isSelected && 'text-text-3/80'
                         )}
                       >
                         ·
                       </span>
                       <span
                         className={cn(
-                          'text-muted-foreground',
-                          isSelected && 'text-primary-foreground/70'
+                          'text-text-3',
+                          isSelected && 'text-text-2'
                         )}
                       >
                         {timeStr}
@@ -404,17 +459,17 @@ export const SessionList = memo(function SessionList({
                     <>
                       <span
                         className={cn(
-                          'text-muted-foreground/60',
-                          isSelected && 'text-primary-foreground/50'
+                          'text-text-3/70',
+                          isSelected && 'text-text-3/80'
                         )}
                       >
                         ·
                       </span>
                       <span
                         className={cn(
-'px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground truncate max-w-[120px]',
+                          'px-1.5 py-0.5 rounded bg-surface-hover/[0.12] text-text-3 truncate max-w-[120px]',
                           isSelected &&
-                            'bg-primary-foreground/20 text-primary-foreground/80'
+                            'bg-surface-hover/[0.18] text-text-2'
                         )}
                       >
                         {projectName}
@@ -441,7 +496,7 @@ export const SessionList = memo(function SessionList({
               return (
                 <div
                   style={{ height: rowHeight * 5, width: '100%' }}
-                  className="flex items-center justify-center text-muted-foreground"
+                  className="flex items-center justify-center text-text-3"
                 >
                   Loading...
                 </div>
@@ -472,8 +527,14 @@ export const SessionList = memo(function SessionList({
   // When doing global search, don't require project selection
   if (!hasProject && !isGlobalSearch) {
     return (
-      <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-        Select a project to view sessions
+      <div className="flex h-36 items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
+            <span className="text-lg">📁</span>
+          </div>
+          <p className="text-sm font-semibold text-text-1">Select a project</p>
+          <p className="text-xs text-text-3">Choose a project to see sessions</p>
+        </div>
       </div>
     )
   }
@@ -481,7 +542,7 @@ export const SessionList = memo(function SessionList({
   if (isLoading) {
     return (
       <div
-        className="flex h-32 items-center justify-center text-sm text-muted-foreground"
+        className="flex h-32 items-center justify-center text-sm text-text-3"
         role="status"
         aria-busy="true"
         aria-label={isGlobalSearch ? 'Searching sessions' : 'Loading sessions'}
@@ -510,8 +571,18 @@ export const SessionList = memo(function SessionList({
 
   if (sessions.length === 0) {
     return (
-      <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-        {isGlobalSearch ? 'No matching sessions found' : 'No sessions yet'}
+      <div className="flex h-40 items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
+            <span className="text-lg">💬</span>
+          </div>
+          <p className="text-sm font-semibold text-text-1">
+            {isGlobalSearch ? 'No matching sessions' : 'No sessions yet'}
+          </p>
+          <p className="text-xs text-text-3">
+            {isGlobalSearch ? 'Try a different keyword' : 'Start a new session to begin'}
+          </p>
+        </div>
       </div>
     )
   }

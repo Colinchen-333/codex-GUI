@@ -98,41 +98,41 @@ export const WorkingStatusBar = memo(function WorkingStatusBar() {
   const pendingCount = pendingApprovals.length
 
   return (
-    <div className="mb-3 px-4 py-3 rounded-2xl bg-secondary/40 border border-border/30 shadow-sm backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
+    <div className="mb-3 px-4 py-3 rounded-2xl bg-surface-solid/70 border border-stroke/20 shadow-[var(--shadow-1)] backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* Spinning indicator */}
           <span className="relative flex h-2 w-2 flex-shrink-0">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            <span className="absolute inline-flex h-full w-full rounded-full bg-text-2/50 opacity-60 animate-ping" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-text-2/80" />
           </span>
           {/* Status text with shimmer or reasoning summary */}
           {currentReasoning ? (
-            <span className="text-sm text-muted-foreground truncate">{currentReasoning}</span>
+            <span className="text-sm text-text-3 truncate">{currentReasoning}</span>
           ) : (
-            <span className="text-sm font-medium shimmer-text">Working</span>
+            <span className="text-sm font-medium text-text-2 shimmer-text">Working</span>
           )}
         </div>
         {/* Right side stats */}
         <div className="flex items-center gap-3 flex-shrink-0 ml-2">
           {/* Pending approvals badge */}
           {pendingCount > 0 && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-medium">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-hover/[0.16] text-text-2 text-[10px] font-medium">
               {pendingCount} pending
             </span>
           )}
           {/* Token rate */}
           {tokenRate > 0 && (
-            <span className="text-[10px] text-muted-foreground/70">{tokenRate} tok/s</span>
+            <span className="text-[10px] text-text-3">{tokenRate} tok/s</span>
           )}
           {/* Elapsed time */}
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 text-xs text-text-3">
             <Clock size={12} />
             {formatElapsed(elapsedMs)}
           </span>
           {/* Interrupt hint - CLI-style double-escape */}
           <span
-            className={`text-[10px] transition-colors ${escapePending ? 'text-orange-500 font-medium' : 'text-muted-foreground/70'}`}
+            className={`text-[10px] transition-colors ${escapePending ? 'text-warning font-medium' : 'text-text-3'}`}
           >
             {escapePending ? 'press Esc again to stop this response' : 'Esc Esc to interrupt'}
           </span>

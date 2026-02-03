@@ -6,6 +6,7 @@ import {
   SANDBOX_MODE_OPTIONS,
   APPROVAL_POLICY_OPTIONS,
 } from '../../../stores/settings'
+import { SettingsSection, SettingsCard, SettingsList, SettingsRow } from '../SettingsLayout'
 
 interface SafetyTabProps {
   settings: Settings
@@ -21,92 +22,100 @@ export const SafetyTab = memo(function SafetyTab({
   updateSetting,
 }: SafetyTabProps) {
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium">Safety Settings</h3>
-
-      {/* Sandbox Mode */}
-      <div>
-        <label className="mb-2 block text-sm font-medium">Sandbox Mode</label>
-        <div className="space-y-2">
-          {SANDBOX_MODE_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className={cn(
-                'flex cursor-pointer items-center gap-3 rounded-lg border p-3',
-                settings.sandboxMode === option.value
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/50'
-              )}
+    <div className="space-y-8">
+      <SettingsSection
+        title="Safety"
+        description="Control sandboxing and approval behaviors."
+      >
+        <SettingsCard>
+          <SettingsList>
+            <SettingsRow
+              title="Sandbox mode"
+              description="Controls how Codex interacts with your file system."
+              align="start"
             >
-              <input
-                type="radio"
-                name="sandboxMode"
-                value={option.value}
-                checked={settings.sandboxMode === option.value}
-                onChange={(e) => {
-                  const validated = parseSandboxMode(
-                    e.target.value,
-                    settings.sandboxMode
-                  )
-                  updateSetting('sandboxMode', validated)
-                }}
-                className="h-4 w-4"
-              />
-              <div>
-                <div className="font-medium">{option.label}</div>
-                <div className="text-xs text-muted-foreground">
-                  {option.description}
-                </div>
+              <div className="space-y-2">
+                {SANDBOX_MODE_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className={cn(
+                      'flex cursor-pointer items-start gap-3 rounded-lg border border-stroke/20 bg-surface-hover/[0.06] p-3 transition-colors',
+                      settings.sandboxMode === option.value
+                        ? 'bg-surface-selected/[0.18] text-text-1'
+                        : 'hover:bg-surface-hover/[0.12]'
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="sandboxMode"
+                      value={option.value}
+                      checked={settings.sandboxMode === option.value}
+                      onChange={(e) => {
+                        const validated = parseSandboxMode(
+                          e.target.value,
+                          settings.sandboxMode
+                        )
+                        updateSetting('sandboxMode', validated)
+                      }}
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-text-1">
+                        {option.label}
+                      </div>
+                      <div className="text-xs text-text-3">
+                        {option.description}
+                      </div>
+                    </div>
+                  </label>
+                ))}
               </div>
-            </label>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Controls how Codex interacts with your file system
-        </p>
-      </div>
-
-      {/* Approval Policy */}
-      <div>
-        <label className="mb-2 block text-sm font-medium">Approval Policy</label>
-        <div className="space-y-2">
-          {APPROVAL_POLICY_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className={cn(
-                'flex cursor-pointer items-center gap-3 rounded-lg border p-3',
-                settings.approvalPolicy === option.value
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/50'
-              )}
+            </SettingsRow>
+            <SettingsRow
+              title="Approval policy"
+              description="When to ask for confirmation before executing changes."
+              align="start"
             >
-              <input
-                type="radio"
-                name="approvalPolicy"
-                value={option.value}
-                checked={settings.approvalPolicy === option.value}
-                onChange={(e) => {
-                  const validated = parseApprovalPolicy(
-                    e.target.value,
-                    settings.approvalPolicy
-                  )
-                  updateSetting('approvalPolicy', validated)
-                }}
-                className="h-4 w-4"
-              />
-              <div>
-                <div className="font-medium">{option.label}</div>
-                <div className="text-xs text-muted-foreground">
-                  {option.description}
-                </div>
+              <div className="space-y-2">
+                {APPROVAL_POLICY_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className={cn(
+                      'flex cursor-pointer items-start gap-3 rounded-lg border border-stroke/20 bg-surface-hover/[0.06] p-3 transition-colors',
+                      settings.approvalPolicy === option.value
+                        ? 'bg-surface-selected/[0.18] text-text-1'
+                        : 'hover:bg-surface-hover/[0.12]'
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="approvalPolicy"
+                      value={option.value}
+                      checked={settings.approvalPolicy === option.value}
+                      onChange={(e) => {
+                        const validated = parseApprovalPolicy(
+                          e.target.value,
+                          settings.approvalPolicy
+                        )
+                        updateSetting('approvalPolicy', validated)
+                      }}
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-text-1">
+                        {option.label}
+                      </div>
+                      <div className="text-xs text-text-3">
+                        {option.description}
+                      </div>
+                    </div>
+                  </label>
+                ))}
               </div>
-            </label>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          When to ask for your confirmation before executing changes
-        </p>
-      </div>
+            </SettingsRow>
+          </SettingsList>
+        </SettingsCard>
+      </SettingsSection>
     </div>
   )
 })

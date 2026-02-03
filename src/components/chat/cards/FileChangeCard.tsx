@@ -12,7 +12,7 @@
  * - Business logic is extracted to useFileChangeApproval hook
  * - UI rendering logic is kept in this component
  */
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { FileCode } from 'lucide-react'
 import { BaseCard, CardActions } from './BaseCard'
 import { DiffView, parseDiff, type FileDiff } from '../../ui/DiffView'
@@ -23,37 +23,6 @@ import type { MessageItemProps, FileChangeContentType } from '../types'
 // -----------------------------------------------------------------------------
 // Sub-components
 // -----------------------------------------------------------------------------
-
-interface FileStatsProps {
-  addCount: number
-  modifyCount: number
-  deleteCount: number
-}
-
-/**
- * Display file change statistics (added, modified, deleted counts)
- */
-const FileStats = memo(function FileStats({ addCount, modifyCount, deleteCount }: FileStatsProps) {
-  return (
-    <div className="flex items-center gap-3 text-[10px] font-medium">
-      {addCount > 0 && (
-        <span className="text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
-          +{addCount} added
-        </span>
-      )}
-      {modifyCount > 0 && (
-        <span className="text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded">
-          ~{modifyCount} modified
-        </span>
-      )}
-      {deleteCount > 0 && (
-        <span className="text-red-600 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">
-          -{deleteCount} deleted
-        </span>
-      )}
-    </div>
-  )
-})
 
 interface ApprovalActionsProps {
   reason?: string
@@ -73,24 +42,24 @@ const ApprovalActions = memo(function ApprovalActions({
 }: ApprovalActionsProps) {
   return (
     <div>
-      {reason && <div className="mb-3 text-xs text-muted-foreground">Reason: {reason}</div>}
+      {reason && <div className="mb-3 text-xs text-text-3">Reason: {reason}</div>}
       <CardActions>
         <button
-          className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+          className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)] disabled:opacity-50"
           onClick={() => onApply('accept')}
           disabled={isApplying}
         >
           {isApplying ? 'Applying...' : 'Apply Changes'}
         </button>
         <button
-          className="flex-1 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-50"
+          className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors disabled:opacity-50"
           onClick={() => onApply('acceptForSession')}
           disabled={isApplying}
         >
           Allow for Session
         </button>
         <button
-          className="rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+          className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors"
           onClick={onDecline}
         >
           Decline
@@ -115,7 +84,7 @@ const AppliedStatus = memo(function AppliedStatus({
   onRevert,
 }: AppliedStatusProps) {
   return (
-    <div className="bg-green-50/50 dark:bg-green-900/10 p-3 border-t border-green-100 dark:border-green-900/30">
+    <div className="bg-green-50/40 dark:bg-green-900/10 p-3 border-t border-green-200/50 dark:border-green-900/30">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-medium text-green-700 dark:text-green-400">
           <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
@@ -125,7 +94,7 @@ const AppliedStatus = memo(function AppliedStatus({
         </div>
         {snapshotId && (
           <button
-            className="rounded-md bg-background/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors border border-transparent hover:border-destructive/20 disabled:opacity-50"
+            className="rounded-md bg-surface-solid px-3 py-1.5 text-[10px] font-medium text-text-2 hover:bg-destructive/10 hover:text-destructive transition-colors border border-stroke/20 hover:border-destructive/40 disabled:opacity-50"
             onClick={onRevert}
             disabled={isReverting}
           >
@@ -163,12 +132,6 @@ export const FileChangeCard = memo(
       })
 
     // Calculate file change statistics
-    const addCount = content.changes.filter((c) => c.kind === 'add').length
-    const modifyCount = content.changes.filter(
-      (c) => c.kind === 'modify' || c.kind === 'rename'
-    ).length
-    const deleteCount = content.changes.filter((c) => c.kind === 'delete').length
-
     // Convert changes to FileDiff format
     const fileDiffs: FileDiff[] = content.changes.map((change) => ({
       path: change.path,
@@ -177,6 +140,22 @@ export const FileChangeCard = memo(
       hunks: change.diff ? parseDiff(change.diff) : [],
       raw: change.diff,
     }))
+
+    const lineStats = useMemo(() => {
+      let additions = 0
+      let deletions = 0
+      for (const diff of fileDiffs) {
+        for (const hunk of diff.hunks) {
+          for (const line of hunk.lines) {
+            if (line.type === 'add') additions += 1
+            if (line.type === 'remove') deletions += 1
+          }
+        }
+      }
+      return { additions, deletions }
+    }, [fileDiffs])
+
+    const allExpanded = expandedFiles.size === fileDiffs.length && fileDiffs.length > 0
 
     // Toggle file expansion
     const toggleFile = (index: number) => {
@@ -193,12 +172,33 @@ export const FileChangeCard = memo(
 
     // Build header actions with file stats and timestamp
     const headerActions = (
-      <>
-        <FileStats addCount={addCount} modifyCount={modifyCount} deleteCount={deleteCount} />
-        <span className="text-muted-foreground/60 font-normal text-[10px]">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-text-3">
+          {content.changes.length} files changed
+        </span>
+        {(lineStats.additions > 0 || lineStats.deletions > 0) && (
+          <span className="text-[10px] text-text-3">
+            {lineStats.additions > 0 ? `+${lineStats.additions}` : ''}
+            {lineStats.deletions > 0 ? ` -${lineStats.deletions}` : ''}
+          </span>
+        )}
+        <button
+          className="ml-2 rounded-md border border-stroke/30 bg-surface-hover/[0.12] px-2 py-1 text-[10px] font-medium text-text-2 hover:text-text-1 hover:bg-surface-hover/[0.18]"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (allExpanded) {
+              setExpandedFiles(new Set())
+            } else {
+              setExpandedFiles(new Set(fileDiffs.map((_, idx) => idx)))
+            }
+          }}
+        >
+          {allExpanded ? 'Collapse changes' : 'Review changes'}
+        </button>
+        <span className="text-text-3/70 font-normal text-[10px]">
           {formatTimestamp(item.createdAt)}
         </span>
-      </>
+      </div>
     )
 
     // Build footer actions based on state

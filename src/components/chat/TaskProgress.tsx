@@ -148,22 +148,22 @@ export function TaskProgress({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-lg bg-secondary/30 px-2 py-1 transition-all duration-200',
+        'flex items-center gap-2 rounded-lg bg-surface-hover/[0.12] px-2 py-1 transition-all duration-200 border border-stroke/20',
         sizes.container,
         className
       )}
     >
       {/* Loading icon for running status */}
       {status === 'running' && (
-        <Loader2 className={cn(sizes.icon, 'animate-spin text-blue-500 flex-shrink-0')} />
+        <Loader2 className={cn(sizes.icon, 'animate-spin text-text-2 flex-shrink-0')} />
       )}
 
       {/* Progress bar */}
       <div className="flex-1 min-w-0">
-        <div className="relative w-full bg-muted rounded-full overflow-hidden" style={{ height: sizes.bar }}>
+        <div className="relative w-full bg-surface-hover/[0.16] rounded-full overflow-hidden" style={{ height: sizes.bar }}>
           <div
             className={cn(
-              'absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-300 ease-out',
+              'absolute top-0 left-0 h-full bg-surface-selected/[0.5] rounded-full transition-all duration-300 ease-out',
               isAnimating && 'transition-all duration-150'
             )}
             style={{ width: `${percentage}%` }}
@@ -172,18 +172,14 @@ export function TaskProgress({
       </div>
 
       {/* Progress text */}
-      <div className={cn('flex-shrink-0 tabular-nums', sizes.text, 'text-muted-foreground')}>
+      <div className={cn('flex-shrink-0 tabular-nums', sizes.text, 'text-text-3')}>
         {percentage}%
       </div>
 
       {/* Step information */}
       {currentTask && (
         <div
-          className={cn(
-            'flex-shrink-0 truncate max-w-[150px]',
-            sizes.text,
-            'text-muted-foreground'
-          )}
+          className={cn('flex-shrink-0 truncate max-w-[150px]', sizes.text, 'text-text-3')}
           title={currentTask.content}
         >
           {currentStep}/{totalSteps}: {currentTask.content}

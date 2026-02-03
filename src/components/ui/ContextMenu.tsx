@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils'
 
 export interface ContextMenuItem {
   label: string
-  icon?: string
+  icon?: ReactNode
   onClick: () => void
   variant?: 'default' | 'danger'
   disabled?: boolean
@@ -115,7 +115,7 @@ export function ContextMenu({ items, children, className }: ContextMenuProps) {
       {isOpen && (
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg"
+          className="fixed z-50 min-w-[180px] rounded-xl border border-stroke/20 bg-surface-solid/95 p-1.5 shadow-[var(--shadow-2)] backdrop-blur-sm"
           style={{ left: position.x, top: position.y }}
         >
           {items.map((item, index) => (
@@ -127,7 +127,7 @@ export function ContextMenu({ items, children, className }: ContextMenuProps) {
                   ? 'cursor-not-allowed opacity-50'
                   : item.variant === 'danger'
                     ? 'text-destructive hover:bg-destructive/10'
-                    : 'hover:bg-accent'
+                    : 'text-text-2 hover:text-text-1 hover:bg-surface-hover/[0.12]'
               )}
               onClick={() => {
                 if (!item.disabled) {
@@ -137,7 +137,7 @@ export function ContextMenu({ items, children, className }: ContextMenuProps) {
               }}
               disabled={item.disabled}
             >
-              {item.icon && <span>{item.icon}</span>}
+              {item.icon && <span className="text-text-3">{item.icon}</span>}
               <span>{item.label}</span>
             </button>
           ))}

@@ -495,7 +495,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
                   onChange={(e) =>
                     setGlobalConfig({ ...globalConfig, model: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-2 border border-stroke/30 rounded-lg bg-surface-solid text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">{isModelsLoading ? '加载模型中...' : '使用默认模型'}</option>
                   {models.length > 0 ? (
@@ -527,7 +527,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
                       approvalPolicy: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-2 border border-stroke/30 rounded-lg bg-surface-solid text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="on-request">每次变更需审批（最安全）</option>
                   <option value="on-failure">仅失败时审批（更快捷）</option>
@@ -552,7 +552,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
                   }
                   min="60"
                   max="3600"
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
+                  className="w-full px-4 py-2 border border-stroke/30 rounded-lg bg-surface-solid text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
             </div>

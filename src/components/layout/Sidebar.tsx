@@ -158,7 +158,7 @@ export function Sidebar() {
   }, [projects, addProject, selectProject, setActiveTab, settings, startThread, fetchSessions, selectSession, showToast])
 
   return (
-    <div className="flex h-full w-64 flex-col bg-background p-3">
+    <div className="flex h-full w-64 flex-col bg-bg p-3 border-r border-stroke/30">
       <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab} />
       <SessionSearch visible={activeTab === 'sessions'} />
       <div className="flex-1 overflow-y-auto -mx-2 px-2">
@@ -181,6 +181,10 @@ export function Sidebar() {
               catch { showToast('Failed to update session', 'error') }
             }}
             onRename={dialogs.handleRenameSession}
+            onArchive={async (id) => {
+              try { await updateSession(id, { isArchived: true }) }
+              catch { showToast('Failed to archive session', 'error') }
+            }}
             onDelete={dialogs.handleDeleteSession}
             isLoading={sessionsLoading || isSearching}
             hasProject={!!selectedProjectId}
@@ -191,7 +195,7 @@ export function Sidebar() {
       <div className="mt-2 pt-2 space-y-2">
         <div className="flex gap-2">
           <button
-            className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+            className="flex-1 rounded-md border border-stroke/40 bg-surface-solid px-4 py-2.5 text-sm font-semibold text-text-1 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08] active:bg-surface-hover/[0.12] disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={activeTab === 'projects' ? handleAddProject : handleNewSession}
             disabled={activeTab === 'sessions' && !selectedProjectId}
             title={activeTab === 'sessions' && !selectedProjectId ? 'Select a project first' : undefined}
@@ -200,7 +204,7 @@ export function Sidebar() {
           </button>
           {activeTab === 'sessions' && (
             <button
-              className="rounded-lg bg-secondary px-3 py-2.5 text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70 shadow-sm transition-colors"
+              className="rounded-md border border-stroke/30 bg-surface-solid px-3 py-2.5 text-text-2 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08] active:bg-surface-hover/[0.12]"
               onClick={() => setImportDialogOpen(true)}
               title="Import from Codex CLI"
             >

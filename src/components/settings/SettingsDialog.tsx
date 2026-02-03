@@ -6,6 +6,7 @@ import {
   ListChecks,
   User,
   ChevronRight,
+  ChevronLeft,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { serverApi, type AccountInfo } from '../../lib/api'
@@ -59,10 +60,10 @@ const TabButton = memo(function TabButton({
     <button
       key={id}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium transition-all',
+        'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-all',
         isActive
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+          ? 'bg-surface-hover/[0.16] text-text-1'
+          : 'text-text-3 hover:bg-surface-hover/[0.12] hover:text-text-1'
       )}
       onClick={onClick}
     >
@@ -71,13 +72,13 @@ const TabButton = memo(function TabButton({
         className={cn(
           'flex-shrink-0 transition-colors',
           isActive
-            ? 'text-primary'
-            : 'text-muted-foreground group-hover:text-foreground'
+            ? 'text-text-1'
+            : 'text-text-3 group-hover:text-text-1'
         )}
       />
       <span className="flex-1">{label}</span>
       {isActive && (
-        <ChevronRight size={14} className="flex-shrink-0 text-foreground/60" />
+        <ChevronRight size={14} className="flex-shrink-0 text-text-2" />
       )}
     </button>
   )
@@ -89,14 +90,23 @@ const TabButton = memo(function TabButton({
 const SettingsSidebar = memo(function SettingsSidebar({
   activeTab,
   onTabChange,
+  onClose,
 }: {
   activeTab: SettingsTabId
   onTabChange: (tab: SettingsTabId) => void
+  onClose: () => void
 }) {
   return (
-    <div className="w-52 lg:w-56 bg-secondary/30 p-5 border-r border-border/50 flex flex-col gap-1">
-      <div className="mb-6 px-2 py-2">
-        <h2 className="text-xl font-bold tracking-tight">Settings</h2>
+    <div className="w-56 bg-surface-solid/80 p-4 border-r border-stroke/20 flex flex-col gap-1">
+      <button
+        className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12]"
+        onClick={onClose}
+      >
+        <ChevronLeft size={14} />
+        Back to app
+      </button>
+      <div className="mb-2 px-2 py-1">
+        <h2 className="text-base font-semibold tracking-tight text-text-1">Settings</h2>
       </div>
 
       {SETTINGS_TABS.map((tab) => (
@@ -129,7 +139,7 @@ const SettingsContent = memo(function SettingsContent({
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto w-full max-w-3xl">
         {activeTab === 'general' && <GeneralTab />}
         {activeTab === 'model' && (
           <ModelTab settings={settings} updateSetting={updateSetting} />
@@ -182,10 +192,14 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-8">
-      <div className="flex h-[600px] w-full max-w-4xl overflow-hidden rounded-[2rem] bg-card shadow-2xl border border-border/50 animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-8">
+      <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-[22px] bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-300">
         {/* Sidebar */}
-        <SettingsSidebar activeTab={activeTab} onTabChange={setSettingsTab} />
+        <SettingsSidebar
+          activeTab={activeTab}
+          onTabChange={setSettingsTab}
+          onClose={onClose}
+        />
 
         {/* Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
@@ -196,9 +210,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           />
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 border-t border-border/50 bg-background/50 px-6 py-4 backdrop-blur-sm">
+          <div className="flex justify-end gap-3 border-t border-stroke/20 bg-surface-solid/60 px-6 py-4">
             <button
-              className="rounded-lg px-6 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
+              className="rounded-lg px-5 py-2 text-sm font-medium text-text-2 hover:bg-surface-hover/[0.12] transition-colors"
               onClick={onClose}
             >
               Close

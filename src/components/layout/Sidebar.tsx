@@ -158,7 +158,7 @@ export function Sidebar() {
   }, [projects, addProject, selectProject, setActiveTab, settings, startThread, fetchSessions, selectSession, showToast])
 
   return (
-    <div className="flex h-full w-64 flex-col bg-bg p-3 border-r border-stroke/30">
+    <div className="flex h-full w-64 flex-col bg-surface p-3">
       <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab} />
       <SessionSearch visible={activeTab === 'sessions'} />
       <div className="flex-1 overflow-y-auto -mx-2 px-2">

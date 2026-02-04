@@ -92,7 +92,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
         <input
           type="text"
           placeholder="Search all sessions..."
-          className="w-full rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 placeholder:text-text-3 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/15 pr-8"
+          className="w-full rounded-md border border-stroke/20 bg-surface-solid px-3 py-2 text-sm text-text-1 placeholder:text-text-3 focus:border-stroke/50 focus:outline-none focus:ring-2 focus:ring-primary/10 pr-8"
           value={localSearchQuery}
           onChange={(e) => handleSearchChange(e.target.value)}
           aria-label="Search sessions"

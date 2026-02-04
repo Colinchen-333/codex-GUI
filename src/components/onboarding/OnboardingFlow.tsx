@@ -88,19 +88,19 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-card shadow-2xl border border-border/50 rounded-[2.5rem] p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 rounded-[2.5rem] p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Progress indicator */}
         <div className="mb-10 flex justify-center gap-2">
           {(['welcome', 'login', 'project', 'ready'] as OnboardingStep[]).map((s, i) => (
-            <div
-              key={s}
-              className={cn(
-                'h-1.5 transition-all duration-300 rounded-full',
-                step === s ? 'w-8 bg-primary' :
-                (['welcome', 'login', 'project', 'ready'].indexOf(step) > i ? 'w-4 bg-primary/40' : 'w-4 bg-muted')
-              )}
-            />
+              <div
+                key={s}
+                className={cn(
+                  'h-1.5 transition-all duration-300 rounded-full',
+                  step === s ? 'w-8 bg-text-1/80' :
+                  (['welcome', 'login', 'project', 'ready'].indexOf(step) > i ? 'w-4 bg-text-3/40' : 'w-4 bg-surface-hover/[0.12]')
+                )}
+              />
           ))}
         </div>
 
@@ -142,15 +142,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="text-center animate-in fade-in zoom-in-95 duration-300">
-      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/5 text-primary">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-hover/[0.12] text-text-1">
         <Rocket size={40} />
       </div>
       <h1 className="mb-4 text-3xl font-bold tracking-tight">Welcome to Codex Desktop</h1>
-      <p className="mb-10 text-muted-foreground text-lg leading-relaxed px-4">
+      <p className="mb-10 text-text-3 text-lg leading-relaxed px-4">
         The official GUI for Codex CLI. Manage your AI coding agents visually.
       </p>
       <button
-        className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-[0.98]"
+        className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-surface-selected/[0.2] px-6 py-4 font-semibold text-text-1 hover:bg-surface-selected/[0.28] transition-all active:scale-[0.98]"
         onClick={onNext}
       >
         Get Started
@@ -302,20 +302,20 @@ function LoginStep({
   if (accountInfo?.account) {
     return (
       <div className="text-center animate-in fade-in zoom-in-95 duration-300">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-green-500/10 text-green-600">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-hover/[0.12] text-text-2">
           <CheckCircle size={40} />
         </div>
         <h2 className="mb-2 text-2xl font-bold">You're All Set!</h2>
-        <p className="mb-1 text-muted-foreground text-lg">
-          Connected as <span className="font-semibold text-foreground">{accountInfo.account.email}</span>
+        <p className="mb-1 text-text-2 text-lg">
+          Connected as <span className="font-semibold text-text-1">{accountInfo.account.email}</span>
         </p>
         {accountInfo.account.planType && (
-          <p className="mb-10 text-sm font-medium uppercase tracking-wider text-muted-foreground/60">
+          <p className="mb-10 text-sm font-medium uppercase tracking-wider text-text-3">
             {accountInfo.account.planType} Plan
           </p>
         )}
         <button
-          className="w-full rounded-2xl bg-primary px-6 py-4 font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-[0.98]"
+          className="w-full rounded-2xl bg-surface-selected/[0.28] px-6 py-4 font-semibold text-text-1 hover:bg-surface-selected/[0.34] transition-all active:scale-[0.98]"
           onClick={onNext}
         >
           Continue
@@ -326,16 +326,16 @@ function LoginStep({
 
   return (
     <div className="text-center animate-in fade-in zoom-in-95 duration-300">
-      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/5 text-primary">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-hover/[0.12] text-text-2">
         <Lock size={40} />
       </div>
       <h2 className="mb-4 text-2xl font-bold">Sign In to Codex</h2>
-      <p className="mb-10 text-muted-foreground text-lg">
+      <p className="mb-10 text-text-2 text-lg">
         Connect your ChatGPT account to start building with AI.
       </p>
       <div className="flex flex-col gap-3">
         <button
-          className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all active:scale-[0.98]"
+          className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-surface-selected/[0.28] px-6 py-4 font-semibold text-text-1 hover:bg-surface-selected/[0.34] disabled:opacity-50 transition-all active:scale-[0.98]"
           onClick={handleLogin}
           disabled={isLoggingIn}
         >
@@ -352,7 +352,7 @@ function LoginStep({
           )}
         </button>
         <button
-          className="w-full rounded-2xl bg-secondary px-6 py-4 font-semibold text-secondary-foreground hover:bg-secondary/80 transition-all"
+          className="w-full rounded-2xl bg-surface-hover/[0.12] px-6 py-4 font-semibold text-text-2 hover:bg-surface-hover/[0.18] transition-all"
           onClick={onNext}
         >
           Skip for Now
@@ -369,20 +369,20 @@ function LoginStep({
         </div>
       )}
       {loginTimedOut && !isLoggingIn && (
-        <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-          <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+        <div className="mt-4 p-3 rounded-xl bg-surface-hover/[0.12] border border-stroke/40">
+          <p className="text-xs text-text-2 mb-2">
             Login check timed out. The browser window should still be open.
           </p>
           <button
-            className="text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
+            className="text-xs font-medium text-text-2 hover:text-text-1 transition-colors"
             onClick={handleLogin}
           >
             Try checking again →
           </button>
         </div>
       )}
-      <p className="mt-6 text-xs text-muted-foreground/60">
-        Or use terminal: <code className="rounded bg-secondary/80 px-2 py-0.5 font-mono">codex login</code>
+      <p className="mt-6 text-xs text-text-3">
+        Or use terminal: <code className="rounded bg-surface-hover/[0.16] px-2 py-0.5 font-mono">codex login</code>
       </p>
     </div>
   )
@@ -406,23 +406,23 @@ function ProjectStep({
 }) {
   return (
     <div className="text-center animate-in fade-in zoom-in-95 duration-300">
-      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/5 text-primary">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-hover/[0.12] text-text-2">
         <Folder size={40} />
       </div>
       <h2 className="mb-4 text-2xl font-bold">Your First Project</h2>
-      <p className="mb-10 text-muted-foreground text-lg">
+      <p className="mb-10 text-text-2 text-lg">
         Select a folder. Codex will help you understand and improve your code instantly.
       </p>
 
       {error && (
-        <div className="mb-6 rounded-xl bg-destructive/5 p-4 text-sm text-destructive border border-destructive/10">
+        <div className="mb-6 rounded-xl bg-surface-hover/[0.12] p-4 text-sm text-text-2 border border-stroke/40">
           {error}
         </div>
       )}
 
       <div className="flex flex-col gap-3">
         <button
-          className="w-full rounded-2xl bg-primary px-6 py-4 font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all active:scale-[0.98]"
+          className="w-full rounded-2xl bg-surface-selected/[0.28] px-6 py-4 font-semibold text-text-1 hover:bg-surface-selected/[0.34] disabled:opacity-50 transition-all active:scale-[0.98]"
           onClick={onAddProject}
           disabled={isLoading}
         >
@@ -431,7 +431,7 @@ function ProjectStep({
 
         {hasProjects ? (
           <button
-            className="flex items-center justify-center gap-2 w-full rounded-2xl bg-secondary px-6 py-4 font-semibold text-secondary-foreground hover:bg-secondary/80 transition-all"
+            className="flex items-center justify-center gap-2 w-full rounded-2xl bg-surface-hover/[0.12] px-6 py-4 font-semibold text-text-2 hover:bg-surface-hover/[0.18] transition-all"
             onClick={onNext}
           >
             Continue
@@ -439,7 +439,7 @@ function ProjectStep({
           </button>
         ) : (
           <button
-            className="mt-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="mt-2 text-sm font-medium text-text-3 hover:text-text-2 transition-colors"
             onClick={onSkip}
           >
             I'll add it later
@@ -454,16 +454,16 @@ function ProjectStep({
 function ReadyStep({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="text-center animate-in fade-in zoom-in-95 duration-300">
-      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-green-500/10 text-green-600">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-hover/[0.12] text-text-2">
         <CheckCircle size={40} />
       </div>
       <h2 className="mb-4 text-2xl font-bold">Ready to Go!</h2>
-      <p className="mb-10 text-muted-foreground text-lg">
+      <p className="mb-10 text-text-2 text-lg">
         Your visual workbench for Codex CLI is ready.
       </p>
 
-      <div className="mb-10 rounded-2xl bg-secondary/30 p-6 text-left border border-border/50">
-        <h3 className="mb-4 font-bold text-sm uppercase tracking-wider text-muted-foreground/80">Quick Tips:</h3>
+      <div className="mb-10 rounded-2xl bg-surface-hover/[0.12] p-6 text-left border border-stroke/40">
+        <h3 className="mb-4 font-bold text-sm uppercase tracking-wider text-text-3">Quick Tips:</h3>
         <ul className="space-y-3">
           {[
             'Select a project to start a new agent session',
@@ -471,8 +471,8 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
             'Run multiple agent sessions simultaneously',
             'Use ⌘+Z to undo changes with snapshots'
           ].map((tip, i) => (
-            <li key={i} className="flex items-center gap-3 text-sm font-medium">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+            <li key={i} className="flex items-center gap-3 text-sm font-medium text-text-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-text-3/60" />
               {tip}
             </li>
           ))}
@@ -480,7 +480,7 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
       </div>
 
       <button
-        className="w-full rounded-2xl bg-primary px-6 py-4 font-semibold text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+        className="w-full rounded-2xl bg-surface-selected/[0.28] px-6 py-4 font-semibold text-text-1 hover:bg-surface-selected/[0.34] transition-all active:scale-[0.98]"
         onClick={onComplete}
       >
         Open Workbench

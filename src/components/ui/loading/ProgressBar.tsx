@@ -69,22 +69,22 @@ const SIZE_MAP: Record<ProgressBarSize, { container: string; bar: string }> = {
  * Variant configurations
  */
 const VARIANT_MAP: Record<ProgressBarVariant, string> = {
-  default: 'bg-primary',
-  primary: 'bg-primary',
-  success: 'bg-green-500',
-  warning: 'bg-yellow-500',
-  destructive: 'bg-destructive',
+  default: 'bg-surface-selected/[0.28]',
+  primary: 'bg-surface-selected/[0.28]',
+  success: 'bg-emerald-400/70',
+  warning: 'bg-amber-400/70',
+  destructive: 'bg-rose-400/70',
 }
 
 /**
  * Background variant configurations (for the track)
  */
 const BG_VARIANT_MAP: Record<ProgressBarVariant, string> = {
-  default: 'bg-secondary',
-  primary: 'bg-primary/20',
-  success: 'bg-green-500/20',
-  warning: 'bg-yellow-500/20',
-  destructive: 'bg-destructive/20',
+  default: 'bg-surface-hover/[0.12]',
+  primary: 'bg-surface-hover/[0.12]',
+  success: 'bg-emerald-400/10',
+  warning: 'bg-amber-400/10',
+  destructive: 'bg-rose-400/10',
 }
 
 /**
@@ -161,12 +161,12 @@ export function ProgressBar({
 
       {/* Label */}
       {(showLabel || label) && (
-        <div className="flex justify-between items-center text-xs">
+        <div className="flex justify-between items-center text-xs text-text-3">
           {label && (
-            <span className="text-muted-foreground">{label}</span>
+            <span>{label}</span>
           )}
           {showLabel && !label && percentage !== undefined && (
-            <span className="text-muted-foreground font-medium">
+            <span className="font-medium">
               {Math.round(percentage)}%
             </span>
           )}

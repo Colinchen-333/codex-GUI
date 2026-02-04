@@ -144,8 +144,8 @@ function SessionRowInner({
           className={cn(
             'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
             isSelected
-              ? 'bg-surface-selected/[0.12] text-text-1'
-              : 'text-text-1 hover:bg-surface-hover/[0.08]',
+              ? 'bg-surface-selected/[0.08] text-text-1'
+              : 'text-text-1 hover:bg-surface-hover/[0.06]',
             isRunning &&
               !isSelected &&
               'border border-blue-400/20 bg-blue-500/5'
@@ -391,8 +391,8 @@ export const SessionList = memo(function SessionList({
                 className={cn(
                   'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
                   isSelected
-                    ? 'bg-surface-selected/[0.12] text-text-1'
-                    : 'text-text-1 hover:bg-surface-hover/[0.08]',
+                    ? 'bg-surface-selected/[0.08] text-text-1'
+                    : 'text-text-1 hover:bg-surface-hover/[0.06]',
                   isRunning &&
                     !isSelected &&
                     'border border-blue-400/20 bg-blue-500/5'

@@ -115,7 +115,7 @@ export function ContextMenu({ items, children, className }: ContextMenuProps) {
       {isOpen && (
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-[180px] rounded-xl border border-stroke/20 bg-surface-solid/95 p-1.5 shadow-[var(--shadow-2)] backdrop-blur-sm"
+          className="fixed z-50 min-w-[180px] rounded-xl border border-stroke/15 bg-surface-solid/95 p-1.5 shadow-[var(--shadow-2)] backdrop-blur-sm"
           style={{ left: position.x, top: position.y }}
         >
           {items.map((item, index) => (

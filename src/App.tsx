@@ -156,12 +156,12 @@ function App() {
       <ToastProvider>
         <GlobalErrorHandler />
         <KeyboardShortcuts />
-        <div className="flex h-screen w-screen overflow-hidden bg-background p-3 gap-3">
+        <div className="flex h-screen w-screen overflow-hidden bg-background">
           {/* Left Sidebar - Always visible */}
           <Sidebar />
 
           {/* Main Content Area */}
-          <div className="flex flex-1 flex-col overflow-hidden rounded-2xl bg-card shadow-sm border border-border/50 relative">
+          <div className="flex flex-1 flex-col overflow-hidden bg-card relative">
             <AsyncErrorBoundary
               onError={(error) => {
                 logError(error, {

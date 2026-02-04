@@ -21,16 +21,16 @@
 @layer base {
   :root {
     /* Light theme (kept for completeness, dark is default) */
-    --bg: 210 20% 98%;
-    --surface: 0 0% 100%;
+    --bg: 210 16% 96%;
+    --surface: 210 16% 98%;
     --surface-solid: 0 0% 100%;
     --hover: 222 47% 11%;
     --selected: 222 47% 11%;
     --stroke: 222 47% 11%;
 
-    --text: 222 47% 11%;
-    --text-2: 222 18% 25%;
-    --text-3: 222 12% 40%;
+    --text: 222 32% 12%;
+    --text-2: 222 14% 28%;
+    --text-3: 222 10% 46%;
 
     --shadow-1: 0 1px 0 hsl(222 47% 11% / 0.06), 0 8px 24px hsl(222 47% 11% / 0.08);
     --shadow-2: 0 1px 0 hsl(222 47% 11% / 0.06), 0 16px 40px hsl(222 47% 11% / 0.12);
@@ -80,16 +80,16 @@
   }
 
   .dark {
-    --bg: 210 8% 8%;
-    --surface: 210 8% 12%;
-    --surface-solid: 210 8% 14%;
+    --bg: 210 6% 9%;
+    --surface: 210 7% 12%;
+    --surface-solid: 210 7% 13%;
     --hover: 0 0% 100%;
     --selected: 0 0% 100%;
     --stroke: 0 0% 100%;
 
-    --text: 0 0% 92%;
-    --text-2: 0 0% 78%;
-    --text-3: 0 0% 56%;
+    --text: 0 0% 90%;
+    --text-2: 0 0% 74%;
+    --text-3: 0 0% 52%;
 
     --shadow-1: 0 1px 0 hsl(0 0% 0% / 0.5), 0 18px 45px hsl(0 0% 0% / 0.4);
     --shadow-2: 0 1px 0 hsl(0 0% 0% / 0.55), 0 30px 70px hsl(0 0% 0% / 0.55);

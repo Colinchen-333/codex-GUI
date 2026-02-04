@@ -93,14 +93,17 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         {/* Progress indicator */}
         <div className="mb-10 flex justify-center gap-2">
           {(['welcome', 'login', 'project', 'ready'] as OnboardingStep[]).map((s, i) => (
-              <div
-                key={s}
-                className={cn(
-                  'h-1.5 transition-all duration-300 rounded-full',
-                  step === s ? 'w-8 bg-text-1/80' :
-                  (['welcome', 'login', 'project', 'ready'].indexOf(step) > i ? 'w-4 bg-text-3/40' : 'w-4 bg-surface-hover/[0.12]')
-                )}
-              />
+            <div
+              key={s}
+              className={cn(
+                'rounded-full transition-all duration-300',
+                step === s
+                  ? 'h-2.5 w-2.5 bg-text-1/70 shadow-[0_0_0_4px_rgba(255,255,255,0.02)]'
+                  : (['welcome', 'login', 'project', 'ready'].indexOf(step) > i
+                      ? 'h-2 w-2 bg-text-3/50'
+                      : 'h-2 w-2 bg-surface-hover/[0.16] border border-stroke/30')
+              )}
+            />
           ))}
         </div>
 

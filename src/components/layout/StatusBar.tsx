@@ -83,7 +83,7 @@ export function StatusBar() {
 
   return (
     <>
-      <div className="flex h-9 items-center justify-between bg-card/40 backdrop-blur-md px-4 text-xs font-medium tracking-tight text-text-3">
+      <div className="flex h-9 items-center justify-between bg-card/30 backdrop-blur-md px-4 text-xs font-medium tracking-tight text-text-3">
         {/* Left side - Status indicators */}
         <div className="flex items-center gap-5">
           <ServerStatusIndicator />

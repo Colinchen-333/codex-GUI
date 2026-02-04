@@ -31,7 +31,7 @@ export const StatusBarActions = memo(function StatusBarActions({
     <div className="flex items-center gap-1">
       {activeThread && appMode === 'normal' && (
         <button
-          className="hover:bg-primary/10 h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:text-foreground"
+          className="h-7 w-7 flex items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1"
           onClick={onSnapshotsClick}
           title="Snapshots"
         >
@@ -39,21 +39,21 @@ export const StatusBarActions = memo(function StatusBarActions({
         </button>
       )}
       <button
-        className="hover:bg-primary/10 h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:text-foreground"
+        className="h-7 w-7 flex items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1"
         onClick={onHelpClick}
         title="Help"
       >
         <HelpCircle size={14} />
       </button>
       <button
-        className="hover:bg-primary/10 h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:text-foreground"
+        className="h-7 w-7 flex items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1"
         onClick={onAboutClick}
         title="About"
       >
         <Info size={14} />
       </button>
       <button
-        className="hover:bg-primary/10 h-7 w-7 flex items-center justify-center rounded-lg transition-colors hover:text-foreground"
+        className="h-7 w-7 flex items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1"
         onClick={onSettingsClick}
         onMouseEnter={preloadSettingsDialog}
         title="Settings"

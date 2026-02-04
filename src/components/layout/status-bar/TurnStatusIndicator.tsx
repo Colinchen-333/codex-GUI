@@ -82,41 +82,41 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
   }
 
   return (
-    <div className="flex items-center gap-2 text-blue-500">
+    <div className="flex items-center gap-2 text-text-2">
       {/* Shimmer effect spinner */}
       <span className="relative flex h-2.5 w-2.5">
-        <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
+        <span className="absolute inline-flex h-full w-full rounded-full bg-text-3/60 opacity-60 animate-ping" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-text-2/80" />
       </span>
 
       {/* Shimmer text effect */}
-      <span className="uppercase tracking-widest text-xs font-medium shimmer-text">
+      <span className="uppercase tracking-widest text-xs font-medium">
         Working
       </span>
 
       {/* Pending approvals badge */}
       {pendingApprovals.length > 0 && (
-        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 text-xs font-medium">
+        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-surface-hover/[0.16] text-text-2 text-xs font-medium">
           {pendingApprovals.length} pending
         </span>
       )}
 
       {/* Token rate */}
       {tokenRate > 0 && (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
+        <span className="flex items-center gap-1 text-xs text-text-3">
           <Zap size={10} />
           {tokenRate} tok/s
         </span>
       )}
 
       {/* Elapsed time */}
-      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+      <span className="flex items-center gap-1 text-xs text-text-3">
         <Clock size={11} />
         {formatElapsedCompact(elapsedMs)}
       </span>
 
       {/* Interrupt hint */}
-      <span className="text-xs text-muted-foreground/60">esc</span>
+      <span className="text-xs text-text-3/70">esc</span>
     </div>
   )
 })

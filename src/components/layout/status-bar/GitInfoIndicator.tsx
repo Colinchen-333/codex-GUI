@@ -168,7 +168,7 @@ export const GitInfoIndicator = memo(function GitInfoIndicator({
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1.5 text-muted-foreground/70" title="Loading Git information...">
+      <div className="flex items-center gap-1.5 text-text-3" title="Loading Git information...">
         <Loader2 size={12} className="animate-spin" />
         <span className="text-xs">Loading...</span>
       </div>
@@ -178,7 +178,7 @@ export const GitInfoIndicator = memo(function GitInfoIndicator({
   // Error state
   if (error) {
     return (
-      <div className="flex items-center gap-1.5 text-red-500/80 cursor-help" title={`Git Error: ${error}`}>
+      <div className="flex items-center gap-1.5 text-rose-400/80 cursor-help" title={`Git Error: ${error}`}>
         <AlertCircle size={12} />
         <span className="text-xs max-w-[80px] truncate">Git Error</span>
       </div>
@@ -188,11 +188,11 @@ export const GitInfoIndicator = memo(function GitInfoIndicator({
   // Normal state - only show if it's a git repo and has a branch
   if (gitInfo?.isGitRepo && gitInfo.branch) {
     return (
-      <div className="flex items-center gap-1.5 text-muted-foreground/70">
+      <div className="flex items-center gap-1.5 text-text-3">
         <GitBranch size={12} />
         <span className="text-xs max-w-[80px] truncate">{gitInfo.branch}</span>
         {gitInfo.isDirty && (
-          <span className="h-2 w-2 rounded-full bg-yellow-500" title="Uncommitted changes" />
+          <span className="h-2 w-2 rounded-full bg-text-3/60" title="Uncommitted changes" />
         )}
       </div>
     )

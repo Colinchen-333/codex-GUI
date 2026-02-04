@@ -38,15 +38,15 @@ export const TokenUsageIndicator = memo(function TokenUsageIndicator({
 
   // Color based on usage (inverted - show remaining)
   const getColor = (remainPct: number) => {
-    if (remainPct <= 10) return 'bg-red-500'
-    if (remainPct <= 30) return 'bg-yellow-500'
-    return 'bg-green-500'
+    if (remainPct <= 10) return 'bg-rose-400/70'
+    if (remainPct <= 30) return 'bg-amber-400/70'
+    return 'bg-surface-selected/[0.28]'
   }
 
   const getTextColor = (remainPct: number) => {
-    if (remainPct <= 10) return 'text-red-500'
-    if (remainPct <= 30) return 'text-yellow-500'
-    return 'text-muted-foreground/70'
+    if (remainPct <= 10) return 'text-rose-400/80'
+    if (remainPct <= 30) return 'text-amber-400/80'
+    return 'text-text-3'
   }
 
   return (
@@ -57,7 +57,7 @@ export const TokenUsageIndicator = memo(function TokenUsageIndicator({
       <Coins size={12} className={getTextColor(remainingPercent)} />
 
       {/* CLI-style progress bar */}
-      <div className="relative w-20 h-1.5 bg-secondary rounded-lg overflow-hidden">
+      <div className="relative w-20 h-1.5 bg-surface-hover/[0.12] rounded-lg overflow-hidden">
         <div
           className={cn('h-full transition-all duration-300', getColor(remainingPercent))}
           style={{ width: `${usagePercent}%` }}
@@ -67,9 +67,9 @@ export const TokenUsageIndicator = memo(function TokenUsageIndicator({
       {/* Token count with remaining percentage */}
       <span className={cn('text-xs tabular-nums', getTextColor(remainingPercent))}>
         {formatTokenCount(tokenUsage.totalTokens)}
-        <span className="text-muted-foreground/50 mx-0.5">/</span>
+        <span className="text-text-3/70 mx-0.5">/</span>
         {formatTokenCount(contextWindow)}
-        {cachePercent > 0 && <span className="text-green-500/70 ml-1">({cachePercent}%)</span>}
+        {cachePercent > 0 && <span className="text-text-3/70 ml-1">({cachePercent}%)</span>}
       </span>
     </div>
   )

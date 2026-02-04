@@ -148,7 +148,7 @@ function SessionRowInner({
               : 'text-text-1 hover:bg-surface-hover/[0.06]',
             isRunning &&
               !isSelected &&
-              'border border-blue-400/20 bg-blue-500/5'
+              'border border-stroke/40 bg-surface-hover/[0.12]'
           )}
           onClick={() => onSelect(session.sessionId, isGlobalSearch ? session.projectId : undefined)}
           role="option"
@@ -158,7 +158,7 @@ function SessionRowInner({
           <div className="flex items-center gap-2">
             <StatusIcon status={session.status} />
             {session.isFavorite && (
-              <Star size={12} className="text-yellow-500 flex-shrink-0 fill-yellow-500" />
+              <Star size={12} className="text-text-3 flex-shrink-0 fill-text-3/70" />
             )}
             <span className={cn("truncate text-[14px] leading-tight flex-1", isSelected ? "font-semibold" : "font-medium")}>{displayName}</span>
             <TaskProgressIndicator tasksJson={session.tasksJson} status={session.status} />
@@ -395,7 +395,7 @@ export const SessionList = memo(function SessionList({
                     : 'text-text-1 hover:bg-surface-hover/[0.06]',
                   isRunning &&
                     !isSelected &&
-                    'border border-blue-400/20 bg-blue-500/5'
+                    'border border-stroke/40 bg-surface-hover/[0.12]'
                 )}
                 onClick={() =>
                   onSelect(
@@ -412,7 +412,7 @@ export const SessionList = memo(function SessionList({
                   {session.isFavorite && (
                     <Star
                       size={12}
-                      className="text-yellow-500 flex-shrink-0 fill-yellow-500"
+                      className="text-text-3 flex-shrink-0 fill-text-3/70"
                     />
                   )}
                   <span className={cn("truncate text-[14px] leading-tight flex-1", isSelected ? "font-semibold" : "font-medium")}>
@@ -529,10 +529,10 @@ export const SessionList = memo(function SessionList({
     return (
       <div className="flex h-36 items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
-            <span className="text-lg">📁</span>
+          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-3">
+            <span className="text-base">📁</span>
           </div>
-          <p className="text-sm font-semibold text-text-1">Select a project</p>
+          <p className="text-sm font-medium text-text-2">Select a project</p>
           <p className="text-xs text-text-3">Choose a project to see sessions</p>
         </div>
       </div>
@@ -573,10 +573,10 @@ export const SessionList = memo(function SessionList({
     return (
       <div className="flex h-40 items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
-            <span className="text-lg">💬</span>
+          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-3">
+            <span className="text-base">💬</span>
           </div>
-          <p className="text-sm font-semibold text-text-1">
+          <p className="text-sm font-medium text-text-2">
             {isGlobalSearch ? 'No matching sessions' : 'No sessions yet'}
           </p>
           <p className="text-xs text-text-3">

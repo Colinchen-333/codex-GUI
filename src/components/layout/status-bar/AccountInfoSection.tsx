@@ -38,18 +38,18 @@ export const AccountInfoSection = memo(function AccountInfoSection() {
   }, [])
 
   return (
-    <div className="flex items-center gap-2 pr-3 border-r border-border/30">
+    <div className="flex items-center gap-2 pr-3 border-r border-border/30 text-text-2">
       <ShieldCheck
         size={12}
-        className={accountInfo?.account ? 'text-green-500' : 'text-yellow-500'}
+        className={accountInfo?.account ? 'text-text-2' : 'text-text-3'}
       />
       {accountInfo?.account ? (
-        <span className="truncate max-w-[120px]">
+        <span className="truncate max-w-[120px] text-text-2">
           {accountInfo.account.email || 'Logged in'}
           {accountInfo.account.planType && ` (${accountInfo.account.planType})`}
         </span>
       ) : (
-        <span className="text-yellow-600/80 uppercase tracking-widest text-xs">
+        <span className="text-text-3 uppercase tracking-widest text-xs">
           Auth Required
         </span>
       )}

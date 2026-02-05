@@ -12,7 +12,9 @@
 
 import { useEffect, useCallback, useState } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
-import { Download } from 'lucide-react'
+import { Download, MessageSquarePlus, Zap, Layers, Settings, FolderPlus, Filter } from 'lucide-react'
+import { Button } from '../ui/Button'
+import { IconButton } from '../ui/IconButton'
 import { log } from '../../lib/logger'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
@@ -20,18 +22,17 @@ import { useAppStore } from '../../stores/app'
 import { useThreadStore } from '../../stores/thread'
 import { useSettingsStore, mergeProjectSettings, getEffectiveWorkingDirectory } from '../../stores/settings'
 import { useToast } from '../ui/Toast'
-import { SidebarTabs, SessionSearch, ProjectList, SessionList, SidebarDialogs, useSidebarDialogs } from './sidebar/index'
+import { SessionSearch, GroupedSessionList, SidebarDialogs, useSidebarDialogs } from './sidebar/index'
 import { ImportCodexSessionDialog } from '../LazyComponents'
 import type { CodexSessionSummary } from '../../lib/api'
 
 export function Sidebar() {
-  const { sidebarTab: activeTab, setSidebarTab: setActiveTab } = useAppStore()
+  const { setSidebarTab: setActiveTab } = useAppStore()
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const {
     sessions,
     selectedSessionId,
-    updateSession,
     isLoading: sessionsLoading,
     searchQuery,
     searchResults,
@@ -50,17 +51,6 @@ export function Sidebar() {
   }, [fetchSessions, selectedProjectId])
 
   const displaySessions = searchQuery ? searchResults : sessions
-  const isGlobalSearch = !!searchQuery
-
-  const handleSelectProject = useCallback((projectId: string | null) => {
-    if (!projectId) return
-    if (projectId !== selectedProjectId) {
-      selectSession(null)
-      closeAllThreads()
-    }
-    selectProject(projectId)
-    setActiveTab('sessions')
-  }, [closeAllThreads, selectProject, selectSession, selectedProjectId, setActiveTab])
 
   const handleSelectSession = useCallback((sessionId: string | null, sessionProjectId?: string) => {
     if (sessionProjectId && sessionProjectId !== selectedProjectId) {
@@ -158,61 +148,75 @@ export function Sidebar() {
   }, [projects, addProject, selectProject, setActiveTab, settings, startThread, fetchSessions, selectSession, showToast])
 
   return (
-    <div className="flex h-full w-64 flex-col bg-surface p-3">
-      <SidebarTabs activeTab={activeTab} onTabChange={setActiveTab} />
-      <SessionSearch visible={activeTab === 'sessions'} />
-      <div className="flex-1 overflow-y-auto -mx-2 px-2">
-        {activeTab === 'projects' ? (
-          <ProjectList
-            projects={projects}
-            selectedId={selectedProjectId}
-            onSelect={handleSelectProject}
-            onRename={dialogs.handleRenameProject}
-            onDelete={dialogs.handleDeleteProject}
-            onSettings={dialogs.handleOpenProjectSettings}
-          />
-        ) : (
-          <SessionList
-            sessions={displaySessions}
-            selectedId={selectedSessionId}
-            onSelect={handleSelectSession}
-            onToggleFavorite={async (id, fav) => {
-              try { await updateSession(id, { isFavorite: !fav }) }
-              catch { showToast('Failed to update session', 'error') }
-            }}
-            onRename={dialogs.handleRenameSession}
-            onArchive={async (id) => {
-              try { await updateSession(id, { isArchived: true }) }
-              catch { showToast('Failed to archive session', 'error') }
-            }}
-            onDelete={dialogs.handleDeleteSession}
-            isLoading={sessionsLoading || isSearching}
-            hasProject={!!selectedProjectId}
-            isGlobalSearch={isGlobalSearch}
-          />
-        )}
-      </div>
-      <div className="mt-2 pt-2 space-y-2">
-        <div className="flex gap-2">
-          <button
-            className="flex-1 rounded-md border border-stroke/40 bg-surface-solid px-4 py-2.5 text-sm font-semibold text-text-1 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08] active:bg-surface-hover/[0.12] disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={activeTab === 'projects' ? handleAddProject : handleNewSession}
-            disabled={activeTab === 'sessions' && !selectedProjectId}
-            title={activeTab === 'sessions' && !selectedProjectId ? 'Select a project first' : undefined}
+    <div className="flex h-full w-64 flex-col border-r border-stroke/10 bg-surface">
+      <nav className="px-2 pt-4 space-y-1">
+        <button
+          onClick={handleNewSession}
+          disabled={!selectedProjectId}
+          className="flex w-full items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg hover:bg-surface-hover/[0.08] cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <MessageSquarePlus size={20} className="text-text-3" />
+          <span className="text-text-1">New thread</span>
+        </button>
+        <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg hover:bg-surface-hover/[0.08] cursor-pointer transition-colors justify-between">
+          <div className="flex items-center gap-3">
+            <Zap size={20} className="text-text-3" />
+            <span className="text-text-1">Automations</span>
+          </div>
+          <span className="text-[10px] px-1.5 py-0.5 bg-surface-hover/[0.12] rounded text-text-3 font-semibold">1</span>
+        </div>
+        <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg hover:bg-surface-hover/[0.08] cursor-pointer transition-colors">
+          <Layers size={20} className="text-text-3" />
+          <span className="text-text-1">Skills</span>
+        </div>
+      </nav>
+
+      <div className="pt-6 pb-2 px-4 flex items-center justify-between">
+        <span className="text-[11px] font-bold text-text-3 uppercase tracking-wider">Threads</span>
+        <div className="flex gap-1">
+          <IconButton
+            onClick={handleAddProject}
+            size="sm"
+            title="Add project folder"
           >
-            {activeTab === 'projects' ? 'Add Project' : 'New Session'}
-          </button>
-          {activeTab === 'sessions' && (
-            <button
-              className="rounded-md border border-stroke/30 bg-surface-solid px-3 py-2.5 text-text-2 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08] active:bg-surface-hover/[0.12]"
-              onClick={() => setImportDialogOpen(true)}
-              title="Import from Codex CLI"
-            >
-              <Download size={16} />
-            </button>
-          )}
+            <FolderPlus size={16} />
+          </IconButton>
+          <IconButton size="sm" title="Filter">
+            <Filter size={16} />
+          </IconButton>
         </div>
       </div>
+
+      <SessionSearch visible={true} />
+
+      <div className="flex-1 overflow-y-auto px-2">
+        <GroupedSessionList
+          sessions={displaySessions}
+          selectedSessionId={selectedSessionId}
+          onSelectSession={handleSelectSession}
+          isLoading={sessionsLoading || isSearching}
+        />
+      </div>
+
+      <div className="p-4 border-t border-stroke/10 space-y-2">
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => setImportDialogOpen(true)}
+          title="Import from Codex CLI"
+        >
+          <Download size={16} />
+          Import
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3"
+        >
+          <Settings size={20} className="text-text-3" />
+          <span>Settings</span>
+        </Button>
+      </div>
+
       <SidebarDialogs
         renameDialogOpen={dialogs.renameDialogOpen}
         projectToRename={dialogs.projectToRename}

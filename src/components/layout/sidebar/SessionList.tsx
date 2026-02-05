@@ -168,6 +168,7 @@ function SessionRowInner({
             <span
               className={cn(
                 'text-text-3 transition-colors',
+                isRunning && 'animate-breathe-text',
                 isSelected && 'text-text-2'
               )}
             >
@@ -239,6 +240,7 @@ export const SessionList = memo(function SessionList({
   onSelect,
   onToggleFavorite,
   onRename,
+  onArchive,
   onDelete,
   isLoading,
   hasProject,

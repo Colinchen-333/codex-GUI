@@ -113,7 +113,9 @@ export const StatusIndicator = memo(function StatusIndicator({
           )}
         />
       )}
-      {text}
+      {text && (
+        <span className={cn(status === 'running' && 'animate-breathe-text')}>{text}</span>
+      )}
     </span>
   )
 })
@@ -138,7 +140,7 @@ export const StatusBadge = memo(function StatusBadge({ status, text }: StatusBad
         config.textColor
       )}
     >
-      {text}
+      <span className={cn(status === 'running' && 'animate-breathe-text')}>{text}</span>
     </span>
   )
 })

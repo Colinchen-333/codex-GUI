@@ -15,17 +15,19 @@ export function InputStatusHint() {
   const usedPercent = Math.min(tokenUsage.totalTokens / contextWindow, 1)
   const remainingPercent = Math.max(0, Math.round(100 - usedPercent * 100))
 
+  if (tokenUsage.totalTokens <= 0) {
+    return null
+  }
+
   return (
     <div
       id="input-hint"
       className="mt-2 flex items-center justify-center gap-3 text-[10px] text-text-3 select-none"
     >
-      {tokenUsage.totalTokens > 0 && (
-        <span className="flex items-center gap-1.5">
-          <Coins size={10} />
-          {remainingPercent}% context left
-        </span>
-      )}
+      <span className="flex items-center gap-1.5">
+        <Coins size={10} />
+        {remainingPercent}% context left
+      </span>
       <span>•</span>
       <button
         type="button"

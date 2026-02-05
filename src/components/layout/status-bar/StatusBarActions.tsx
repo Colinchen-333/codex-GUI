@@ -8,8 +8,6 @@ import { memo } from 'react'
 import { HelpCircle, Info, Settings, Camera } from 'lucide-react'
 import { useThreadStore } from '../../../stores/thread'
 import { selectActiveThread } from '../../../stores/thread/selectors'
-import { useAppStore } from '../../../stores/app'
-import { preloadSettingsDialog } from '../../../lib/lazyPreload'
 
 export interface StatusBarActionsProps {
   onHelpClick: () => void
@@ -25,11 +23,9 @@ export const StatusBarActions = memo(function StatusBarActions({
   onSnapshotsClick,
 }: StatusBarActionsProps) {
   const activeThread = useThreadStore(selectActiveThread)
-  const appMode = useAppStore((state) => state.appMode)
-
   return (
     <div className="flex items-center gap-1">
-      {activeThread && appMode === 'normal' && (
+      {activeThread && (
         <button
           className="h-7 w-7 flex items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1"
           onClick={onSnapshotsClick}
@@ -55,7 +51,6 @@ export const StatusBarActions = memo(function StatusBarActions({
       <button
         className="h-7 w-7 flex items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1"
         onClick={onSettingsClick}
-        onMouseEnter={preloadSettingsDialog}
         title="Settings"
       >
         <Settings size={14} />

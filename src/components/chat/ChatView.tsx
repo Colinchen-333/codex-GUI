@@ -8,11 +8,12 @@
  * - ChatImageUpload: Drag & drop and paste image handling
  * - useChatCommands: Command context builder hook
  */
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import type { ListImperativeAPI } from 'react-window'
 // useThreadStore imported for potential future use - currently using props
 import { useProjectsStore, type ProjectsState } from '../../stores/projects'
 import { useAppStore, type AppState } from '../../stores/app'
+import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { serverApi, type ReviewTarget } from '../../lib/api'
 import { ReviewSelectorDialog } from '../LazyComponents'
 import { log } from '../../lib/logger'
@@ -28,6 +29,7 @@ export function ChatView() {
   // Store selectors
   const selectedProjectId = useProjectsStore((state: ProjectsState) => state.selectedProjectId)
   const projects = useProjectsStore((state: ProjectsState) => state.projects)
+  const focusedThread = useThreadStore(selectFocusedThread)
 
   // Local state
   const [inputValue, setInputValue] = useState('')
@@ -119,8 +121,33 @@ export function ChatView() {
   // Get current project for review selector
   const currentProject = projects.find((p) => p.id === selectedProjectId)
 
+  const shouldShowContinue = useMemo(() => {
+    if (!focusedThread || focusedThread.turnStatus === 'running') return false
+    const lastId = focusedThread.itemOrder[focusedThread.itemOrder.length - 1]
+    if (!lastId) return false
+    const lastItem = focusedThread.items[lastId]
+    return lastItem?.type === 'info' && lastItem.id.startsWith('compact-')
+  }, [focusedThread])
+
+  const handleQuickContinue = useCallback(() => {
+    setInputValue('继续')
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }, [setInputValue])
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden relative">
+      {shouldShowContinue && (
+        <div className="absolute right-8 top-6 z-10">
+          <button
+            className="rounded-full border border-stroke/20 bg-surface-hover/[0.08] px-4 py-2 text-sm font-semibold text-text-2 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.14]"
+            onClick={handleQuickContinue}
+          >
+            继续
+          </button>
+        </div>
+      )}
       {/* Drag Overlay */}
       {isDragging && (
         <DragOverlay onDragLeave={handleDragLeave} onDrop={handleDrop} />

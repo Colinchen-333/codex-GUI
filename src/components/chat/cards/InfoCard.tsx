@@ -3,7 +3,7 @@
  * Memoized to prevent unnecessary re-renders
  */
 import { memo } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, FileText } from 'lucide-react'
 import { isInfoContent } from '../../../lib/typeGuards'
 import { log } from '../../../lib/logger'
 import { formatTimestamp } from '../utils'
@@ -16,6 +16,39 @@ export const InfoCard = memo(
       return null
     }
     const content = item.content
+    const isCompactionNotice =
+      item.id.startsWith('compact-') ||
+      content.title?.toLowerCase().includes('compacted') ||
+      content.title?.toLowerCase().includes('compaction')
+
+    if (isCompactionNotice) {
+      const detailLines = content.details
+        ? content.details.split('\n').map((line) => line.trim()).filter(Boolean)
+        : []
+
+      return (
+        <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
+          <div className="w-full space-y-4">
+            <div className="flex items-center gap-3 text-xs text-text-3">
+              <div className="h-px flex-1 bg-stroke/20" />
+              <div className="flex items-center gap-2">
+                <FileText size={14} className="text-text-3" />
+                <span className="font-medium">{content.title || 'Context automatically compacted'}</span>
+              </div>
+              <div className="h-px flex-1 bg-stroke/20" />
+            </div>
+            {detailLines.length > 0 && (
+              <div className="space-y-1 text-sm text-text-3">
+                {detailLines.map((line, idx) => (
+                  <div key={`${item.id}-detail-${idx}`}>{line}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
         <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)]">

@@ -1,28 +1,37 @@
-/**
- * ChatEmptyState - Empty state component for chat message list
- *
- * Provides a friendly empty state with helpful hints and animations.
- * Improves user experience when there are no messages yet.
- */
 import { memo } from 'react'
-import { MessageSquare, Sparkles, Keyboard } from 'lucide-react'
+import { MessageSquare, Cloud, ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export interface ChatEmptyStateProps {
-  /** Whether the list is filtered */
   isFiltered?: boolean
-  /** Optional custom message */
   message?: string
-  /** Additional CSS classes */
   className?: string
+  projectName?: string
+  onProjectSelect?: () => void
 }
+
+const SUGGESTION_CARDS = [
+  {
+    emoji: '🎮',
+    text: 'Build a classic Snake game in this repo.',
+  },
+  {
+    emoji: '📜',
+    text: 'Create a one-page PDF that summarizes this app.',
+  },
+  {
+    emoji: '📰',
+    text: "Summarize last week's PRs by teammate and theme.",
+  },
+]
 
 export const ChatEmptyState = memo(function ChatEmptyState({
   isFiltered = false,
   message,
   className,
+  projectName = 'codex-GUI',
+  onProjectSelect,
 }: ChatEmptyStateProps) {
-  // Show different content based on state
   if (isFiltered) {
     return (
       <div
@@ -32,7 +41,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
         )}
       >
         <div className="relative">
-          <div className="flex h-14 w-14 items-center justify-center rounded-md bg-surface-hover/[0.12]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-solid border border-stroke/10">
             <MessageSquare size={22} className="text-text-2" />
           </div>
         </div>
@@ -49,34 +58,43 @@ export const ChatEmptyState = memo(function ChatEmptyState({
   return (
     <div
       className={cn(
-        'h-full flex flex-col items-center justify-center text-text-3 gap-6',
+        'h-full flex flex-col items-center justify-center text-text-3 -mt-20',
         className
       )}
     >
-      {/* Animated icon */}
-      <div className="relative">
-        <div className="flex h-14 w-14 items-center justify-center rounded-md bg-surface-hover/[0.12]">
-          <Sparkles size={20} className="text-text-2" />
+      <div className="mb-8">
+        <div className="w-16 h-16 rounded-2xl bg-surface-solid border border-stroke/10 flex items-center justify-center mb-6 mx-auto">
+          <Cloud size={32} className="text-text-3" />
         </div>
+        <h2 className="text-3xl font-bold text-center mb-2 text-text-1">
+          {message || "Let's build"}
+        </h2>
+        <button
+          onClick={onProjectSelect}
+          className="flex items-center justify-center gap-1 text-text-3 cursor-pointer hover:text-text-2 transition-colors mx-auto"
+        >
+          <span className="text-lg">{projectName}</span>
+          <ChevronDown size={20} />
+        </button>
       </div>
 
-      {/* Welcome message */}
-      <div className="text-center space-y-2">
-        <p className="text-sm font-semibold text-text-1">
-          {message || 'Start a conversation'}
-        </p>
-        <p className="text-xs text-text-3 max-w-xs">
-          Type a message below to begin working with Codex
-        </p>
+      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 mb-12 px-6">
+        {SUGGESTION_CARDS.map((card, index) => (
+          <div
+            key={index}
+            className="bg-surface-solid border border-stroke/10 p-5 rounded-2xl hover:border-ring/50 cursor-pointer transition-all"
+          >
+            <div className="text-2xl mb-4">{card.emoji}</div>
+            <p className="text-sm font-medium leading-relaxed text-text-2">
+              {card.text}
+            </p>
+          </div>
+        ))}
       </div>
 
-      {/* Keyboard shortcuts hint */}
-      <div className="flex items-center gap-2 text-xs text-text-3 bg-surface-hover/[0.08] px-3 py-2 rounded-md border border-stroke/20">
-        <Keyboard size={14} />
-        <span>
-          Press <kbd className="px-1.5 py-0.5 bg-surface-solid rounded text-[10px] font-mono">?</kbd> for shortcuts
-        </span>
-      </div>
+      <button className="text-xs font-medium text-text-3 hover:text-text-2 uppercase tracking-widest mb-12">
+        Explore more
+      </button>
     </div>
   )
 })

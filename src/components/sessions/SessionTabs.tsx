@@ -1,5 +1,5 @@
 import { useState, memo, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, MessageSquare, Loader2 } from 'lucide-react'
+import { X, Plus, MessageSquare, Loader2, MoreHorizontal, Play, ChevronDown, GitCommit, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, type SingleThreadState } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
@@ -7,12 +7,38 @@ import { useSessionsStore } from '../../stores/sessions'
 import { CloseSessionDialog } from './CloseSessionDialog'
 import { TaskProgressCompact } from '../chat/TaskProgress'
 import type { SessionStatus } from '../../lib/api'
+import type { FileChangeItem } from '../../stores/thread/types'
 
 interface SessionTabsProps {
   onNewSession?: () => void
+  onToggleRightPanel?: () => void
+  rightPanelOpen?: boolean
+  onOpenCommitDialog?: () => void
 }
 
-export function SessionTabs({ onNewSession }: SessionTabsProps) {
+function calculateDiffStats(items: Record<string, unknown>): { additions: number; deletions: number } {
+  let additions = 0
+  let deletions = 0
+  
+  Object.values(items).forEach((item) => {
+    const fileItem = item as FileChangeItem
+    if (fileItem?.type === 'fileChange' && fileItem?.content?.changes) {
+      fileItem.content.changes.forEach((change) => {
+        if (change.diff) {
+          const lines = change.diff.split('\n')
+          lines.forEach((line) => {
+            if (line.startsWith('+') && !line.startsWith('+++')) additions++
+            if (line.startsWith('-') && !line.startsWith('---')) deletions++
+          })
+        }
+      })
+    }
+  })
+  
+  return { additions, deletions }
+}
+
+export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, onOpenCommitDialog }: SessionTabsProps) {
   const threads = useThreadStore((state) => state.threads)
   const focusedThreadId = useThreadStore((state) => state.focusedThreadId)
   const switchThread = useThreadStore((state) => state.switchThread)
@@ -84,9 +110,91 @@ export function SessionTabs({ onNewSession }: SessionTabsProps) {
     return null
   }
 
+  const activeSession = sessions.find(s => s.sessionId === focusedThreadId)
+  const activeThreadState = focusedThreadId ? threads[focusedThreadId] : null
+  const sessionTitle = activeSession?.title || activeThreadState?.thread?.cwd?.split('/').pop() || 'New thread'
+  
+  const diffStats = useMemo(() => {
+    if (!activeThreadState) return { additions: 0, deletions: 0 }
+    return calculateDiffStats(activeThreadState.items)
+  }, [activeThreadState])
+  
+  const hasDiffStats = diffStats.additions > 0 || diffStats.deletions > 0
+  const isRunning = activeThreadState?.turnStatus === 'running'
+
   return (
     <>
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-stroke/30 bg-surface-hover/[0.04] backdrop-blur-sm overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/50">
+      <div className="h-12 border-b border-stroke/20 px-4 flex items-center justify-between shrink-0 bg-background">
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="font-semibold truncate text-sm text-text-1">{sessionTitle}</h1>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {activeThreadState && (
+            <>
+              <button 
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                  isRunning 
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-stroke/30 bg-surface-solid text-text-2 hover:bg-surface-hover/[0.08]"
+                )}
+                title={isRunning ? "Running..." : "Run"}
+              >
+                <Play size={12} className={isRunning ? "animate-pulse" : ""} />
+                {isRunning ? "Running" : "Run"}
+              </button>
+              
+              <button className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-stroke/30 bg-surface-solid text-text-2 hover:bg-surface-hover/[0.08] transition-colors">
+                Open
+                <ChevronDown size={12} />
+              </button>
+              
+              <button 
+                onClick={onOpenCommitDialog}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border border-stroke/30 bg-surface-solid text-text-1 hover:bg-surface-hover/[0.08] transition-colors"
+              >
+                <GitCommit size={12} />
+                Commit
+              </button>
+              
+              {hasDiffStats && (
+                <button 
+                  onClick={onToggleRightPanel}
+                  className={cn(
+                    "flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-mono tabular-nums transition-colors",
+                    rightPanelOpen 
+                      ? "bg-primary/10 border border-primary/30" 
+                      : "hover:bg-surface-hover/[0.08]"
+                  )}
+                >
+                  <span className="text-emerald-500 font-semibold">+{diffStats.additions.toLocaleString()}</span>
+                  <span className="text-red-500 font-semibold">-{diffStats.deletions.toLocaleString()}</span>
+                </button>
+              )}
+            </>
+          )}
+          
+          <button 
+            onClick={onToggleRightPanel}
+            className={cn(
+              "p-1.5 transition-colors rounded-lg",
+              rightPanelOpen 
+                ? "text-primary bg-primary/10" 
+                : "text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.08]"
+            )}
+            title={rightPanelOpen ? "Hide changes panel" : "Show changes panel"}
+          >
+            {rightPanelOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+          </button>
+          
+          <button className="p-1.5 text-text-3 hover:text-text-1 transition-colors rounded-lg hover:bg-surface-hover/[0.08]">
+            <MoreHorizontal size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-stroke/20 bg-surface-hover/[0.04] backdrop-blur-sm overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/50">
         {threadEntries.map(([threadId, threadState]) => {
           const sessionMeta = sessions.find(s => s.sessionId === threadId)
           return (
@@ -106,7 +214,6 @@ export function SessionTabs({ onNewSession }: SessionTabsProps) {
           )
         })}
 
-        {/* Add new session button */}
         {canAddSession() && onNewSession && (
           <button
             onClick={handleNewSessionClick}
@@ -121,7 +228,6 @@ export function SessionTabs({ onNewSession }: SessionTabsProps) {
           </button>
         )}
 
-        {/* Session count indicator */}
         <span className="ml-auto text-[10px] text-text-3/70 tabular-nums">
           {threadEntries.length}/{maxSessions}
         </span>

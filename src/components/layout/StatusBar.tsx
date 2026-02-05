@@ -9,16 +9,16 @@
  * - Optimized selectors from thread store
  * - Reduced re-renders through component isolation
  */
-import { useEffect } from 'react'
+import { useEffect, useState, memo } from 'react'
 import {
-  SettingsDialog,
   SnapshotListDialog,
   AboutDialog,
   HelpDialog,
   KeyboardShortcutsDialog,
 } from '../LazyComponents'
-import { useAppStore } from '../../stores/app'
+import { useNavigate } from 'react-router-dom'
 import { useProjectsStore } from '../../stores/projects'
+import { useAppStore } from '../../stores/app'
 import {
   ServerStatusIndicator,
   GitInfoIndicator,
@@ -27,14 +27,44 @@ import {
   AccountInfoSection,
   StatusBarActions,
 } from './status-bar'
+import { cn } from '../../lib/utils'
+
+type ContextMode = 'local' | 'worktree' | 'cloud'
+
+const ContextModeTabs = memo(function ContextModeTabs() {
+  const [activeMode, setActiveMode] = useState<ContextMode>('local')
+  
+  const modes: { id: ContextMode; label: string }[] = [
+    { id: 'local', label: 'Local' },
+    { id: 'worktree', label: 'Worktree' },
+    { id: 'cloud', label: 'Cloud' },
+  ]
+  
+  return (
+    <div className="flex items-center rounded-md bg-surface-hover/[0.08] p-0.5">
+      {modes.map((mode) => (
+        <button
+          key={mode.id}
+          onClick={() => setActiveMode(mode.id)}
+          className={cn(
+            'px-2 py-0.5 text-[10px] font-medium rounded transition-colors',
+            activeMode === mode.id
+              ? 'bg-surface-solid text-text-1 shadow-sm'
+              : 'text-text-3 hover:text-text-2'
+          )}
+        >
+          {mode.label}
+        </button>
+      ))}
+    </div>
+  )
+})
 
 export function StatusBar() {
   const { selectedProjectId, projects } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
-  const appMode = useAppStore((state) => state.appMode)
+  const navigate = useNavigate()
   const {
-    settingsOpen,
-    setSettingsOpen,
     snapshotsOpen,
     setSnapshotsOpen,
     aboutOpen,
@@ -83,31 +113,25 @@ export function StatusBar() {
 
   return (
     <>
-      <div className="flex h-9 items-center justify-between bg-card/30 backdrop-blur-md px-4 text-xs font-medium tracking-tight text-text-3">
-        {/* Left side - Status indicators */}
-        <div className="flex items-center gap-5">
+      <div className="flex h-8 items-center justify-between bg-surface/50 backdrop-blur-md px-4 text-[11px] font-medium tracking-tight text-text-3 border-t border-stroke/10">
+        <div className="flex items-center gap-4">
+          <ContextModeTabs />
           <ServerStatusIndicator />
-          {/* Only show GitInfoIndicator in normal mode with a valid project path */}
-          {appMode === 'normal' && selectedProject?.path && (
-            <GitInfoIndicator projectPath={selectedProject.path} />
-          )}
           <TurnStatusIndicator />
           <ConnectedTokenUsageIndicator />
         </div>
 
-        {/* Right side - Account info & Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {selectedProject?.path && <GitInfoIndicator projectPath={selectedProject.path} />}
           <AccountInfoSection />
           <StatusBarActions
             onHelpClick={() => setHelpOpen(true)}
             onAboutClick={() => setAboutOpen(true)}
-            onSettingsClick={() => setSettingsOpen(true)}
+            onSettingsClick={() => navigate('/settings')}
             onSnapshotsClick={() => setSnapshotsOpen(true)}
           />
         </div>
       </div>
-
-      <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <SnapshotListDialog isOpen={snapshotsOpen} onClose={() => setSnapshotsOpen(false)} />
       <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
       <HelpDialog isOpen={helpOpen} onClose={() => setHelpOpen(false)} />

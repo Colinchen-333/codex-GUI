@@ -25,8 +25,16 @@ export function ConnectionStatus() {
     isMountedRef.current = true
     startMonitoring()
 
-    // Listen for server disconnection and reconnection
+    // Listen for server disconnection and reconnection (Tauri only)
     const setupListeners = async () => {
+      if (typeof window === 'undefined') {
+        return () => {}
+      }
+      const tauriListen = (window as { __TAURI__?: { event?: { listen?: unknown } } }).__TAURI__?.event?.listen
+      if (typeof tauriListen !== 'function') {
+        return () => {}
+      }
+
       const unlistenDisconnected = await listen('app-server-disconnected', async () => {
         log.debug('[ConnectionStatus] Server disconnected event received', 'ConnectionStatus')
         if (isMountedRef.current) {

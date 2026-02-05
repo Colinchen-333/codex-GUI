@@ -90,8 +90,8 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
       </span>
 
       {/* Shimmer text effect */}
-      <span className="uppercase tracking-widest text-xs font-medium">
-        Working
+      <span className="uppercase tracking-widest text-xs font-medium animate-breathe-text">
+        Thinking
       </span>
 
       {/* Pending approvals badge */}

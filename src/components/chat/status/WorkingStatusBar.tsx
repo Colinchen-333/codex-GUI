@@ -108,9 +108,9 @@ export const WorkingStatusBar = memo(function WorkingStatusBar() {
           </span>
           {/* Status text with shimmer or reasoning summary */}
           {currentReasoning ? (
-            <span className="text-sm text-text-3 truncate">{currentReasoning}</span>
+            <span className="text-sm text-text-3 truncate animate-breathe-text">{currentReasoning}</span>
           ) : (
-            <span className="text-sm font-medium text-text-2 shimmer-text">Working</span>
+            <span className="text-sm font-medium text-text-2 animate-breathe-text">Thinking</span>
           )}
         </div>
         {/* Right side stats */}

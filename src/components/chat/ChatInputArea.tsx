@@ -2,10 +2,13 @@
  * ChatInputArea - Input area component with textarea, image preview, and send button
  * Extracted from ChatView.tsx for better modularity
  */
-import React, { useCallback, useEffect, memo } from 'react'
-import { X, Paperclip, StopCircle, ArrowUp } from 'lucide-react'
+import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from 'react'
+import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, Paperclip, ListTodo, GitBranch } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
+import { selectFileChanges } from '../../stores/thread/selectors'
+import { useSettingsStore } from '../../stores/settings'
+import { useProjectsStore } from '../../stores/projects'
 import { SlashCommandPopup } from './SlashCommandPopup'
 import { FileMentionPopup } from './FileMentionPopup'
 import { type SlashCommand } from '../../lib/slashCommands'
@@ -83,33 +86,24 @@ const SendButton = memo(function SendButton({
   onSend: () => void
   onInterrupt: () => void
 }) {
+  const isRunning = turnStatus === 'running'
   return (
-    <div className="flex items-center gap-1 mb-1">
-      {turnStatus === 'running' && (
-        <button
-          className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-hover/[0.12] text-text-2 hover:bg-destructive/80 hover:text-destructive-foreground transition-all duration-100"
-          onClick={onInterrupt}
-          title="Stop generation (Esc)"
-          aria-label="Stop generation"
-        >
-          <StopCircle size={20} aria-hidden="true" />
-        </button>
+    <button
+      className={cn(
+        'h-10 w-10 flex items-center justify-center rounded-full transition-all duration-100 shadow-[var(--shadow-1)]',
+        isRunning
+          ? 'bg-black text-white hover:bg-black/85'
+          : !canSend
+            ? 'bg-surface-hover/[0.08] text-text-3 cursor-not-allowed opacity-40'
+            : 'bg-black text-white hover:bg-black/85'
       )}
-      <button
-        className={cn(
-          'h-10 w-10 flex items-center justify-center rounded-full transition-all duration-100 shadow-[var(--shadow-1)]',
-          !canSend
-            ? 'bg-surface-hover/[0.08] text-text-3 cursor-not-allowed opacity-50'
-            : 'bg-surface-selected/[0.22] text-text-1 hover:bg-surface-selected/[0.3]'
-        )}
-        onClick={onSend}
-        disabled={!canSend}
-        title={turnStatus === 'running' ? 'Queue message' : 'Send message (Enter)'}
-        aria-label={turnStatus === 'running' ? 'Queue message' : 'Send message'}
-      >
-        <ArrowUp size={20} aria-hidden="true" />
-      </button>
-    </div>
+      onClick={isRunning ? onInterrupt : onSend}
+      disabled={!isRunning && !canSend}
+      title={isRunning ? 'Stop generation (Esc)' : 'Send message (Enter)'}
+      aria-label={isRunning ? 'Stop generation' : 'Send message'}
+    >
+      {isRunning ? <Square size={18} aria-hidden="true" /> : <ArrowUp size={18} aria-hidden="true" />}
+    </button>
   )
 })
 
@@ -128,11 +122,48 @@ export default memo(function ChatInputArea({
 }: ChatInputAreaProps) {
   // P1 Fix: Use proper selector to avoid re-render loops from getter-based state access
   const focusedThread = useThreadStore(selectFocusedThread)
+  const hasFileChanges = useThreadStore((state) => selectFileChanges(state).length > 0)
   const interrupt = useThreadStore((state) => state.interrupt)
+  const settings = useSettingsStore((state) => state.settings)
 
-  const [isFocused, setIsFocused] = React.useState(false)
+  const [isFocused, setIsFocused] = useState(false)
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
+  const [planModeEnabled, setPlanModeEnabled] = useState(false)
+
+  const gitInfo = useProjectsStore((state) => 
+    selectedProjectId ? state.gitInfo[selectedProjectId] : null
+  )
+  const gitBranch = gitInfo?.branch || null
+  const addMenuRef = useRef<HTMLDivElement>(null)
 
   const turnStatus = focusedThread?.turnStatus ?? 'idle'
+  const modelOverride = focusedThread?.sessionOverrides?.model
+
+  const modelLabel = useMemo(() => {
+    const modelId = modelOverride || settings.model || 'gpt-5.2-codex'
+    const parts = modelId.replace(/_/g, '-').split('-')
+    const formatted = parts
+      .map((part, index) => {
+        if (index === 0 && part.toLowerCase() === 'gpt') return 'GPT'
+        if (/^o\\d+/i.test(part)) return part.toUpperCase()
+        if (/^\\d/.test(part)) return part
+        return part.charAt(0).toUpperCase() + part.slice(1)
+      })
+      .join('-')
+    return formatted
+  }, [modelOverride, settings.model])
+
+  const reasoningLabel = useMemo(() => {
+    const map: Record<string, string> = {
+      none: '',
+      minimal: 'Minimal',
+      low: 'Low',
+      medium: 'Medium',
+      high: 'High',
+      xhigh: 'Extra High',
+    }
+    return map[settings.reasoningEffort] ?? ''
+  }, [settings.reasoningEffort])
 
   const {
     showSlashCommands,
@@ -255,6 +286,24 @@ export default memo(function ChatInputArea({
 
   const canSend = inputValue.trim() || attachedImages.length > 0
 
+  useEffect(() => {
+    if (!isAddMenuOpen) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!addMenuRef.current) return
+      if (!addMenuRef.current.contains(event.target as Node)) {
+        setIsAddMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isAddMenuOpen])
+
+  const placeholder = turnStatus === 'running'
+    ? 'Type to queue next message...'
+    : hasFileChanges
+      ? 'Ask for follow-up changes'
+      : 'Message Codex...'
+
   return (
     <div className="px-6 md:px-8 pb-6 pt-3 bg-transparent" role="form" aria-label="Message composer">
       <div className="mx-auto max-w-[880px]">
@@ -264,9 +313,9 @@ export default memo(function ChatInputArea({
 
         <div
           className={cn(
-            'relative rounded-lg bg-surface-solid border border-stroke/30 p-2.5 transition-all duration-200 shadow-[var(--shadow-1)]',
-            'hover:border-stroke/40',
-            isFocused && 'ring-2 ring-primary/10 border-stroke/50 shadow-[var(--shadow-2)]',
+            'relative rounded-2xl bg-surface-solid border border-stroke/20 transition-all duration-200 shadow-[var(--shadow-1)]',
+            'hover:border-stroke/30',
+            isFocused && 'ring-2 ring-primary/8 border-stroke/40 shadow-[var(--shadow-2)]',
             isDragging && 'scale-[1.01] ring-2 ring-primary/20 ring-offset-2'
           )}
         >
@@ -286,42 +335,11 @@ export default memo(function ChatInputArea({
 
           <ImagePreview images={attachedImages} onRemove={removeImage} />
 
-          <div className="flex items-end gap-2 pl-2">
-            <input
-              type="file"
-              id="image-upload"
-              className="hidden"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                const files = e.target.files
-                if (files) {
-                  for (const file of files) {
-                    handleImageFile(file)
-                  }
-                }
-                e.target.value = ''
-              }}
-            />
-            <button
-              className="mb-2 p-2 text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12] rounded-md transition-colors"
-              onClick={() => {
-                document.getElementById('image-upload')?.click()
-              }}
-              title="Attach images"
-              aria-label="Attach images"
-            >
-              <Paperclip size={20} aria-hidden="true" />
-            </button>
-
+          <div className="px-4 pt-3">
             <textarea
               ref={inputRef}
-              className="flex-1 max-h-[200px] min-h-[44px] resize-none bg-transparent py-3 text-sm text-text-1 focus:outline-none placeholder:text-text-3/70"
-              placeholder={
-                turnStatus === 'running'
-                  ? 'Type to queue next message...'
-                  : 'Message Codex...'
-              }
+              className="w-full max-h-[220px] min-h-[80px] resize-none bg-transparent text-sm text-text-1 focus:outline-none placeholder:text-text-3/70"
+              placeholder={placeholder}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -332,15 +350,120 @@ export default memo(function ChatInputArea({
               aria-label="Message input"
               aria-describedby="input-hint"
             />
+          </div>
 
-            <SendButton
-              turnStatus={turnStatus}
-              canSend={!!canSend}
-              onSend={handleSendWithHistory}
-              onInterrupt={interrupt}
-            />
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stroke/15 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                id="image-upload"
+                className="hidden"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = e.target.files
+                  if (files) {
+                    for (const file of files) {
+                      handleImageFile(file)
+                    }
+                  }
+                  e.target.value = ''
+                }}
+              />
+              <div ref={addMenuRef} className="relative">
+                <button
+                  className={cn(
+                    'h-8 w-8 rounded-full border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1',
+                    isAddMenuOpen && 'bg-surface-hover/[0.14] text-text-1'
+                  )}
+                  onClick={() => setIsAddMenuOpen((prev) => !prev)}
+                  title="Add"
+                  aria-label="Add"
+                >
+                  <Plus size={18} aria-hidden="true" />
+                </button>
+
+                {isAddMenuOpen && (
+                  <div className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl border border-stroke/15 bg-surface-solid p-2 shadow-[var(--shadow-2)]">
+                    <button
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-1 hover:bg-surface-hover/[0.12]"
+                      onClick={() => {
+                        document.getElementById('image-upload')?.click()
+                        setIsAddMenuOpen(false)
+                      }}
+                    >
+                      <Paperclip size={16} className="text-text-3" />
+                      Add photos & files
+                    </button>
+                    <div className="mt-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm text-text-1 hover:bg-surface-hover/[0.12]">
+                      <div className="flex items-center gap-2">
+                        <ListTodo size={16} className="text-text-3" />
+                        Plan mode
+                      </div>
+                      <button
+                        className={cn(
+                          'relative h-5 w-10 rounded-full transition-colors',
+                          planModeEnabled ? 'bg-primary/80' : 'bg-surface-hover/[0.2]'
+                        )}
+                        onClick={() => setPlanModeEnabled((prev) => !prev)}
+                        aria-label="Toggle plan mode"
+                      >
+                        <span
+                          className={cn(
+                            'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+                            planModeEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                          )}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold text-text-2 transition-colors hover:bg-surface-hover/[0.08] hover:text-text-1"
+                title="Model and reasoning"
+                aria-label="Model and reasoning"
+              >
+                <span className="text-text-1">{modelLabel}</span>
+                {reasoningLabel && <span className="text-text-3">{reasoningLabel}</span>}
+                <ChevronDown size={14} className="text-text-3" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                className="h-9 w-9 rounded-full text-amber-500 transition-colors hover:bg-surface-hover/[0.12]"
+                title="Approval policy"
+                aria-label="Approval policy"
+              >
+                <Shield size={18} />
+              </button>
+              <button
+                className="h-9 w-9 rounded-full text-text-3 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1"
+                title="Voice input"
+                aria-label="Voice input"
+              >
+                <Mic size={18} />
+              </button>
+              <SendButton
+                turnStatus={turnStatus}
+                canSend={!!canSend}
+                onSend={handleSendWithHistory}
+                onInterrupt={interrupt}
+              />
+            </div>
           </div>
         </div>
+
+        {gitBranch && (
+          <div className="flex justify-end items-center mt-3 px-2">
+            <div className="flex items-center gap-1.5 text-[12px] font-medium text-text-3">
+              <GitBranch size={14} />
+              <span>{gitBranch}</span>
+            </div>
+          </div>
+        )}
 
         <InputStatusHint />
       </div>

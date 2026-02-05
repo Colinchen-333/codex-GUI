@@ -12,7 +12,7 @@ import React, { memo, useMemo, useDeferredValue, useCallback, useRef, useEffect 
 import { List, useDynamicRowHeight } from 'react-window'
 import type { ListImperativeAPI, DynamicRowHeight } from 'react-window'
 import { useThreadStore, selectFocusedThread, type AnyThreadItem } from '../../stores/thread'
-import { isUserMessageContent, isAgentMessageContent } from '../../lib/typeGuards'
+import { isUserMessageContent, isAgentMessageContent, isMcpToolContent, isWebSearchContent } from '../../lib/typeGuards'
 import { MessageItem } from './messages'
 import { ChatEmptyState } from './ChatEmptyState'
 import {
@@ -186,6 +186,21 @@ export default memo(function ChatMessageList({
     [filteredItemOrder, items, dynamicHeight]
   )
 
+  const runningLabel = useMemo(() => {
+    if (turnStatus !== 'running') return null
+    for (let i = filteredItemOrder.length - 1; i >= 0; i -= 1) {
+      const item = items[filteredItemOrder[i]]
+      if (!item) continue
+      if (item.type === 'mcpTool' && isMcpToolContent(item.content) && item.content.isRunning) {
+        return 'Exploring'
+      }
+      if (item.type === 'webSearch' && isWebSearchContent(item.content) && item.content.isSearching) {
+        return 'Exploring'
+      }
+    }
+    return 'Thinking'
+  }, [turnStatus, filteredItemOrder, items])
+
   // Create row component with dynamic height support
   const RowComponent = useCallback(
     (props: VirtualizedRowProps) => (
@@ -208,6 +223,9 @@ export default memo(function ChatMessageList({
       aria-live="polite"
     >
       <div className="mx-auto max-w-[880px] h-full leading-[1.65] text-text-1">
+        {runningLabel && (
+          <div className="mb-4 text-sm text-text-3 animate-breathe-text">{runningLabel}</div>
+        )}
         {filteredItemOrder.length > 0 ? (
           <List<VirtualizedRowCustomProps & { dynamicHeight?: DynamicRowHeight }>
             key={threadId ?? 'no-thread'}

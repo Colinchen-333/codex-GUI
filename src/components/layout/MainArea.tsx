@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, useMemo, useCallback, useReducer } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { useProjectsStore } from '../../stores/projects'
+
+interface AppShellContext {
+  onToggleRightPanel?: () => void
+  rightPanelOpen?: boolean
+  onOpenCommitDialog?: () => void
+}
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
 import { useServerConnectionStore } from '../../stores/server-connection'
@@ -344,13 +351,17 @@ export function MainArea() {
     return <StartSessionView projectId={selectedProjectId} />
   }
 
-  // Active threads exist - show chat with tabs
+  const context = useOutletContext<AppShellContext>() ?? {}
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Session Tabs */}
-      <SessionTabs onNewSession={handleNewSession} />
+      <SessionTabs 
+        onNewSession={handleNewSession}
+        onToggleRightPanel={context.onToggleRightPanel}
+        rightPanelOpen={context.rightPanelOpen}
+        onOpenCommitDialog={context.onOpenCommitDialog}
+      />
       
-      {/* Chat View or Start Session */}
       {activeThread ? (
         <ChatView />
       ) : (

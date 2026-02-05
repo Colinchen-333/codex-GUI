@@ -17,8 +17,8 @@ export const AgentMessage = memo(
     const content = item.content
     return (
       <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
-        <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-surface-hover/[0.06] px-5 py-4 shadow-[var(--shadow-1)] border border-stroke/20">
-          <Markdown content={content.text} />
+        <div className="w-full max-w-[860px]">
+          <Markdown content={content.text} className="prose-p:my-1.5 prose-ul:my-2 prose-ol:my-2" />
           {content.isStreaming && (
             <div className="mt-2 flex items-center gap-1.5">
               <span

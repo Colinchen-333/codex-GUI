@@ -1,24 +1,27 @@
 /**
  * PlanCard - Shows turn plan with step progress
  */
-import { useState } from 'react'
-import { ListChecks, Circle, CheckCircle2, XCircle, Loader2, ChevronDown, ChevronRight } from 'lucide-react'
+import { useMemo } from 'react'
+import { Circle, CheckCircle2, XCircle, Loader2, Maximize2, ArrowUpRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { cn } from '../../../lib/utils'
-import { formatTimestamp } from '../utils'
-import type { PlanStep } from '../../../stores/thread'
+import { useThreadStore } from '../../../stores/thread'
+import { selectItemsByType } from '../../../stores/thread/selectors'
+import { parseDiff } from '../../ui/DiffView'
+import type { FileChangeItem, PlanStep } from '../../../stores/thread'
 import type { MessageItemProps, PlanContentType } from '../types'
 
 export function PlanCard({ item }: MessageItemProps) {
   const content = item.content as PlanContentType
-  const [isExpanded, setIsExpanded] = useState(true)
+  const fileChangeItems = useThreadStore(selectItemsByType('fileChange')) as FileChangeItem[]
 
   // Get step status icon
   const getStepIcon = (status: PlanStep['status']) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 size={14} className="text-green-500" />
+        return <CheckCircle2 size={14} className="text-text-3/70" />
       case 'in_progress':
-        return <Loader2 size={14} className="text-blue-500 animate-spin" />
+        return <Loader2 size={14} className="text-text-2 animate-spin" />
       case 'failed':
         return <XCircle size={14} className="text-red-500" />
       default:
@@ -29,96 +32,91 @@ export function PlanCard({ item }: MessageItemProps) {
   // Calculate progress
   const completedSteps = content.steps.filter((s) => s.status === 'completed').length
   const totalSteps = content.steps.length
-  const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
+
+  const diffSummary = useMemo(() => {
+    const latestChange = fileChangeItems[fileChangeItems.length - 1]
+    if (!latestChange) {
+      return { filesChanged: 0, additions: 0, deletions: 0 }
+    }
+    let additions = 0
+    let deletions = 0
+    for (const change of latestChange.content.changes) {
+      const hunks = parseDiff(change.diff || '')
+      for (const hunk of hunks) {
+        for (const line of hunk.lines) {
+          if (line.type === 'add') additions += 1
+          if (line.type === 'remove') deletions += 1
+        }
+      }
+    }
+    return {
+      filesChanged: latestChange.content.changes.length,
+      additions,
+      deletions,
+    }
+  }, [fileChangeItems])
 
   return (
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
       <div
         className={cn(
-          'w-full max-w-2xl overflow-hidden rounded-xl border bg-surface-solid shadow-[var(--shadow-1)] transition-all',
-          content.isActive
-            ? 'border-l-4 border-l-blue-500 border-y-stroke/20 border-r-stroke/20'
-            : 'border-stroke/20'
+          'w-full max-w-[880px] overflow-hidden rounded-2xl border bg-surface-solid shadow-[var(--shadow-1)]',
+          'border-stroke/15'
         )}
       >
         {/* Header */}
-        <div
-          className="flex items-center justify-between border-b border-stroke/20 bg-surface-hover/[0.06] px-4 py-2.5 cursor-pointer select-none"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                'rounded-md p-1 shadow-[var(--shadow-1)]',
-                content.isActive
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                  : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-              )}
-            >
-              <ListChecks size={14} />
-            </div>
-            <span className="text-xs font-semibold text-text-1">
-              {content.isActive ? 'Executing Plan' : 'Plan Completed'}
-            </span>
-            <span className="text-[10px] text-text-3">
-              {completedSteps}/{totalSteps} steps
+        <div className="flex items-center justify-between px-5 py-3.5">
+          <div className="flex items-center gap-2 text-[13px] text-text-2">
+            <span className="text-text-3">•</span>
+            <span className="font-medium">
+              {completedSteps} out of {totalSteps} tasks completed
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Progress bar */}
-            <div className="w-20 h-1.5 bg-surface-hover/[0.12] rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  'h-full transition-all duration-150',
-                  content.isActive ? 'bg-blue-500' : 'bg-green-500'
-                )}
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            {/* Timestamp */}
-            <span className="text-[10px] text-text-3/70">
-              {formatTimestamp(item.createdAt)}
-            </span>
-            <span className="text-text-3 text-xs">
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </span>
+          <div className="text-text-3/80">
+            <Maximize2 size={16} />
           </div>
         </div>
 
         {/* Content */}
-        {isExpanded && (
-          <div className="p-4 space-y-3">
-            {/* Explanation */}
-            {content.explanation && (
-              <p className="text-sm text-text-3 mb-3">{content.explanation}</p>
-            )}
+        <div className="px-5 pb-4 space-y-3">
+          {content.explanation && (
+            <p className="text-sm text-text-3">{content.explanation}</p>
+          )}
 
-            {/* Steps */}
-            <div className="space-y-2">
-              {content.steps.map((step, index) => (
-                <div
-                  key={index}
+          <ol className="space-y-2">
+            {content.steps.map((step, index) => (
+              <li key={index} className="flex items-start gap-3">
+                <div className="mt-0.5 flex-shrink-0">{getStepIcon(step.status)}</div>
+                <span
                   className={cn(
-                    'flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors',
-                    step.status === 'in_progress' && 'bg-blue-50/40 dark:bg-blue-900/10',
-                    step.status === 'completed' && 'opacity-70'
+                    'text-sm leading-relaxed text-text-1',
+                    step.status === 'completed' && 'line-through text-text-3',
+                    step.status === 'in_progress' && 'text-text-1 font-medium',
+                    step.status === 'failed' && 'text-red-700 dark:text-red-300',
+                    step.status === 'pending' && 'text-text-2'
                   )}
                 >
-                  <div className="mt-0.5 flex-shrink-0">{getStepIcon(step.status)}</div>
-                  <span
-                    className={cn(
-                      'text-sm leading-relaxed',
-                      step.status === 'completed' && 'line-through text-text-3',
-                      step.status === 'in_progress' && 'text-blue-700 dark:text-blue-300 font-medium',
-                      step.status === 'failed' && 'text-red-700 dark:text-red-300',
-                      step.status === 'pending' && 'text-text-3'
-                    )}
-                  >
-                    {step.step}
-                  </span>
-                </div>
-              ))}
+                  {index + 1}. {step.step}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {diffSummary.filesChanged > 0 && (
+          <div className="flex items-center justify-between border-t border-stroke/10 px-5 py-2.5 text-[13px]">
+            <div className="flex items-center gap-2 text-text-2">
+              <span>{diffSummary.filesChanged} files changed</span>
+              <span className="text-emerald-600">+{diffSummary.additions}</span>
+              <span className="text-red-500">-{diffSummary.deletions}</span>
             </div>
+            <Link
+              to="/diff"
+              className="inline-flex items-center gap-1 text-text-2 transition-colors hover:text-text-1"
+            >
+              Review changes
+              <ArrowUpRight size={14} />
+            </Link>
           </div>
         )}
       </div>

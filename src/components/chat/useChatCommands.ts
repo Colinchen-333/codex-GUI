@@ -3,6 +3,7 @@
  * Extracted from ChatView.tsx to reduce component complexity
  */
 import { useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useThreadStore, type ThreadState, selectFocusedThread } from '../../stores/thread'
 import { useProjectsStore, type ProjectsState } from '../../stores/projects'
 import { useSessionsStore, type SessionsState } from '../../stores/sessions'
@@ -47,7 +48,6 @@ export function useChatCommands({
   const resumeThread = useThreadStore((state: ThreadState) => state.resumeThread)
 
   const { showToast } = useToast()
-  const setSettingsOpen = useAppStore((state: AppState) => state.setSettingsOpen)
   const setSettingsTab = useAppStore((state: AppState) => state.setSettingsTab)
   const setSidebarTab = useAppStore((state: AppState) => state.setSidebarTab)
   const setKeyboardShortcutsOpen = useAppStore((state: AppState) => state.setKeyboardShortcutsOpen)
@@ -56,6 +56,8 @@ export function useChatCommands({
   const projects = useProjectsStore((state: ProjectsState) => state.projects)
   const fetchSessions = useSessionsStore((state: SessionsState) => state.fetchSessions)
   const selectSession = useSessionsStore((state: SessionsState) => state.selectSession)
+
+  const navigate = useNavigate()
 
   const buildCommandContext = useCallback((): CommandContext => ({
     clearThread,
@@ -68,7 +70,7 @@ export function useChatCommands({
     addInfoItem,
     openSettingsTab: (tab) => {
       setSettingsTab(tab)
-      setSettingsOpen(true)
+      void navigate(`/settings/${tab}`)
     },
     startNewSession: async () => {
       if (!selectedProjectId) {
@@ -308,7 +310,7 @@ export function useChatCommands({
     showToast,
     addInfoItem,
     setSettingsTab,
-    setSettingsOpen,
+    navigate,
     selectedProjectId,
     projects,
     settings,

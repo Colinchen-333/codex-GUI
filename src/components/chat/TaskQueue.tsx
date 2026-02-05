@@ -177,7 +177,9 @@ export function TaskQueue({
                       task.status === 'failed' && 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'
                     )}
                   >
-                    {statusLabels[task.status]}
+                    <span className={cn(task.status === 'in_progress' && 'animate-breathe-text')}>
+                      {statusLabels[task.status]}
+                    </span>
                   </span>
                 </div>
               </div>

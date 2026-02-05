@@ -4,13 +4,6 @@
  */
 
 /**
- * Preload SettingsDialog component
- */
-export function preloadSettingsDialog(): void {
-  void import('../components/settings/SettingsDialog')
-}
-
-/**
  * Preload ProjectSettingsDialog component
  */
 export function preloadProjectSettingsDialog(): void {
@@ -56,7 +49,6 @@ export function preloadAboutDialog(): void {
  * Preload all dialogs (useful during idle time)
  */
 export function preloadAllDialogs(): void {
-  preloadSettingsDialog()
   preloadProjectSettingsDialog()
   preloadReviewSelectorDialog()
   preloadSnapshotListDialog()

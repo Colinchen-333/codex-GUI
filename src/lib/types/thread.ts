@@ -320,7 +320,7 @@ export interface SessionMetadata {
    * Use normalizeTimestampToMs() for JavaScript Date operations.
    */
   createdAt: number
-  // New fields for multi-agent management
+  // Session lifecycle fields
   status: SessionStatus
   firstMessage: string | null
   tasksJson: string | null

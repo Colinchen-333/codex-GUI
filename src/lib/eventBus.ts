@@ -41,6 +41,10 @@ export interface ThreadOrphanedEvent {
   createdAt: number
 }
 
+export interface HostNavigateEvent {
+  path: string
+}
+
 /**
  * Event map defining all available events and their payload types
  */
@@ -50,6 +54,7 @@ export interface EventMap {
   'session:set-first-message': SessionFirstMessageEvent
   'thread:status-change': ThreadStatusChangeEvent
   'thread:orphaned': ThreadOrphanedEvent
+  'host:navigate': HostNavigateEvent
 }
 
 // ==================== Event Bus Implementation ====================

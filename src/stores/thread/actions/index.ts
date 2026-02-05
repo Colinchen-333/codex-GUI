@@ -20,6 +20,8 @@ export {
   createEnqueueQueuedMessage,
   createDequeueQueuedMessage,
   createRequeueMessageFront,
+  createRemoveQueuedMessage,
+  createPromoteQueuedMessage,
   createDispatchNextQueuedMessage,
   createSendMessage,
   createRespondToApprovalInThread,

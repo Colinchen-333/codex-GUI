@@ -40,7 +40,6 @@ import {
   isOperationValid,
   getCurrentOperationSequence,
 } from '../delta-buffer'
-import { notifyAgentStore } from '../agent-integration'
 
 // ==================== Item Started Handler ====================
 
@@ -270,8 +269,6 @@ export function createHandleAgentMessageDelta(get: () => ThreadState) {
       return
     }
 
-    // Notify multi-agent store if this is an agent thread
-    notifyAgentStore(threadId, 'messageDelta', { text: event.delta })
 
     const current = buffer.agentMessages.get(event.itemId) || ''
     const isFirstDelta = current === ''

@@ -64,6 +64,7 @@ export interface TurnPlanUpdatedEvent {
 export interface ThreadCompactedEvent {
   threadId: string
   turnId: string
+  summary?: string[] | string
 }
 
 // Item lifecycle events

@@ -30,9 +30,7 @@ import {
   defaultTokenUsage,
   defaultTurnTiming,
   getFocusedThreadState,
-  createEmptyThreadState,
 } from './utils'
-import { safeClosingThreadsOperation } from './delta-buffer'
 
 // Import handlers
 import {
@@ -74,6 +72,8 @@ import {
   createEnqueueQueuedMessage,
   createDequeueQueuedMessage,
   createRequeueMessageFront,
+  createRemoveQueuedMessage,
+  createPromoteQueuedMessage,
   createDispatchNextQueuedMessage,
   createSendMessage,
   createRespondToApprovalInThread,
@@ -97,13 +97,7 @@ import {
 } from './actions'
 
 // Import timer cleanup utilities
-import {
-  startApprovalCleanupTimer,
-  startTimerCleanupInterval,
-} from './utils'
 
-// Import agent integration utilities
-import { cleanupEventVersion } from './agent-integration'
 
 // ==================== Store Creation ====================
 
@@ -122,6 +116,8 @@ export const useThreadStore: UseBoundStore<StoreApi<ThreadState>> = create<Threa
     const enqueueQueuedMessage = createEnqueueQueuedMessage(typedSet)
     const dequeueQueuedMessage = createDequeueQueuedMessage(typedSet, get)
     const requeueMessageFront = createRequeueMessageFront(typedSet)
+    const removeQueuedMessage = createRemoveQueuedMessage(typedSet, get)
+    const promoteQueuedMessage = createPromoteQueuedMessage(typedSet, get)
     const dispatchNextQueuedMessage = createDispatchNextQueuedMessage(
       get,
       dequeueQueuedMessage,
@@ -227,46 +223,9 @@ export const useThreadStore: UseBoundStore<StoreApi<ThreadState>> = create<Threa
       // ==================== Thread Lifecycle ====================
       startThread: createStartThread(typedSet, get, getThreadStore, cleanupStaleApprovals),
       resumeThread: createResumeThread(typedSet, get, getThreadStore, cleanupStaleApprovals),
-      registerAgentThread: (thread, _agentId, options) => {
-        startApprovalCleanupTimer(cleanupStaleApprovals, 60000)
-        startTimerCleanupInterval(() => new Set(Object.keys(getThreadStore().threads)))
-
-        // P1 Fix: Always reset event version when registering a thread
-        // This ensures that if a thread ID is reused, old event versions don't block new events
-        cleanupEventVersion(thread.id)
-
-        set((state) => {
-          safeClosingThreadsOperation(thread.id, 'delete')
-
-          if (!state.threads[thread.id]) {
-            state.threads[thread.id] = createEmptyThreadState(thread)
-          } else {
-            // Thread is being reused - reset the thread state while preserving the thread info
-            state.threads[thread.id].thread = {
-              ...state.threads[thread.id].thread,
-              ...thread,
-            }
-            // P1 Fix: Reset turn-related state when thread is reused
-            state.threads[thread.id].turnStatus = 'idle'
-            state.threads[thread.id].currentTurnId = null
-            state.threads[thread.id].pendingApprovals = []
-            state.threads[thread.id].error = null
-          }
-
-          // Note: agentMapping is maintained in multi-agent-v2 store as the single source of truth
-
-          if (options?.focus) {
-            state.focusedThreadId = thread.id
-          }
-        })
-      },
-      unregisterAgentThread: (threadId) => {
-        // Note: agentMapping cleanup is handled by multi-agent-v2 store
-        // P1 Fix: Clean up event version tracking when unregistering a thread
-        // This prevents memory leaks and ensures proper event version reset on re-registration
-        cleanupEventVersion(threadId)
-      },
       sendMessage: createSendMessage(typedSet, get, enqueueQueuedMessage, dispatchNextQueuedMessage),
+      removeQueuedMessage,
+      promoteQueuedMessage,
       interrupt: createInterrupt(typedSet, get),
       respondToApprovalInThread,
       respondToApproval: createRespondToApproval(typedSet, get, respondToApprovalInThread),

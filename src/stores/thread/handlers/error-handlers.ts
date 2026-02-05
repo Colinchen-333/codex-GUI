@@ -17,7 +17,6 @@ import type {
   ErrorItem,
 } from '../types'
 import { performFullTurnCleanup } from '../delta-buffer'
-import { notifyAgentStore } from '../agent-integration'
 
 function ensureErrorMessage(message: unknown): string {
   if (typeof message === 'string') return message
@@ -106,11 +105,7 @@ export function createHandleStreamError(
     })
 
     if (!event.willRetry) {
-      notifyAgentStore(threadId, 'error', {
-        message: safeMessage,
-        code: 'STREAM_ERROR',
-        recoverable: false,
-      })
+      // No retry; error is terminal for this turn.
     }
   }
 }
@@ -146,12 +141,6 @@ export function createHandleRateLimitExceeded(
       threadState.turnTiming.completedAt = Date.now()
     })
 
-    // Notify multi-agent store about rate limit error (agentMapping is checked internally)
-    notifyAgentStore(threadId, 'error', {
-      message: errorMessage,
-      code: 'RATE_LIMIT_EXCEEDED',
-      recoverable: true,
-    })
   }
 }
 
@@ -168,11 +157,6 @@ export function createHandleServerDisconnected(
     const { threads } = get()
     Object.keys(threads).forEach((threadId) => {
       performFullTurnCleanup(threadId)
-      // Notify multi-agent store about agent failures (agentMapping is checked internally)
-      notifyAgentStore(threadId, 'error', {
-        message: 'Server disconnected',
-        code: 'SERVER_DISCONNECTED',
-      })
     })
 
     set((state) => {

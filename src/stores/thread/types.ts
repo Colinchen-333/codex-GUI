@@ -299,8 +299,6 @@ export interface ThreadState {
   focusedThreadId: string | null
   maxSessions: number
 
-  // Note: agentMapping is now maintained in multi-agent-v2 store as single source of truth
-
   // Global state
   snapshots: Snapshot[]
   isLoading: boolean
@@ -328,8 +326,6 @@ export interface ThreadState {
     sandboxMode?: string,
     approvalPolicy?: string
   ) => Promise<string>
-  registerAgentThread: (thread: ThreadInfo, agentId: string, options?: { focus?: boolean }) => void
-  unregisterAgentThread: (threadId: string) => void
   resumeThread: (threadId: string) => Promise<void>
   sendMessage: (
     text: string,
@@ -337,6 +333,8 @@ export interface ThreadState {
     skills?: SkillInput[],
     threadId?: string
   ) => Promise<void>
+  removeQueuedMessage: (messageId: string, threadId?: string) => void
+  promoteQueuedMessage: (messageId: string, threadId?: string) => void
   interrupt: () => Promise<void>
   respondToApproval: (
     itemId: string,

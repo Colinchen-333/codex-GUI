@@ -80,7 +80,7 @@ export interface SessionMetadata {
    * Use normalizeTimestampToMs() for JavaScript Date operations.
    */
   createdAt: number
-  // New fields for multi-agent management
+  // Session lifecycle fields
   status: SessionStatus
   firstMessage: string | null
   tasksJson: string | null
@@ -349,9 +349,16 @@ export const projectApi = {
   update: (id: string, displayName?: string, settings?: Record<string, unknown>) =>
     invoke<Project>('update_project', { id, displayName, settings }),
 
-  getGitInfo: (path: string) => invoke<GitInfo>('get_project_git_info', { path }),
+  getGitInfo: (path: string) =>
+    invokeOrFallback<GitInfo>(
+      { isGitRepo: false, branch: null, isDirty: null, lastCommit: null },
+      'get_project_git_info',
+      { path }
+    ),
   getGitDiff: (path: string) =>
-    invokeWithTimeout<GitDiffResponse>('get_project_git_diff', { path }, 20000), // 20s timeout for git diff
+    isTauriAvailable()
+      ? invokeWithTimeout<GitDiffResponse>('get_project_git_diff', { path }, 20000) // 20s timeout for git diff
+      : Promise.resolve({ diff: null, isGitRepo: false }),
   listFiles: (path: string, query?: string, limit?: number) =>
     invoke<FileEntry[]>('list_project_files', { path, query, limit }),
   validateDirectory: (path: string) =>
@@ -367,7 +374,7 @@ export const projectApi = {
 
 export const sessionApi = {
   list: (projectId: string) =>
-    invoke<SessionMetadata[]>('list_sessions', { projectId }),
+    invokeOrFallback<SessionMetadata[]>([], 'list_sessions', { projectId }),
 
   get: (sessionId: string) =>
     invoke<SessionMetadata | null>('get_session', { sessionId }),
@@ -539,7 +546,7 @@ export const snapshotApi = {
 export const serverApi = {
   getStatus: () => invokeOrFallback<ServerStatus>({ isRunning: false, version: null }, 'get_server_status'),
 
-  restart: () => invoke<void>('restart_server'),
+  restart: () => (isTauriAvailable() ? invoke<void>('restart_server') : Promise.resolve()),
 
   getAccountInfo: () => invokeOrFallback<AccountInfo>({ account: null, requiresOpenaiAuth: false }, 'get_account_info'),
 

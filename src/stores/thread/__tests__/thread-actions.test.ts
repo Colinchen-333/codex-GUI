@@ -119,7 +119,6 @@ function createMockState(
     snapshots: [],
     isLoading: false,
     globalError: null,
-    // Note: agentMapping is now in multi-agent-v2 store
     // Backward-compatible getters
     activeThread: threadIds[0] ? threads[threadIds[0]].thread : null,
     items: threadIds[0] ? threads[threadIds[0]].items : {},
@@ -134,8 +133,6 @@ function createMockState(
     error: threadIds[0] ? threads[threadIds[0]].error : null,
     // Mock actions
     startThread: vi.fn(),
-    registerAgentThread: vi.fn(),
-    unregisterAgentThread: vi.fn(),
     resumeThread: vi.fn(),
     sendMessage: vi.fn(),
     interrupt: vi.fn(),
@@ -184,6 +181,8 @@ function createMockState(
     restoreMessageContent: vi.fn(),
     restoreThreadState: vi.fn(),
     restoreItemOrder: vi.fn(),
+    removeQueuedMessage: vi.fn(),
+    promoteQueuedMessage: vi.fn(),
   }
 }
 

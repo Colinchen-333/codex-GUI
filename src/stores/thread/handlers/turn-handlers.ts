@@ -33,7 +33,6 @@ import {
   closingThreads,
   performFullTurnCleanup,
 } from '../delta-buffer'
-import { notifyAgentStore } from '../agent-integration'
 
 // ==================== Thread Started Handler ====================
 
@@ -84,9 +83,6 @@ export function createHandleTurnStarted(
       handleAsyncError(err, 'handleTurnStarted session sync', 'thread')
     }
 
-    // Notify multi-agent store if this is an agent thread
-    notifyAgentStore(threadId, 'turnStarted')
-
     // Set turn timeout for this specific thread
     const turnId = event.turn.id
     const timeoutTimer = setTimeout(() => {
@@ -116,11 +112,6 @@ export function createHandleTurnStarted(
           threadState.turnTiming.completedAt = Date.now()
         })
 
-        // P0 Fix: Notify multi-agent store about timeout error
-        notifyAgentStore(threadId, 'error', {
-          message: 'Turn timed out',
-          code: 'TURN_TIMEOUT',
-        })
       }
     }, TURN_TIMEOUT_MS)
     turnTimeoutTimers.set(threadId, timeoutTimer)
@@ -203,11 +194,6 @@ export function createHandleTurnCompleted(
       threadState.error = event.turn.error?.message || null
       threadState.pendingApprovals = []
       threadState.turnTiming.completedAt = Date.now()
-    })
-
-    // Notify multi-agent store if this is an agent thread
-    notifyAgentStore(threadId, 'turnCompleted', {
-      status,
     })
 
     if (nextTurnStatus === 'completed' || nextTurnStatus === 'interrupted') {
@@ -315,14 +301,20 @@ export function createHandleThreadCompacted(
 ) {
   return (event: ThreadCompactedEvent) => {
     const threadId = event.threadId
+    const summary =
+      Array.isArray(event.summary)
+        ? event.summary.join('\n')
+        : typeof event.summary === 'string'
+          ? event.summary
+          : undefined
     // P1 Fix: Use milliseconds timestamp consistently
     const infoItem: InfoItem = {
       id: `compact-${event.turnId}`,
       type: 'info',
       status: 'completed',
       content: {
-        title: 'Context compacted',
-        details: 'Conversation context was compacted to stay within limits.',
+        title: 'Context automatically compacted',
+        details: summary,
       },
       createdAt: Date.now(),
     }

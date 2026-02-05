@@ -40,7 +40,6 @@ import {
   stopTimerCleanupInterval,
   performImmediateThreadCleanup,
 } from '../utils/timer-cleanup'
-import { cleanupEventVersion } from '../agent-integration'
 
 function beginThreadOperation(
   set: (fn: (state: WritableDraft<ThreadState>) => ThreadState | void) => void,
@@ -433,8 +432,6 @@ export function createCloseThread(
     // This includes timers, buffers, and all associated state
     performImmediateThreadCleanup(threadId)
     useUndoRedoStore.getState().clearHistory(threadId)
-    // P1 Fix: Clean up event version tracking for this thread
-    cleanupEventVersion(threadId)
 
     // Remove thread from state
     const updatedThreads = { ...threads }
@@ -452,27 +449,6 @@ export function createCloseThread(
       state.focusedThreadId = newFocusedId
       return state
     })
-
-    // Notify multi-agent store if this thread belongs to an agent
-    // agentMapping is maintained in multi-agent store as single source of truth
-    import('../../multi-agent-v2')
-      .then(({ useMultiAgentStore }) => {
-        const multiAgentStore = useMultiAgentStore.getState()
-        const agentId = multiAgentStore.agentMapping[threadId]
-        if (agentId) {
-          const agent = multiAgentStore.getAgent(agentId)
-          if (agent && agent.status !== 'cancelled') {
-            multiAgentStore.updateAgentStatus(agentId, 'cancelled', {
-              message: 'Thread closed by user',
-              code: 'THREAD_CLOSED',
-              recoverable: true,
-            })
-          }
-        }
-      })
-      .catch((error) => {
-        log.error(`[closeThread] Failed to notify multi-agent store: ${error}`, 'thread-actions')
-      })
 
     // Stop approval cleanup if no threads left
     if (Object.keys(updatedThreads).length === 0) {
@@ -532,8 +508,6 @@ export function createCloseAllThreads(
     threadIds.forEach((threadId) => {
       performImmediateThreadCleanup(threadId)
       useUndoRedoStore.getState().clearHistory(threadId)
-      // P1 Fix: Clean up event version tracking for this thread
-      cleanupEventVersion(threadId)
     })
 
     // Clear all threads
@@ -542,27 +516,6 @@ export function createCloseAllThreads(
       state.focusedThreadId = null
       return state
     })
-
-    // Notify multi-agent store about all agent threads being closed
-    // agentMapping is maintained in multi-agent store as single source of truth
-    import('../../multi-agent-v2')
-      .then(({ useMultiAgentStore }) => {
-        const multiAgentStore = useMultiAgentStore.getState()
-        const agentIds = Object.values(multiAgentStore.agentMapping)
-        for (const agentId of agentIds) {
-          const agent = multiAgentStore.getAgent(agentId)
-          if (agent && agent.status !== 'cancelled') {
-            multiAgentStore.updateAgentStatus(agentId, 'cancelled', {
-              message: 'Thread closed by user',
-              code: 'THREAD_CLOSED',
-              recoverable: true,
-            })
-          }
-        }
-      })
-      .catch((error) => {
-        log.error(`[closeAllThreads] Failed to notify multi-agent store: ${error}`, 'thread-actions')
-      })
 
     // Stop cleanup timers
     stopApprovalCleanupTimer()

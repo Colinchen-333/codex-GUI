@@ -80,6 +80,43 @@ export function createRequeueMessageFront(
   }
 }
 
+export function createRemoveQueuedMessage(
+  set: (fn: (state: WritableDraft<ThreadState>) => ThreadState | void) => void,
+  get: () => ThreadState
+) {
+  return (messageId: string, threadId?: string) => {
+    const targetThreadId = threadId ?? get().focusedThreadId
+    if (!targetThreadId) return
+
+    set((state) => {
+      const threadState = state.threads[targetThreadId]
+      if (!threadState) return state
+      threadState.queuedMessages = threadState.queuedMessages.filter((msg) => msg.id !== messageId)
+      return state
+    })
+  }
+}
+
+export function createPromoteQueuedMessage(
+  set: (fn: (state: WritableDraft<ThreadState>) => ThreadState | void) => void,
+  get: () => ThreadState
+) {
+  return (messageId: string, threadId?: string) => {
+    const targetThreadId = threadId ?? get().focusedThreadId
+    if (!targetThreadId) return
+
+    set((state) => {
+      const threadState = state.threads[targetThreadId]
+      if (!threadState) return state
+      const index = threadState.queuedMessages.findIndex((msg) => msg.id === messageId)
+      if (index <= 0) return state
+      const [message] = threadState.queuedMessages.splice(index, 1)
+      threadState.queuedMessages.unshift(message)
+      return state
+    })
+  }
+}
+
 export function createDispatchNextQueuedMessage(
   get: () => ThreadState,
   dequeueQueuedMessage: (threadId: string) => QueuedMessage | null,

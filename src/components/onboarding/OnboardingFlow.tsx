@@ -89,7 +89,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 rounded-[2.5rem] p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="w-full max-w-lg bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 rounded-3xl p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Progress indicator */}
         <div className="mb-10 flex justify-center gap-2">
           {(['welcome', 'login', 'project', 'ready'] as OnboardingStep[]).map((s, i) => (

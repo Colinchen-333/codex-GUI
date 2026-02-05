@@ -9,6 +9,7 @@ import {
   ChevronLeft,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { Button } from '../ui/Button'
 import { serverApi, type AccountInfo } from '../../lib/api'
 import { log } from '../../lib/logger'
 import { useSettingsStore } from '../../stores/settings'
@@ -98,13 +99,15 @@ const SettingsSidebar = memo(function SettingsSidebar({
 }) {
   return (
     <div className="w-56 bg-surface-solid/80 p-4 border-r border-stroke/20 flex flex-col gap-1">
-      <button
-        className="mb-3 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12]"
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mb-3 justify-start text-text-3 hover:text-text-1"
         onClick={onClose}
       >
         <ChevronLeft size={14} />
         Back to app
-      </button>
+      </Button>
       <div className="mb-2 px-2 py-1">
         <h2 className="text-base font-semibold tracking-tight text-text-1">Settings</h2>
       </div>
@@ -193,7 +196,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-8">
-      <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-[22px] bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-300">
+      <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-2xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-300">
         {/* Sidebar */}
         <SettingsSidebar
           activeTab={activeTab}
@@ -211,12 +214,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
           {/* Footer */}
           <div className="flex justify-end gap-3 border-t border-stroke/20 bg-surface-solid/60 px-6 py-4">
-            <button
-              className="rounded-lg px-5 py-2 text-sm font-medium text-text-2 hover:bg-surface-hover/[0.12] transition-colors"
-              onClick={onClose}
-            >
+            <Button variant="ghost" onClick={onClose}>
               Close
-            </button>
+            </Button>
           </div>
         </div>
       </div>

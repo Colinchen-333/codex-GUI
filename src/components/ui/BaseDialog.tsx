@@ -24,7 +24,7 @@ const maxWidthClasses = {
 }
 
 const variantClasses = {
-  default: 'bg-gray-900 dark:bg-gray-800',
+  default: 'bg-surface-solid',
   danger: 'bg-red-900 dark:bg-red-800',
   warning: 'bg-amber-900 dark:bg-amber-800',
 }
@@ -69,7 +69,7 @@ export function BaseDialog({
       <div
         ref={containerRef}
         className={cn(
-          'bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full mx-4 overflow-hidden flex flex-col max-h-[90vh]',
+          'bg-background dark:bg-surface-solid rounded-2xl shadow-2xl w-full mx-4 overflow-hidden flex flex-col max-h-[90vh]',
           maxWidthClasses[maxWidth],
           !prefersReducedMotion && 'animate-in fade-in zoom-in-95 duration-200'
         )}
@@ -87,7 +87,7 @@ export function BaseDialog({
         )}
 
         <div className={cn(
-          'flex items-center justify-between px-6 py-4 border-b dark:border-gray-700 flex-shrink-0',
+          'flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0',
           variantClasses[variant]
         )}>
           <div className="flex items-center space-x-3">
@@ -111,7 +111,7 @@ export function BaseDialog({
         </div>
 
         {footer && (
-          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-border bg-surface dark:bg-surface flex-shrink-0">
             {footer}
           </div>
         )}

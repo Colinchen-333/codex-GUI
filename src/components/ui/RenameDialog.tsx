@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useId } from 'react'
+import { Button } from './Button'
+import { Input } from './Input'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useDialogKeyboardShortcut } from '../../hooks/useDialogKeyboardShortcut'
@@ -148,18 +150,19 @@ export function RenameDialog({
             <label htmlFor={inputId} className="sr-only">
               New name
             </label>
-            <input
+            <Input
               ref={inputRef}
               id={inputId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-md border border-stroke/30 bg-surface-solid px-4 py-3 text-base text-text-1 focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/15 transition-all"
+              inputSize="lg"
               placeholder={placeholder}
+              error={!isNameValid && name.length > 0}
               aria-invalid={!isNameValid}
               aria-describedby={!isNameValid ? `${inputId}-error` : undefined}
               autoComplete="off"
-              spellCheck="false"
+              spellCheck={false}
             />
             {!isNameValid && name.length > 0 && (
               <p
@@ -177,17 +180,17 @@ export function RenameDialog({
             role="group"
             aria-label="Dialog actions"
           >
-            <button
+            <Button
               type="button"
-              className="rounded-md px-5 py-2.5 text-sm font-medium text-text-2 hover:bg-surface-hover/[0.12] transition-colors focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-2"
+              variant="ghost"
               onClick={onCancel}
               aria-label={`${cancelText}, close dialog without saving`}
             >
               {cancelText}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-1)] transition-all focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              variant="primary"
               disabled={!isNameValid || !hasChanged}
               aria-label={
                 !isNameValid
@@ -198,7 +201,7 @@ export function RenameDialog({
               }
             >
               {confirmText}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

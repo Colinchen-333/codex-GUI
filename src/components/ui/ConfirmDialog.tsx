@@ -1,5 +1,6 @@
 import { useRef, useId } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { Button } from './Button'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useDialogKeyboardShortcut } from '../../hooks/useDialogKeyboardShortcut'
@@ -144,28 +145,24 @@ export function ConfirmDialog({
 
         {/* Buttons */}
         <div className="flex justify-center gap-3" role="group" aria-label="Dialog actions">
-          <button
+          <Button
             ref={cancelButtonRef}
-            type="button"
-            className="rounded-md px-6 py-2.5 text-sm font-medium text-text-2 hover:bg-surface-hover/[0.12] transition-colors min-w-[100px] focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-2"
+            variant="ghost"
+            className="min-w-[100px]"
             onClick={onCancel}
             aria-label={`${cancelText}, close dialog`}
           >
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
             ref={confirmButtonRef}
-            type="button"
-            className={`rounded-md px-6 py-2.5 text-sm font-semibold text-white transition-all min-w-[100px] shadow-[var(--shadow-1)] focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              isDanger
-                ? 'bg-destructive hover:bg-destructive/90 focus:ring-destructive'
-                : 'bg-warning hover:bg-warning/90 focus:ring-warning'
-            }`}
+            variant="destructive"
+            className="min-w-[100px]"
             onClick={onConfirm}
             aria-label={`${confirmText}, ${isDanger ? 'this action cannot be undone' : 'proceed with action'}`}
           >
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

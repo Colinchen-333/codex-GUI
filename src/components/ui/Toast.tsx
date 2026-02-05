@@ -260,7 +260,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         'relative flex min-w-[320px] max-w-[420px] items-start gap-3 rounded-xl border p-4 shadow-xl overflow-hidden',
         styles.bg,
         styles.border,
-        'animate-in slide-in-from-right-full fade-in duration-300'
+        'toast-enter'
       )}
       role="alert"
       onMouseEnter={handleMouseEnter}

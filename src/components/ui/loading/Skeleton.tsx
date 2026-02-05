@@ -110,7 +110,7 @@ export function DialogSkeleton({ title = 'Loading...', className }: DialogSkelet
 export function SettingsDialogSkeleton() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-8">
-      <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-[22px] bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-200">
+      <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-2xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-200">
         {/* Sidebar skeleton */}
         <div className="w-60 bg-surface-solid/80 p-6 border-r border-stroke/20 flex flex-col gap-1">
           <div className="mb-6 px-2 py-2">

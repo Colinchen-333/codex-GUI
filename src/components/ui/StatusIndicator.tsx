@@ -116,7 +116,7 @@ export function StatusIndicator({
         )}
       />
       {showLabel && (
-        <span className={cn(sizes.text, config.textColor)}>
+        <span className={cn(sizes.text, config.textColor, status === 'running' && 'animate-breathe-text')}>
           {config.labelCn}
         </span>
       )}

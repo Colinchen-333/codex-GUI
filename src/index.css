@@ -20,13 +20,83 @@
 
 @layer base {
   :root {
-    /* Light theme (kept for completeness, dark is default) */
+    /* Official Codex design tokens */
+    --font-sans: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    
+    /* Typography scale (official) */
+    --text-xs: 10px;
+    --text-sm: 12px;
+    --text-base: 13px;
+    --text-lg: 16px;
+    --text-xl: 28px;
+    --text-2xl: 36px;
+    --text-3xl: 48px;
+    --text-4xl: 72px;
+    
+    /* Font weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    
+    /* Spacing */
+    --spacing: 0.25rem;
+    --spacing-sidebar: clamp(240px, 300px, min(520px, calc(100vw - 320px)));
+    --padding-row-x: calc(var(--spacing) * 2);
+    --padding-row-y: calc(var(--spacing) * 1);
+    
+    /* Border radius (official) */
+    --radius-xs: 0.25rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --radius-3xl: 1.25rem;
+    --radius-4xl: 1.5rem;
+    
+    /* Layout */
+    --height-toolbar: 46px;
+    --height-toolbar-sm: 36px;
+    --conversation-block-gap: 12px;
+    --conversation-tool-assistant-gap: 16px;
+    
+    /* Diff specific */
+    --diffs-font-family: var(--font-mono);
+    --diffs-font-size: 12px;
+    --diffs-line-height: calc(var(--diffs-font-size) * 1.8);
+    --diffs-min-number-column-width: 4ch;
+    
+    /* Chat */
+    --codex-chat-font-size: 13px;
+    --codex-chat-code-font-size: 12px;
+    
+    /* Z-index scale (official) */
+    --z-dropdown: 50;
+    --z-sticky: 100;
+    --z-modal: 200;
+    --z-popover: 300;
+    --z-tooltip: 400;
+    --z-toast: 500;
+    --z-overlay: 1000;
+    
+    /* Animation timing (official) */
+    --duration-fast: 150ms;
+    --duration-normal: 200ms;
+    --duration-slow: 300ms;
+    --duration-slower: 400ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Light theme */
     --bg: 210 16% 96%;
     --surface: 210 16% 98%;
     --surface-solid: 0 0% 100%;
-    --hover: 222 47% 11%;
-    --selected: 222 47% 11%;
-    --stroke: 222 47% 11%;
+    --hover: 222 14% 20%;
+    --selected: 222 14% 25%;
+    --stroke: 222 10% 80%;
 
     --text: 222 32% 12%;
     --text-2: 222 14% 28%;
@@ -34,6 +104,7 @@
 
     --shadow-1: 0 1px 0 hsl(222 47% 11% / 0.06), 0 8px 24px hsl(222 47% 11% / 0.08);
     --shadow-2: 0 1px 0 hsl(222 47% 11% / 0.06), 0 16px 40px hsl(222 47% 11% / 0.12);
+    --shadow-2xl: 0px 16px 32px -8px rgba(0, 0, 0, 0.19);
 
     --r-sm: 10px;
     --r-md: 12px;
@@ -48,8 +119,8 @@
     --popover: var(--surface-solid);
     --popover-foreground: var(--text);
 
-    --primary: 222 47% 11%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: var(--surface);
     --secondary-foreground: var(--text);
@@ -68,11 +139,12 @@
 
     --border: var(--stroke);
     --input: var(--stroke);
-    --ring: 230 92% 60%;
+    --ring: 217 91% 60%;
 
-    --radius: var(--r-md);
+    --radius: var(--radius-md);
 
-    font-family: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -80,19 +152,20 @@
   }
 
   .dark {
-    --bg: 210 6% 9%;
-    --surface: 210 7% 12%;
-    --surface-solid: 210 7% 13%;
+    --bg: 240 3% 6%;
+    --surface: 240 2% 9%;
+    --surface-solid: 240 3% 11%;
     --hover: 0 0% 100%;
     --selected: 0 0% 100%;
     --stroke: 0 0% 100%;
 
-    --text: 0 0% 90%;
-    --text-2: 0 0% 74%;
-    --text-3: 0 0% 52%;
+    --text: 0 0% 93%;
+    --text-2: 0 0% 64%;
+    --text-3: 0 0% 48%;
 
-    --shadow-1: 0 1px 0 hsl(0 0% 0% / 0.5), 0 18px 45px hsl(0 0% 0% / 0.4);
-    --shadow-2: 0 1px 0 hsl(0 0% 0% / 0.55), 0 30px 70px hsl(0 0% 0% / 0.55);
+    --shadow-1: 0 1px 0 hsl(0 0% 0% / 0.6), 0 20px 50px hsl(0 0% 0% / 0.5);
+    --shadow-2: 0 1px 0 hsl(0 0% 0% / 0.65), 0 35px 80px hsl(0 0% 0% / 0.6);
+    --shadow-2xl: 0px 16px 32px -8px rgba(0, 0, 0, 0.3);
 
     --background: var(--bg);
     --foreground: var(--text);
@@ -103,8 +176,8 @@
     --popover: var(--surface-solid);
     --popover-foreground: var(--text);
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 10%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: var(--surface);
     --secondary-foreground: var(--text);
@@ -121,9 +194,9 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 98%;
 
-    --border: var(--stroke);
-    --input: var(--stroke);
-    --ring: 230 92% 70%;
+    --border: 240 2% 18%;
+    --input: 240 2% 18%;
+    --ring: 217 91% 60%;
   }
 }
 
@@ -182,7 +255,89 @@
   -webkit-user-select: none;
 }
 
-/* Animations */
+/* Toast animations (official) */
+@keyframes toast-enter {
+  from {
+    transform: translateY(100%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+.toast-enter {
+  animation: toast-enter var(--duration-normal) var(--ease-out);
+}
+
+.toast-exit {
+  animation: toast-exit var(--duration-fast) var(--ease-in-out);
+}
+
+/* Dialog animations (official) */
+@keyframes dialog-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-content-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dialog-content-exit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+}
+
+.dialog-overlay-enter {
+  animation: dialog-overlay-enter var(--duration-normal) var(--ease-out);
+}
+
+.dialog-content-enter {
+  animation: dialog-content-enter var(--duration-normal) var(--ease-spring);
+}
+
+.dialog-content-exit {
+  animation: dialog-content-exit var(--duration-fast) var(--ease-in-out);
+}
+
+/* Loading bar animation (official) */
+@keyframes loading-bar-slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+
+.loading-bar-slide {
+  animation: loading-bar-slide 1.5s var(--ease-in-out) infinite;
+}
+
+/* Slide animations */
 @keyframes slide-in-from-right {
   from {
     transform: translateX(100%);
@@ -194,27 +349,67 @@
   }
 }
 
-@keyframes fade-in {
+@keyframes slide-in-from-left {
   from {
+    transform: translateX(-100%);
     opacity: 0;
   }
   to {
+    transform: translateX(0);
     opacity: 1;
   }
 }
 
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation utilities */
 .animate-in {
-  animation-duration: 300ms;
+  animation-duration: var(--duration-normal);
   animation-fill-mode: both;
+  animation-timing-function: var(--ease-out);
 }
 
-.slide-in-from-right {
-  animation-name: slide-in-from-right;
-}
+.slide-in-from-right { animation-name: slide-in-from-right; }
+.slide-in-from-left { animation-name: slide-in-from-left; }
+.slide-in-from-bottom { animation-name: slide-in-from-bottom; }
+.fade-in { animation-name: fade-in; }
+.zoom-in { animation-name: zoom-in; }
 
-.fade-in {
-  animation-name: fade-in;
+/* Stagger animation for lists (official home use-case cards) */
+.stagger-children > * {
+  animation: slide-in-from-bottom var(--duration-slow) var(--ease-out) both;
 }
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
 
 /* CLI-style shimmer text animation */
 @keyframes shimmer {
@@ -240,4 +435,19 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shimmer 2s linear infinite;
+}
+
+@keyframes text-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-breathe-text {
+  animation: text-breathe 1.6s ease-in-out infinite;
+  will-change: opacity;
 }

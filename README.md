@@ -46,7 +46,7 @@ Most Codex GUIs are **terminal wrappers** — they spawn a CLI process and parse
 | Parse CLI output text | Direct JSON-RPC communication |
 | No approval control | Full approval request/response loop |
 | Memory leaks on timeout | Automatic pending request cleanup |
-| Single session only | Multi-agent concurrent sessions |
+| Single session only | Multi-session concurrent support |
 
 **Codex Desktop** communicates directly with the Codex server via JSON-RPC protocol, giving you:
 
@@ -100,75 +100,13 @@ Terminal wrappers leave orphaned processes. Protocol-native cleanup ensures:
 - No zombie Codex processes
 - Graceful timeout handling without data loss
 
-### 4. Multi-Agent Orchestration Engine
-
-```
-src/stores/multi-agent-v2.ts     # State management with persistence
-src/lib/workflows/
-├── types.ts                      # Workflow & Phase type definitions
-└── plan-mode.ts                  # 4-phase workflow implementation
-
-src/components/multi-agent-v2/
-├── MultiAgentViewContainer.tsx   # Main container with workflow header
-├── WorkflowStageHeader.tsx       # Phase progress visualization
-├── ReviewInbox.tsx               # Unified approval queue sidebar
-├── ApprovalPanel.tsx             # Phase review with diff display
-└── workbench/
-    ├── WorkbenchLayout.tsx       # Resizable dual-pane layout
-    ├── AgentOutputPanel.tsx      # Agent output with inline approvals
-    ├── MainConversation.tsx      # Timeline and input area
-    └── WorkbenchStatusBar.tsx    # Status with working directory
-```
-
-The orchestration engine provides:
-- **Parallel Execution** — Multiple agents run simultaneously with dependency management
-- **Phase Gating** — Approval checkpoints between workflow stages
-- **Inline Approvals** — Accept/reject file changes directly in the agent output stream
-- **State Persistence** — Workflows survive app restarts via localStorage
-- **Recovery** — Graceful handling of timeouts and failures
-
 ## Features
 
 ### Core Capabilities
 
-- **Multi-Agent Sessions** — Run multiple Codex agent threads simultaneously, each with independent context
 - **Project-Centric Workflow** — Organize sessions by project, with Git integration
 - **Real-time Streaming** — Watch AI responses stream via efficient delta buffering
 - **Approval System** — Review file changes and commands before execution
-
-### Multi-Agent Orchestration Mode 🚀
-
-> **🚧 Under Development** — This feature is currently in active development and not yet available in the release build. Stay tuned for updates!
-
-**Transform from "Code Writer" to "Code Reviewer"**
-
-The Multi-Agent Orchestration mode enables a "Commanding from Above" experience — you provide high-level intent, and specialized agents execute in parallel while you review their work.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    4-Phase Workflow                              │
-├─────────────┬─────────────┬─────────────┬─────────────┐         │
-│   EXPLORE   │   DESIGN    │   REVIEW    │  IMPLEMENT  │         │
-│  2 Agents   │  1 Agent    │  1 Agent    │  2 Agents   │         │
-│             │  ⏸ Approval │  ⏸ Approval │             │         │
-└─────────────┴─────────────┴─────────────┴─────────────┘         │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-| Phase | Agents | Purpose |
-|-------|--------|---------|
-| **Explore** | 2x Explorer | Analyze codebase, find patterns |
-| **Design** | 1x Planner | Create implementation plan (requires approval) |
-| **Review** | 1x Reviewer | Validate design feasibility (requires approval) |
-| **Implement** | 1x Coder + 1x Tester | Execute changes and run tests |
-
-**Key Features:**
-- **Dual-Pane Workbench** — Resizable layout with agent output and conversation timeline
-- **Inline Approvals** — Accept/reject file changes directly in the output stream
-- **Review Inbox** — Unified sidebar for all pending approvals (phase + file changes)
-- **Real-time Progress** — Watch agents work in parallel with live status updates
-- **One-Click Approval** — Approve or reject with keyboard shortcuts (Enter/R)
-- **State Persistence** — Resume workflows after app restart
 
 ### Advanced Features
 
@@ -296,7 +234,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 | 解析 CLI 输出文本 | 直接 JSON-RPC 通信 |
 | 无审批控制 | 完整的审批请求/响应闭环 |
 | 超时时内存泄漏 | 自动清理待处理请求 |
-| 仅支持单会话 | 多智能体并发会话 |
+| 仅支持单会话 | 支持多会话并发 |
 
 **Codex Desktop** 通过 JSON-RPC 协议直接与 Codex 服务器通信，为你提供：
 
@@ -350,75 +288,13 @@ clearAllPendingRequests(): void
 - 无僵尸 Codex 进程
 - 优雅的超时处理，无数据丢失
 
-### 4. 多智能体编排引擎
-
-```
-src/stores/multi-agent-v2.ts     # 状态管理与持久化
-src/lib/workflows/
-├── types.ts                      # 工作流与阶段类型定义
-└── plan-mode.ts                  # 4阶段工作流实现
-
-src/components/multi-agent-v2/
-├── MultiAgentViewContainer.tsx   # 主容器（含工作流头部）
-├── WorkflowStageHeader.tsx       # 阶段进度可视化
-├── ReviewInbox.tsx               # 统一审批队列侧边栏
-├── ApprovalPanel.tsx             # 阶段审查与差异展示
-└── workbench/
-    ├── WorkbenchLayout.tsx       # 可调整的双面板布局
-    ├── AgentOutputPanel.tsx      # 代理输出（含内联审批）
-    ├── MainConversation.tsx      # 时间线与输入区
-    └── WorkbenchStatusBar.tsx    # 状态栏（含工作目录）
-```
-
-编排引擎提供：
-- **并行执行** — 多个代理同时运行，支持依赖管理
-- **阶段门控** — 工作流阶段之间的审批检查点
-- **内联审批** — 直接在代理输出流中接受/拒绝文件变更
-- **状态持久化** — 工作流通过 localStorage 在应用重启后存活
-- **故障恢复** — 优雅处理超时和失败
-
 ## 功能特性
 
 ### 核心功能
 
-- **多智能体会话** — 同时运行多个 Codex 智能体线程，各自独立上下文
 - **项目中心化工作流** — 按项目组织会话，集成 Git
 - **实时流式响应** — 通过高效增量缓冲观看 AI 响应
 - **审批系统** — 执行前审查文件变更和命令
-
-### 多智能体编排模式 🚀
-
-> **🚧 开发中** — 此功能正在积极开发中，尚未在发布版本中提供。敬请期待！
-
-**从"代码编写者"变成"代码审查者"**
-
-多智能体编排模式实现了"指点江山"的体验 —— 你只需提出高层次需求，专业化的智能体并行执行，你只负责审查它们的工作成果。
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    4 阶段工作流                                  │
-├─────────────┬─────────────┬─────────────┬─────────────┐         │
-│    探索     │    设计     │    审查     │    实施     │         │
-│  2 个代理   │  1 个代理   │  1 个代理   │  2 个代理   │         │
-│             │  ⏸ 需审批   │  ⏸ 需审批   │             │         │
-└─────────────┴─────────────┴─────────────┴─────────────┘         │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-| 阶段 | 代理 | 目的 |
-|------|------|------|
-| **探索** | 2x 探索代理 | 分析代码库，发现模式 |
-| **设计** | 1x 计划代理 | 制定实施方案（需审批） |
-| **审查** | 1x 审查代理 | 验证方案可行性（需审批） |
-| **实施** | 1x 编码 + 1x 测试 | 执行变更并运行测试 |
-
-**核心特性:**
-- **双面板工作台** — 可调整布局，左侧代理输出，右侧对话时间线
-- **内联审批** — 直接在输出流中接受/拒绝文件变更
-- **审批收件箱** — 统一侧边栏管理所有待审批项（阶段审批 + 文件变更）
-- **实时进度** — 观看代理并行工作，实时状态更新
-- **一键审批** — 键盘快捷键审批或拒绝（Enter/R）
-- **状态持久化** — 应用重启后可恢复工作流
 
 ### 高级特性
 

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useCallback, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '../hooks/useKeyboardShortcuts'
 import { useAppStore } from '../stores/app'
@@ -16,6 +17,8 @@ const DOUBLE_ESCAPE_TIMEOUT_MS = 1500
 export function KeyboardShortcuts() {
   // Store functions are called via getState() to avoid dependency issues
   const { showToast } = useToast()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { undo, redo, canUndo, canRedo } = useUndoRedo()
   const escapeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const focusedThreadId = useThreadStore((state) => state.focusedThreadId)
@@ -59,12 +62,14 @@ export function KeyboardShortcuts() {
           escapeTimerRef.current = null
         }, DOUBLE_ESCAPE_TIMEOUT_MS)
       }
-    } else {
-      // Not running - close dialogs
-      useAppStore.getState().setSettingsOpen(false)
+      } else {
+        // Not running - close dialogs / leave settings
+      if (location.pathname.startsWith('/settings')) {
+        void navigate(-1)
+      }
       useAppStore.getState().setKeyboardShortcutsOpen(false)
     }
-  }, []) // No dependencies - all store functions called via getState()
+  }, [location.pathname, navigate]) // uses router for navigation
 
   // Navigate to next session
   const navigateToNextSession = useCallback((direction: 'next' | 'prev' | 'first' | 'last') => {
@@ -121,7 +126,7 @@ export function KeyboardShortcuts() {
         key: ',',
         meta: true,
         description: 'Open settings',
-        handler: () => useAppStore.getState().setSettingsOpen(true),
+        handler: () => navigate('/settings'),
       },
       // Focus input (Cmd/Ctrl + K)
       {
@@ -236,7 +241,7 @@ export function KeyboardShortcuts() {
         },
       },
     ],
-    [showToast, handleEscape, navigateToNextSession, undo, redo, canUndo, canRedo] // Only dependencies that aren't store functions
+    [showToast, handleEscape, navigateToNextSession, undo, redo, canUndo, canRedo, navigate] // Only dependencies that aren't store functions
   )
 
   useKeyboardShortcuts(shortcuts)

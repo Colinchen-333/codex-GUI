@@ -2,7 +2,6 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from 'react'
 import { ErrorBoundary } from './ui/ErrorBoundary'
 import {
   DialogSkeleton,
-  SettingsDialogSkeleton,
   ListDialogSkeleton,
   FormDialogSkeleton,
 } from './ui/loading/Skeleton'
@@ -17,13 +16,6 @@ import type { ReviewTarget } from '../lib/api'
 // Lazy Component Definitions
 // ============================================================================
 
-/**
- * SettingsDialog - Main application settings with tabbed interface
- * Estimated size: ~15KB (includes multiple tabs and form controls)
- */
-export const LazySettingsDialog = lazy(
-  () => import('./settings/SettingsDialog').then((m) => ({ default: m.SettingsDialog }))
-)
 
 /**
  * ProjectSettingsDialog - Per-project settings (model, sandbox, env vars)
@@ -142,16 +134,6 @@ function withLazyLoading<P extends DialogProps>(
 // ============================================================================
 // Export Wrapped Components for Direct Use
 // ============================================================================
-
-/**
- * SettingsDialog with loading skeleton
- */
-type SettingsDialogLazyProps = DialogProps
-
-export const SettingsDialog = withLazyLoading<SettingsDialogLazyProps>(
-  LazySettingsDialog as ComponentType<SettingsDialogLazyProps>,
-  <SettingsDialogSkeleton />
-)
 
 /**
  * ProjectSettingsDialog with loading skeleton

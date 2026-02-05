@@ -1,28 +1,23 @@
 import { useEffect, useState, useRef } from 'react'
-import { Sidebar } from './components/layout/Sidebar'
-import { MainArea } from './components/layout/MainArea'
-import { StatusBar } from './components/layout/StatusBar'
-import { MultiAgentViewContainer } from './components/multi-agent-v2/MultiAgentViewContainer'
+import { RouterProvider } from 'react-router-dom'
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow'
 import { useNeedsOnboarding } from './components/onboarding/useNeedsOnboarding'
 import { ToastProvider } from './components/ui/Toast'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
-import { AsyncErrorBoundary } from './components/ui/AsyncErrorBoundary'
 import { ConnectionStatus } from './components/ui/ConnectionStatus'
 import { GlobalErrorHandler } from './components/ui/GlobalErrorHandler'
-import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { useProjectsStore } from './stores/projects'
 import { useSessionsStore } from './stores/sessions'
-import { useAppStore } from './stores/app'
 import { useThreadStore, cleanupThreadResources } from './stores/thread/index'
 import { clearGlobalRollbackStack } from './hooks/useOptimisticUpdate'
 import { setupEventListeners, cleanupEventListeners } from './lib/events'
 import { log } from './lib/logger'
 import { logError } from './lib/errorUtils'
+import { router } from './router'
+import './lib/hostMessages'
 
 function App() {
   const fetchProjects = useProjectsStore((state) => state.fetchProjects)
-  const appMode = useAppStore((state) => state.appMode)
   const needsOnboarding = useNeedsOnboarding()
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -150,32 +145,12 @@ function App() {
     )
   }
 
-  // Unified Layout - Both normal and multi-agent modes share the same shell
+  // Unified Layout
   return (
     <ErrorBoundary>
       <ToastProvider>
         <GlobalErrorHandler />
-        <KeyboardShortcuts />
-        <div className="flex h-screen w-screen overflow-hidden bg-background">
-          {/* Left Sidebar - Always visible */}
-          <Sidebar />
-
-          {/* Main Content Area */}
-          <div className="flex flex-1 flex-col overflow-hidden bg-card relative">
-            <AsyncErrorBoundary
-              onError={(error) => {
-                logError(error, {
-                  context: 'App',
-                  source: 'AsyncErrorBoundary',
-                  details: `Async error in ${appMode === 'multi-agent' ? 'multi-agent' : 'main'} area`
-                })
-              }}
-            >
-              {appMode === 'multi-agent' ? <MultiAgentViewContainer /> : <MainArea />}
-            </AsyncErrorBoundary>
-            <StatusBar />
-          </div>
-        </div>
+        <RouterProvider router={router} />
         <ConnectionStatus />
       </ToastProvider>
     </ErrorBoundary>

@@ -39,6 +39,10 @@ src-tauri/WixTools/
 # Serena
 .serena/
 
+# Local scratch/outputs
+.tmp/
+output/
+
 # AI/IDE local configs
 .sisyphus/
 .trae/

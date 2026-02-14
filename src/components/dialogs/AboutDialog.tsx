@@ -1,8 +1,12 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
+import { ExternalLink, HardDrive, Cpu } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { serverApi, type ServerStatus } from '../../lib/api'
-import { useToast } from '../ui/Toast'
-import { useDialogKeyboardShortcut } from '../../hooks/useDialogKeyboardShortcut'
+import { APP_NAME, APP_VERSION } from '../../lib/appMeta'
+import { BaseDialog } from '../ui/BaseDialog'
+import { Button } from '../ui/Button'
 import { logError } from '../../lib/errorUtils'
+import { useToast } from '../ui/Toast'
 
 interface AboutDialogProps {
   isOpen: boolean
@@ -12,101 +16,96 @@ interface AboutDialogProps {
 export function AboutDialog({ isOpen, onClose }: AboutDialogProps) {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const { showToast } = useToast()
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-
-  // Use keyboard shortcut hook for Escape to close
-  useDialogKeyboardShortcut({
-    isOpen,
-    onConfirm: () => closeButtonRef.current?.click(),
-    onCancel: onClose,
-    requireModifierKey: false,
-  })
 
   useEffect(() => {
-    if (isOpen) {
-      serverApi
-        .getStatus()
-        .then(setServerStatus)
-        .catch((error) => {
-          logError(error, {
-            context: 'AboutDialog',
-            source: 'dialogs',
-            details: 'Failed to get server status'
-          })
-          showToast('Failed to load server status information', 'error')
+    if (!isOpen) return
+    serverApi
+      .getStatus()
+      .then(setServerStatus)
+      .catch((error) => {
+        logError(error, {
+          context: 'AboutDialog',
+          source: 'dialogs',
+          details: 'Failed to get server status',
         })
-    }
+        showToast('Failed to load engine status', 'error')
+      })
   }, [isOpen, showToast])
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
-      <div className="w-full max-w-md rounded-lg bg-background shadow-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-lg font-semibold">About Codex Desktop</h2>
-          <button
-            className="text-muted-foreground hover:text-foreground"
-            onClick={onClose}
+    <BaseDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`About ${APP_NAME}`}
+      description="Application information and diagnostics shortcuts."
+      titleIcon={<HardDrive size={16} />}
+      maxWidth="md"
+      footer={
+        <div className="flex w-full items-center justify-between">
+          <a
+            href="https://github.com/Colinchen-333/codex-GUI"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
           >
-            ✕
-          </button>
+            GitHub
+            <ExternalLink size={14} />
+          </a>
+          <Button variant="primary" size="sm" onClick={onClose}>
+            Close
+          </Button>
         </div>
-
-        {/* Content */}
-        <div className="p-6 text-center">
-          <div className="mb-4 text-5xl">🚀</div>
-          <h1 className="mb-2 text-2xl font-bold">Codex Desktop</h1>
-          <p className="mb-4 text-sm text-muted-foreground">
-            A beautiful desktop interface for the Codex AI coding assistant
-          </p>
-
-          <div className="mb-6 rounded-lg border border-border bg-secondary/30 p-4 text-left">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">App Version:</span>
-                <span className="font-mono">1.0.0</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Engine Version:</span>
-                <span className="font-mono">{serverStatus?.version || 'Unknown'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Engine Status:</span>
-                <span className={serverStatus?.isRunning ? 'text-green-500' : 'text-red-500'}>
-                  {serverStatus?.isRunning ? 'Running' : 'Stopped'}
-                </span>
-              </div>
+      }
+    >
+      <div className="p-6">
+        <div className="flex items-center gap-4">
+          <img
+            src="/icon.png"
+            alt={APP_NAME}
+            className="h-14 w-14 rounded-2xl border border-stroke/20 bg-surface-solid"
+            draggable={false}
+          />
+          <div className="min-w-0">
+            <div className="text-lg font-semibold text-text-1">{APP_NAME}</div>
+            <div className="text-sm text-text-3">
+              A protocol-native desktop GUI for the Codex CLI.
             </div>
           </div>
+        </div>
 
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p>Built with Tauri + React</p>
-            <p>
-              <a
-                href="https://github.com/Colinchen-333/codex-desktop"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
+        <div className="mt-5 rounded-xl border border-stroke/20 bg-surface-solid">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 text-sm">
+            <div className="text-text-3">App Version</div>
+            <div className="text-right font-mono text-text-2">{APP_VERSION}</div>
+
+            <div className="text-text-3">Engine Status</div>
+            <div className="text-right">
+              <span
+                className={
+                  serverStatus?.isRunning ? 'text-status-success' : 'text-status-error'
+                }
               >
-                GitHub Repository
-              </a>
-            </p>
+                {serverStatus?.isRunning ? 'Running' : 'Stopped'}
+              </span>
+            </div>
+
+            <div className="text-text-3">Engine Version</div>
+            <div className="text-right font-mono text-text-2">
+              {serverStatus?.version || 'Unknown'}
+            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-center border-t border-border px-6 py-4">
-          <button
-            ref={closeButtonRef}
-            className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            onClick={onClose}
-          >
-            Close
-          </button>
+        <div className="mt-5 flex items-center justify-between rounded-xl border border-stroke/20 bg-surface-solid px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-text-2">
+            <Cpu size={14} className="text-text-3" />
+            <span>Diagnostics</span>
+          </div>
+          <Link className="text-sm font-medium text-primary hover:underline" to="/debug">
+            Open Debug Page
+          </Link>
         </div>
       </div>
-    </div>
+    </BaseDialog>
   )
 }

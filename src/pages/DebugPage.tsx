@@ -13,7 +13,7 @@ import { PageScaffold } from '../components/layout/PageScaffold'
 import { Button } from '../components/ui/Button'
 import { cn } from '../lib/utils'
 import { APP_NAME, APP_VERSION } from '../lib/appMeta'
-import { serverApi, systemApi, type AppPaths, type ServerStatus } from '../lib/api'
+import { serverApi, systemApi, type AppPaths, type LogTailResponse, type ServerStatus } from '../lib/api'
 import { logger, type LogEntry } from '../lib/logger'
 import { isTauriAvailable } from '../lib/tauri'
 import { useToast } from '../components/ui/Toast'
@@ -66,6 +66,8 @@ export function DebugPage() {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>([])
+  const [fileLogs, setFileLogs] = useState<LogTailResponse | null>(null)
+  const [isLoadingFileLogs, setIsLoadingFileLogs] = useState(false)
   const [appPaths, setAppPaths] = useState<AppPaths>({ appDataDir: null, logDir: null })
   const [storageInfo, setStorageInfo] = useState(() => {
     const bytes = computeLocalStorageBytes()
@@ -165,10 +167,27 @@ export function DebugPage() {
       paths: appPaths,
       storage: storageInfo,
       logs: logger.getLogs().slice(-400).map(formatLogLine),
+      fileLogs: fileLogs ? { file: fileLogs.file, truncated: fileLogs.truncated } : null,
       capturedAt: new Date().toISOString(),
     }
     void copyToClipboard(JSON.stringify(report, null, 2), 'Copied diagnostics report')
-  }, [appPaths, copyToClipboard, runtimeInfo, serverStatus, storageInfo])
+  }, [appPaths, copyToClipboard, fileLogs, runtimeInfo, serverStatus, storageInfo])
+
+  const loadFileLogs = useCallback(async () => {
+    if (!isTauriAvailable()) return
+    setIsLoadingFileLogs(true)
+    try {
+      const tail = await systemApi.getLogTail(200_000)
+      setFileLogs(tail)
+      if (!tail.content) {
+        toast.info('No log content found', { message: 'The log directory may be empty.' })
+      }
+    } catch (e) {
+      toast.error('Failed to load file logs', { message: String(e) })
+    } finally {
+      setIsLoadingFileLogs(false)
+    }
+  }, [toast])
 
   const engineLabel = serverStatus?.isRunning ? 'Running' : 'Stopped'
   const engineColor = serverStatus?.isRunning ? 'text-status-success' : 'text-status-error'
@@ -326,6 +345,41 @@ export function DebugPage() {
                       ))
                     )}
                   </div>
+
+                  {runtimeInfo.isTauri && appPaths.logDir && (
+                    <div className="pt-2 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-text-3">
+                          <Terminal size={14} />
+                          <span>
+                            File logs{fileLogs?.file ? `: ${fileLogs.file.split('/').pop()}` : ''}
+                            {fileLogs?.truncated ? ' (truncated)' : ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void loadFileLogs()}
+                            disabled={isLoadingFileLogs}
+                          >
+                            {isLoadingFileLogs ? 'Loading…' : 'Load'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void copyToClipboard(fileLogs?.content ?? '', 'Copied file log tail')}
+                            disabled={!fileLogs?.content}
+                          >
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-surface-hover/[0.05] p-3 font-mono text-xs text-text-3 max-h-[260px] overflow-y-auto whitespace-pre-wrap">
+                        {fileLogs?.content ? fileLogs.content : 'No file logs loaded.'}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

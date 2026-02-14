@@ -229,6 +229,12 @@ export interface AppPaths {
   logDir: string | null
 }
 
+export interface LogTailResponse {
+  file: string | null
+  content: string
+  truncated: boolean
+}
+
 export interface ReasoningEffortOption {
   reasoningEffort: string
   description: string
@@ -743,6 +749,8 @@ export const systemApi = {
   stopKeepAwake: () => invoke<void>('stop_keep_awake'),
   isKeepAwakeActive: () => invokeOrFallback<boolean>(false, 'is_keep_awake_active'),
   getAppPaths: () => invokeOrFallback<AppPaths>({ appDataDir: null, logDir: null }, 'get_app_paths'),
+  getLogTail: (maxBytes?: number) =>
+    invokeOrFallback<LogTailResponse>({ file: null, content: '', truncated: false }, 'get_log_tail', { maxBytes }),
 }
 
 // ==================== Codex CLI Import Types ====================

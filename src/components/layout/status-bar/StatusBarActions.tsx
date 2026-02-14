@@ -31,10 +31,10 @@ export const StatusBarActions = memo(function StatusBarActions({
     <div className="flex items-center gap-1">
       <button
         className={cn(
-          'flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-token-list-hover-background',
+          'flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-surface-hover/[0.06]',
           keepAwakeActive
             ? 'text-status-warning'
-            : 'text-token-description-foreground hover:text-token-foreground'
+            : 'text-text-2 hover:text-text-1'
         )}
         onClick={() => void toggleKeepAwake()}
         disabled={keepAwakeLoading}
@@ -45,7 +45,7 @@ export const StatusBarActions = memo(function StatusBarActions({
       </button>
       {activeThread && (
         <button
-          className="flex h-6 w-6 items-center justify-center rounded-md text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
           onClick={onSnapshotsClick}
           title="Snapshots"
         >
@@ -53,21 +53,21 @@ export const StatusBarActions = memo(function StatusBarActions({
         </button>
       )}
       <button
-        className="flex h-6 w-6 items-center justify-center rounded-md text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+        className="flex h-6 w-6 items-center justify-center rounded-md text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
         onClick={onHelpClick}
         title="Help"
       >
         <HelpCircle size={13} />
       </button>
       <button
-        className="flex h-6 w-6 items-center justify-center rounded-md text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+        className="flex h-6 w-6 items-center justify-center rounded-md text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
         onClick={onAboutClick}
         title="About"
       >
         <Info size={13} />
       </button>
       <button
-        className="flex h-6 w-6 items-center justify-center rounded-md text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+        className="flex h-6 w-6 items-center justify-center rounded-md text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
         onClick={onSettingsClick}
         title="Settings"
       >

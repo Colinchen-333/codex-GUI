@@ -6,7 +6,6 @@
  * - In-memory log storage for debugging (max 1000 entries)
  * - Development-only console output
  * - Context-aware logging with timestamps
- * - Emoji indicators for quick visual scanning
  */
 
 /* eslint-disable no-console -- This is the logger implementation that uses console methods */
@@ -42,10 +41,10 @@ class Logger {
     // Console output in development
     if (this.isDev) {
       const timestamp = new Date(entry.timestamp).toISOString()
-      const prefix = context ? `[${context}]` : ''
-      const emoji = { debug: '🐛', info: 'ℹ️', warn: '⚠️', error: '❌' }[level]
+      const levelTag = level.toUpperCase()
+      const contextTag = context ? ` [${context}]` : ''
 
-      console[level](`${timestamp} ${emoji} ${prefix}`, message)
+      console[level](`${timestamp} [${levelTag}]${contextTag}`, message)
     }
   }
 

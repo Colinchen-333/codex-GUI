@@ -1,5 +1,7 @@
 import { Component, type ReactNode } from 'react'
+import { AlertTriangle, Copy } from 'lucide-react'
 import { logError } from '../../lib/errorUtils'
+import { Button } from './Button'
 
 interface Props {
   children: ReactNode
@@ -35,25 +37,52 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
+      const message = this.state.error?.message || 'Unknown error'
+      const copyError = async () => {
+        try {
+          const text = this.state.error?.stack || message
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text)
+          } else {
+            const el = document.createElement('textarea')
+            el.value = text
+            el.setAttribute('readonly', 'true')
+            el.style.position = 'fixed'
+            el.style.left = '-9999px'
+            document.body.appendChild(el)
+            el.select()
+            document.execCommand('copy')
+            document.body.removeChild(el)
+          }
+        } catch {
+          // Ignore clipboard failures in crash UI.
+        }
+      }
+
       return (
         <div className="flex h-screen w-screen items-center justify-center bg-background p-8">
           <div className="max-w-md text-center">
-            <div className="mb-6 text-6xl">😵</div>
-            <h1 className="mb-4 text-2xl font-bold">Something went wrong</h1>
-            <p className="mb-6 text-muted-foreground">
+            <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-status-error/30 bg-status-error-muted">
+              <AlertTriangle size={24} className="text-status-error" />
+            </div>
+            <h1 className="mb-3 text-2xl font-bold text-text-1">Something went wrong</h1>
+            <p className="mb-6 text-sm text-text-3">
               The application encountered an unexpected error.
             </p>
-            <div className="mb-6 rounded-lg bg-destructive/10 p-4 text-left">
-              <p className="font-mono text-sm text-destructive">
-                {this.state.error?.message || 'Unknown error'}
+            <div className="mb-6 rounded-lg border border-status-error/30 bg-status-error-muted p-4 text-left">
+              <p className="font-mono text-xs text-status-error whitespace-pre-wrap break-words">
+                {message}
               </p>
             </div>
-            <button
-              className="rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground hover:bg-primary/90"
-              onClick={() => window.location.reload()}
-            >
-              Reload Application
-            </button>
+            <div className="flex items-center justify-center gap-2">
+              <Button variant="outline" onClick={() => void copyError()} className="gap-2">
+                <Copy size={14} />
+                Copy Error
+              </Button>
+              <Button variant="primary" onClick={() => window.location.reload()}>
+                Reload Application
+              </Button>
+            </div>
           </div>
         </div>
       )

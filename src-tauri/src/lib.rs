@@ -220,6 +220,7 @@ pub fn run() {
             commands::system::is_keep_awake_active,
             // Diagnostics
             commands::system::get_app_paths,
+            commands::system::get_log_tail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

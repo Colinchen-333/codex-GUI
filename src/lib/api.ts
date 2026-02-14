@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { log } from './logger'
 import { withCache, clearCache, clearAllCache, CACHE_KEYS, CACHE_TTL } from './apiCache'
+import { isTauriAvailable } from './tauri'
 
 // ==================== Timeout Utility ====================
 
@@ -30,11 +31,6 @@ async function invokeWithTimeout<T>(
   } finally {
     if (timeoutId) clearTimeout(timeoutId)
   }
-}
-
-function isTauriAvailable(): boolean {
-  if (typeof window === 'undefined') return false
-  return typeof (window as { __TAURI__?: { core?: { invoke?: unknown } } }).__TAURI__?.core?.invoke === 'function'
 }
 
 function invokeOrFallback<T>(

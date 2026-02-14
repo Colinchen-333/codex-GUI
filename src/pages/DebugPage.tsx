@@ -1,99 +1,183 @@
-import { useState } from 'react'
-import { RefreshCw, ChevronDown, ChevronRight, Terminal, Cpu, HardDrive } from 'lucide-react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
+import {
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+  Terminal,
+  Cpu,
+  HardDrive,
+  Activity,
+  Trash2,
+} from 'lucide-react'
 import { PageScaffold } from '../components/layout/PageScaffold'
 import { Button } from '../components/ui/Button'
 import { cn } from '../lib/utils'
+import { APP_NAME, APP_VERSION } from '../lib/appMeta'
+import { serverApi, type ServerStatus } from '../lib/api'
+import { logger, type LogEntry } from '../lib/logger'
+import { isTauriAvailable } from '../lib/tauri'
 
-type ProcessInfo = {
-  id: string
-  name: string
-  pid: number
-  status: 'running' | 'stopped'
-  memory: string
-}
+type DebugSectionId = 'engine' | 'storage' | 'logs'
 
 type DebugSection = {
-  id: string
+  id: DebugSectionId
   title: string
   icon: React.ReactNode
   expanded: boolean
 }
 
-const SAMPLE_PROCESSES: ProcessInfo[] = [
-  { id: 'p1', name: 'codex-server', pid: 12345, status: 'running', memory: '128 MB' },
-  { id: 'p2', name: 'language-server', pid: 12346, status: 'running', memory: '256 MB' },
-  { id: 'p3', name: 'file-watcher', pid: 12347, status: 'running', memory: '64 MB' },
-]
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let value = bytes
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024
+    i += 1
+  }
+  const rounded = value >= 10 || i === 0 ? Math.round(value) : Math.round(value * 10) / 10
+  return `${rounded} ${units[i]}`
+}
+
+function computeLocalStorageBytes(): number {
+  try {
+    let bytes = 0
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i)
+      if (!key) continue
+      const value = localStorage.getItem(key) ?? ''
+      bytes += key.length + value.length
+    }
+    return bytes
+  } catch {
+    return 0
+  }
+}
+
+function formatLogLine(entry: LogEntry): string {
+  const ts = new Date(entry.timestamp).toISOString()
+  const prefix = entry.context ? `[${entry.context}] ` : ''
+  return `${ts} [${entry.level.toUpperCase()}] ${prefix}${entry.message}`
+}
 
 export function DebugPage() {
-  const [processes, setProcesses] = useState<ProcessInfo[]>(SAMPLE_PROCESSES)
+  const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [storageInfo, setStorageInfo] = useState(() => {
+    const bytes = computeLocalStorageBytes()
+    return {
+      localStorageBytes: bytes,
+      localStorageHuman: formatBytes(bytes),
+      keys: (() => {
+        try {
+          return localStorage.length
+        } catch {
+          return 0
+        }
+      })(),
+    }
+  })
   const [sections, setSections] = useState<DebugSection[]>([
-    { id: 'processes', title: 'Child Processes', icon: <Cpu size={14} />, expanded: true },
+    { id: 'engine', title: 'Engine', icon: <Activity size={14} />, expanded: true },
     { id: 'storage', title: 'Storage', icon: <HardDrive size={14} />, expanded: false },
-    { id: 'logs', title: 'Logs', icon: <Terminal size={14} />, expanded: false },
+    { id: 'logs', title: 'Logs', icon: <Terminal size={14} />, expanded: true },
   ])
 
-  const [systemInfo] = useState({
-    platform: 'darwin',
-    arch: 'arm64',
-    version: '0.1.0',
-    electron: '28.0.0',
-    node: '18.18.0',
-  })
+  const runtimeInfo = useMemo(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
+    return {
+      isTauri: isTauriAvailable(),
+      mode: import.meta.env.MODE,
+      userAgent: ua,
+    }
+  }, [])
 
-  const handleRefresh = () => {
+  const refresh = useCallback(async () => {
     setIsRefreshing(true)
-    setTimeout(() => {
-      setProcesses(SAMPLE_PROCESSES.map((p) => ({ ...p, memory: `${Math.floor(Math.random() * 256) + 64} MB` })))
+    try {
+      const [status] = await Promise.all([serverApi.getStatus()])
+      setServerStatus(status)
+      setLogs(logger.getLogs().slice(-400))
+      const bytes = computeLocalStorageBytes()
+      setStorageInfo({
+        localStorageBytes: bytes,
+        localStorageHuman: formatBytes(bytes),
+        keys: (() => {
+          try {
+            return localStorage.length
+          } catch {
+            return 0
+          }
+        })(),
+      })
+    } finally {
       setIsRefreshing(false)
-    }, 500)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  const toggleSection = (id: DebugSectionId) => {
+    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, expanded: !s.expanded } : s)))
   }
 
-  const toggleSection = (id: string) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, expanded: !s.expanded } : s))
-    )
+  const handleClearLogs = () => {
+    logger.clearLogs()
+    setLogs([])
   }
+
+  const engineLabel = serverStatus?.isRunning ? 'Running' : 'Stopped'
+  const engineColor = serverStatus?.isRunning ? 'text-status-success' : 'text-status-error'
 
   return (
-    <PageScaffold title="Debug" description="System diagnostics and debug tools.">
+    <PageScaffold title="Debug" description="Diagnostics and troubleshooting tools.">
       <div className="space-y-6">
-        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-primary">
-          Debug Panel — Development diagnostics
-        </div>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-1">System Info</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="gap-2"
-          >
-            <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
-            Refresh
-          </Button>
+          <div className="text-sm text-text-3">
+            {APP_NAME} <span className="font-mono text-text-2">{APP_VERSION}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refresh()}
+              disabled={isRefreshing}
+              className="gap-2"
+            >
+              <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-stroke/20 bg-surface-solid p-4">
-            <div className="text-xs text-text-3">Platform</div>
-            <div className="mt-1 text-sm font-medium text-text-1">{systemInfo.platform} ({systemInfo.arch})</div>
-          </div>
-          <div className="rounded-xl border border-stroke/20 bg-surface-solid p-4">
-            <div className="text-xs text-text-3">Version</div>
-            <div className="mt-1 text-sm font-medium text-text-1">{systemInfo.version}</div>
-          </div>
-          <div className="rounded-xl border border-stroke/20 bg-surface-solid p-4">
             <div className="text-xs text-text-3">Runtime</div>
-            <div className="mt-1 text-sm font-medium text-text-1">Electron {systemInfo.electron}</div>
+            <div className="mt-1 text-sm font-medium text-text-1">
+              {runtimeInfo.isTauri ? 'Tauri' : 'Web'} ({runtimeInfo.mode})
+            </div>
+          </div>
+          <div className="rounded-xl border border-stroke/20 bg-surface-solid p-4">
+            <div className="text-xs text-text-3">Engine</div>
+            <div className={cn('mt-1 text-sm font-medium', engineColor)}>{engineLabel}</div>
+          </div>
+          <div className="rounded-xl border border-stroke/20 bg-surface-solid p-4">
+            <div className="text-xs text-text-3">Engine Version</div>
+            <div className="mt-1 text-sm font-medium text-text-1 font-mono truncate">
+              {serverStatus?.version || 'Unknown'}
+            </div>
           </div>
         </div>
 
         <div className="space-y-2">
           {sections.map((section) => (
-            <div key={section.id} className="rounded-xl border border-stroke/20 bg-surface-solid overflow-hidden">
+            <div
+              key={section.id}
+              className="rounded-xl border border-stroke/20 bg-surface-solid overflow-hidden"
+            >
               <button
                 className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-surface-hover/[0.05] transition-colors"
                 onClick={() => toggleSection(section.id)}
@@ -103,32 +187,20 @@ export function DebugPage() {
                 <span className="text-sm font-medium text-text-1">{section.title}</span>
               </button>
 
-              {section.expanded && section.id === 'processes' && (
+              {section.expanded && section.id === 'engine' && (
                 <div className="border-t border-stroke/10 px-4 py-3">
-                  {processes.length === 0 ? (
-                    <p className="text-sm text-text-3">No active processes.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {processes.map((proc) => (
-                        <div
-                          key={proc.id}
-                          className="flex items-center justify-between rounded-lg bg-surface-hover/[0.05] px-3 py-2"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className={cn(
-                              'h-2 w-2 rounded-full',
-                              proc.status === 'running' ? 'bg-emerald-500' : 'bg-text-3'
-                            )} />
-                            <div>
-                              <div className="text-sm font-medium text-text-1">{proc.name}</div>
-                              <div className="text-xs text-text-3">PID: {proc.pid}</div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-text-3">{proc.memory}</div>
-                        </div>
-                      ))}
+                  <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                    <div className="rounded-lg bg-surface-hover/[0.05] p-3">
+                      <div className="text-xs text-text-3">Status</div>
+                      <div className={cn('mt-1 font-medium', engineColor)}>{engineLabel}</div>
                     </div>
-                  )}
+                    <div className="rounded-lg bg-surface-hover/[0.05] p-3">
+                      <div className="text-xs text-text-3">Installed CLI</div>
+                      <div className="mt-1 font-mono text-text-2 truncate">
+                        {serverStatus?.version || 'Unknown'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -136,29 +208,44 @@ export function DebugPage() {
                 <div className="border-t border-stroke/10 px-4 py-3">
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-text-3">Cache</span>
-                      <span className="text-text-1">24.5 MB</span>
+                      <span className="text-text-3">localStorage</span>
+                      <span className="font-mono text-text-2">
+                        {storageInfo.localStorageHuman} ({storageInfo.keys} keys)
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-3">Logs</span>
-                      <span className="text-text-1">8.2 MB</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-3">Sessions</span>
-                      <span className="text-text-1">156 KB</span>
+                    <div className="text-xs text-text-3 break-all">
+                      User-Agent: {runtimeInfo.userAgent}
                     </div>
                   </div>
                 </div>
               )}
 
               {section.expanded && section.id === 'logs' && (
-                <div className="border-t border-stroke/10 px-4 py-3">
-                  <div className="rounded-lg bg-surface-hover/[0.05] p-3 font-mono text-xs text-text-3 max-h-[200px] overflow-y-auto">
-                    <div>[INFO] Application started</div>
-                    <div>[INFO] Connected to language server</div>
-                    <div>[INFO] Workspace loaded: codex-GUI</div>
-                    <div>[DEBUG] File watcher initialized</div>
-                    <div>[INFO] Ready</div>
+                <div className="border-t border-stroke/10 px-4 py-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-text-3">
+                      <Cpu size={14} />
+                      <span>{logs.length} entries (in-memory)</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearLogs}
+                      className="gap-2"
+                      disabled={logs.length === 0}
+                    >
+                      <Trash2 size={14} />
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="rounded-lg bg-surface-hover/[0.05] p-3 font-mono text-xs text-text-3 max-h-[260px] overflow-y-auto space-y-1">
+                    {logs.length === 0 ? (
+                      <div>No logs captured yet.</div>
+                    ) : (
+                      logs.map((entry, idx) => (
+                        <div key={`${entry.timestamp}-${idx}`}>{formatLogLine(entry)}</div>
+                      ))
+                    )}
                   </div>
                 </div>
               )}

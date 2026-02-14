@@ -185,7 +185,7 @@ export const DragOverlay = memo(function DragOverlay({
 }) {
   return (
     <div
-      className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary/5 via-background/95 to-primary/10 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary/10 via-background/95 to-primary/10 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       onDragOver={(e) => e.preventDefault()}
@@ -199,7 +199,7 @@ export const DragOverlay = memo(function DragOverlay({
         <div className="absolute inset-0 -m-4 rounded-full border-2 border-primary/30 animate-pulse" />
 
         {/* Main content */}
-        <div className="relative flex flex-col items-center gap-5 p-10 rounded-3xl bg-card/80 border-2 border-dashed border-primary/50 shadow-2xl shadow-primary/10">
+        <div className="relative flex flex-col items-center gap-5 p-10 rounded-3xl bg-surface-solid/80 border-2 border-dashed border-primary/50 shadow-2xl shadow-primary/10">
           <div className="relative">
             <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg">
               <ImageIcon size={36} className="text-primary" />
@@ -209,8 +209,8 @@ export const DragOverlay = memo(function DragOverlay({
             </div>
           </div>
           <div className="text-center">
-            <p className="text-xl font-semibold text-foreground mb-1">Drop images here</p>
-            <p className="text-sm text-muted-foreground">PNG, JPG, GIF, WebP supported</p>
+            <p className="text-xl font-semibold text-text-1 mb-1">Drop images here</p>
+            <p className="text-sm text-text-3">PNG, JPG, GIF, WebP supported</p>
           </div>
         </div>
       </div>

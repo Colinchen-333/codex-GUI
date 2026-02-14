@@ -1,9 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { listen } from '@tauri-apps/api/event'
+import { Loader2, WifiOff } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { log } from '../../lib/logger'
 import { useServerConnectionStore } from '../../stores/server-connection'
 import { CONNECTION_RETRY } from '../../constants'
+import { BaseDialog } from './BaseDialog'
+import { Button } from './Button'
+import { isTauriAvailable } from '../../lib/tauri'
 
 export function ConnectionStatus() {
   const {
@@ -27,11 +31,7 @@ export function ConnectionStatus() {
 
     // Listen for server disconnection and reconnection (Tauri only)
     const setupListeners = async () => {
-      if (typeof window === 'undefined') {
-        return () => {}
-      }
-      const tauriListen = (window as { __TAURI__?: { event?: { listen?: unknown } } }).__TAURI__?.event?.listen
-      if (typeof tauriListen !== 'function') {
+      if (!isTauriAvailable()) {
         return () => {}
       }
 
@@ -70,53 +70,80 @@ export function ConnectionStatus() {
     return null
   }
 
+  const progressPercent = Math.min(
+    100,
+    Math.max(0, (retryCount / CONNECTION_RETRY.MAX_ATTEMPTS) * 100)
+  )
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy">
-      <div className="w-full max-w-sm rounded-lg bg-background p-6 shadow-xl">
-        <div className="text-center">
-          {isReconnecting ? (
-            <>
-              <div className="mb-4 text-4xl animate-spin">⚙️</div>
-              <h2 className="mb-2 text-xl font-semibold">Reconnecting...</h2>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Attempting to reconnect to Codex engine
-                {retryCount > 0 && ` (attempt ${retryCount}/${CONNECTION_RETRY.MAX_ATTEMPTS})`}
-              </p>
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className={cn(
-                    'h-full bg-primary transition-all duration-500',
-                    'animate-pulse'
-                  )}
-                  style={{ width: `${(retryCount / CONNECTION_RETRY.MAX_ATTEMPTS) * 100}%` }}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="mb-4 text-4xl">❌</div>
-              <h2 className="mb-2 text-xl font-semibold">Connection Lost</h2>
-              <p className="mb-6 text-sm text-muted-foreground">
-                Unable to connect to Codex engine after multiple attempts.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  className="flex-1 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
-                  onClick={() => window.location.reload()}
-                >
-                  Reload App
-                </button>
-                <button
-                  className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                  onClick={() => void attemptReconnect()}
-                >
-                  Try Again
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+    <BaseDialog
+      isOpen={true}
+      onClose={() => {}}
+      title={isReconnecting ? 'Reconnecting…' : 'Connection Lost'}
+      description="Engine connectivity status."
+      titleIcon={
+        isReconnecting ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <WifiOff size={16} />
+        )
+      }
+      maxWidth="sm"
+      variant={isReconnecting ? 'warning' : 'danger'}
+      showCloseButton={false}
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      footer={
+        isReconnecting ? undefined : (
+          <div className="flex w-full gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => window.location.reload()}
+            >
+              Reload App
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="flex-1"
+              onClick={() => void attemptReconnect()}
+            >
+              Try Again
+            </Button>
+          </div>
+        )
+      }
+    >
+      <div className="p-6">
+        {isReconnecting ? (
+          <div className="space-y-4">
+            <p className="text-sm text-text-3">
+              Attempting to reconnect to the Codex engine
+              {retryCount > 0 && ` (attempt ${retryCount}/${CONNECTION_RETRY.MAX_ATTEMPTS})`}
+            </p>
+            <div className="h-2 overflow-hidden rounded-full bg-surface-hover/[0.08]">
+              <div
+                className={cn('h-full bg-primary transition-all duration-500', 'animate-pulse')}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="text-xs text-text-3">
+              This dialog will close automatically once the engine is back online.
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-text-3">
+              Unable to connect to the Codex engine after multiple attempts.
+            </p>
+            <div className="text-xs text-text-3">
+              If this keeps happening, open the Debug page and copy a diagnostics report.
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </BaseDialog>
   )
 }

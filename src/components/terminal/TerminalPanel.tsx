@@ -262,7 +262,7 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
 
   return (
     <div
-      className="flex shrink-0 flex-col border-t border-token-border panel-slide-up"
+      className="flex shrink-0 flex-col border-t border-stroke/20 panel-slide-up"
       style={{ height }}
     >
       {/* Drag handle */}

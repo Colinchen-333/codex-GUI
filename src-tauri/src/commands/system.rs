@@ -2,10 +2,31 @@
 
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use serde::Serialize;
+use tauri::Manager;
 use tauri::State;
 
 /// Holds the caffeinate child process handle
 pub struct CaffeinateState(pub Mutex<Option<Child>>);
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppPaths {
+    pub app_data_dir: Option<String>,
+    pub log_dir: Option<String>,
+}
+
+/// Get app-specific paths for diagnostics.
+#[tauri::command]
+pub fn get_app_paths(app: tauri::AppHandle) -> AppPaths {
+    let app_data_dir = app.path().app_data_dir().ok();
+    let log_dir = app_data_dir.as_ref().map(|p| p.join("logs"));
+
+    AppPaths {
+        app_data_dir: app_data_dir.map(|p| p.to_string_lossy().into_owned()),
+        log_dir: log_dir.map(|p| p.to_string_lossy().into_owned()),
+    }
+}
 
 /// Start caffeinate to prevent system sleep
 #[tauri::command]

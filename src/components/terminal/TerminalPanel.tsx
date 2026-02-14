@@ -275,7 +275,7 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
 
       <div
         ref={terminalRef}
-        className="flex-1 overflow-hidden bg-token-terminal-background px-2 py-1"
+        className="flex-1 overflow-hidden bg-background px-2 py-1"
       />
     </div>
   )

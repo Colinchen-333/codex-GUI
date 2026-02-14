@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useMemo, useCallback, useReducer } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, useReducer, type ReactNode } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { ArrowUp, ChevronDown, FolderOpen, GitBranch, GitCommit, Mic, Plus, ShieldAlert, Sparkles } from 'lucide-react'
+import { ArrowUp, ChevronDown, FolderOpen, GitBranch, GitCommit, Mic, Plus, ShieldAlert, Sparkles, Gamepad2, FileText, Newspaper } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
@@ -25,14 +25,14 @@ interface AppShellContext {
 }
 
 interface LandingSuggestion {
-  emoji: string
+  icon: ReactNode
   prompt: string
 }
 
 const LANDING_SUGGESTIONS: LandingSuggestion[] = [
-  { emoji: '🎮', prompt: 'Build a classic Snake game in this repo.' },
-  { emoji: '📜', prompt: 'Create a one-page PDF that summarizes this app.' },
-  { emoji: '📰', prompt: "Summarize last week's PRs by teammate and theme." },
+  { icon: <Gamepad2 size={18} className="text-token-text-tertiary" aria-hidden="true" />, prompt: 'Build a classic Snake game in this repo.' },
+  { icon: <FileText size={18} className="text-token-text-tertiary" aria-hidden="true" />, prompt: 'Create a one-page PDF that summarizes this app.' },
+  { icon: <Newspaper size={18} className="text-token-text-tertiary" aria-hidden="true" />, prompt: "Summarize last week's PRs by teammate and theme." },
 ]
 
 // Timeout for resume operations to prevent permanent blocking
@@ -561,7 +561,9 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                 onClick={() => void startSessionWithPrompt(suggestion.prompt)}
                 className="rounded-3xl border border-token-border bg-token-surface-tertiary p-5 text-left transition-colors hover:bg-token-list-hover-background"
               >
-                <div className="mb-3 text-xl">{suggestion.emoji}</div>
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-token-border bg-token-bg-primary">
+                  {suggestion.icon}
+                </div>
                 <p className="text-[16px] font-medium leading-7 text-token-foreground">{suggestion.prompt}</p>
               </button>
             ))}

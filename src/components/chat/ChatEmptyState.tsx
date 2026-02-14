@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { MessageSquare, Cloud, ChevronDown } from 'lucide-react'
+import { MessageSquare, Cloud, ChevronDown, Gamepad2, FileText, Newspaper } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export interface ChatEmptyStateProps {
@@ -12,15 +12,15 @@ export interface ChatEmptyStateProps {
 
 const SUGGESTION_CARDS = [
   {
-    emoji: '🎮',
+    icon: <Gamepad2 size={18} className="text-text-2" aria-hidden="true" />,
     text: 'Build a classic Snake game in this repo.',
   },
   {
-    emoji: '📜',
+    icon: <FileText size={18} className="text-text-2" aria-hidden="true" />,
     text: 'Create a one-page PDF that summarizes this app.',
   },
   {
-    emoji: '📰',
+    icon: <Newspaper size={18} className="text-text-2" aria-hidden="true" />,
     text: "Summarize last week's PRs by teammate and theme.",
   },
 ]
@@ -84,7 +84,9 @@ export const ChatEmptyState = memo(function ChatEmptyState({
             key={index}
             className="bg-surface-solid border border-stroke/10 p-5 rounded-2xl hover:border-ring/50 cursor-pointer transition-all"
           >
-            <div className="text-2xl mb-4">{card.emoji}</div>
+            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stroke/10 bg-surface-hover/[0.06]">
+              {card.icon}
+            </div>
             <p className="text-sm font-medium leading-relaxed text-text-2">
               {card.text}
             </p>

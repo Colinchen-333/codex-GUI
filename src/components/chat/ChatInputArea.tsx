@@ -96,10 +96,10 @@ const SendButton = memo(function SendButton({
       className={cn(
         'h-10 w-10 flex items-center justify-center rounded-full transition-all duration-100 shadow-[var(--shadow-1)]',
         isRunning
-          ? 'bg-token-foreground text-token-bg-primary hover:bg-token-foreground/85'
+          ? 'bg-status-warning text-status-warning-foreground hover:bg-status-warning/90'
           : !canSend
             ? 'bg-surface-hover/[0.08] text-text-3 cursor-not-allowed opacity-40'
-            : 'bg-token-foreground text-token-bg-primary hover:bg-token-foreground/85'
+            : 'bg-primary text-primary-foreground hover:bg-primary/90'
       )}
       onClick={isRunning ? onInterrupt : onSend}
       disabled={!isRunning && !canSend}

@@ -102,7 +102,7 @@ function LazyErrorFallback({ onRetry }: { onRetry?: () => void }) {
       <div className="w-full max-w-md rounded-lg bg-background shadow-xl p-6 text-center">
         <div className="text-4xl mb-4">!</div>
         <h3 className="text-lg font-semibold mb-2">Failed to load component</h3>
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-sm text-text-3 mb-4">
           There was an error loading this dialog. Please try again.
         </p>
         {onRetry && (

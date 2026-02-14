@@ -122,7 +122,7 @@ const markdownComponents = {
 
     if (!isValidUrl(href)) {
       // Render as plain text for invalid URLs
-      return <span className="text-muted-foreground">{children}</span>
+      return <span className="text-text-3">{children}</span>
     }
 
     return (

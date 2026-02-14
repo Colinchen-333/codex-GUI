@@ -43,7 +43,7 @@ export const ProjectList = memo(function ProjectList({
       <div className="flex h-36 items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
-            <span className="text-lg">📁</span>
+            <FolderOpen size={18} className="text-text-2" aria-hidden="true" />
           </div>
           <p className="text-sm font-semibold text-text-1">No projects yet</p>
           <p className="text-xs text-text-3">Add a project to get started</p>

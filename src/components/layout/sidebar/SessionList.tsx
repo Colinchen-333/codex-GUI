@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback } from 'react'
-import { Star, Pin, PinOff, Archive, Pencil, Trash2, Copy, GitBranch } from 'lucide-react'
+import { Star, Pin, PinOff, Archive, Pencil, Trash2, Copy, GitBranch, FolderOpen, MessageSquare } from 'lucide-react'
 import { List } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { cn, formatAbsoluteTime } from '../../../lib/utils'
@@ -540,7 +540,7 @@ export const SessionList = memo(function SessionList({
       <div className="flex h-36 items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-3">
-            <span className="text-base">📁</span>
+            <FolderOpen size={16} className="text-text-2" aria-hidden="true" />
           </div>
           <p className="text-sm font-medium text-text-2">Select a project</p>
           <p className="text-xs text-text-3">Choose a project to see sessions</p>
@@ -584,7 +584,7 @@ export const SessionList = memo(function SessionList({
       <div className="flex h-40 items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-3">
-            <span className="text-base">💬</span>
+            <MessageSquare size={16} className="text-text-2" aria-hidden="true" />
           </div>
           <p className="text-sm font-medium text-text-2">
             {isGlobalSearch ? 'No matching sessions' : 'No sessions yet'}

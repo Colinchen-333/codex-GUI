@@ -24,8 +24,8 @@ const maxWidthClasses = {
 
 const variantClasses = {
   default: 'bg-surface-solid',
-  danger: 'bg-red-900 dark:bg-red-800',
-  warning: 'bg-amber-900 dark:bg-amber-800',
+  danger: 'bg-status-error-muted',
+  warning: 'bg-status-warning-muted',
 }
 
 export function BaseDialog({
@@ -83,10 +83,12 @@ export function BaseDialog({
           </p>
         )}
 
-        <div className={cn(
-          'flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0',
-          variantClasses[variant]
-        )}>
+        <div
+          className={cn(
+            'flex items-center justify-between px-6 py-4 border-b border-stroke/20 flex-shrink-0',
+            variantClasses[variant]
+          )}
+        >
           <div className="flex items-center space-x-3">
             {titleIcon && <span className="text-text-1">{titleIcon}</span>}
             <h2 id={titleId} className="text-lg font-semibold text-text-1">
@@ -96,7 +98,7 @@ export function BaseDialog({
           <button
             ref={closeButtonRef}
             onClick={onClose}
-            className="p-1 rounded-full hover:bg-white/20 transition-colors"
+            className="p-1 rounded-full hover:bg-surface-hover/[0.08] transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5 text-text-1" />
@@ -108,7 +110,7 @@ export function BaseDialog({
         </div>
 
         {footer && (
-          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-border bg-surface dark:bg-surface flex-shrink-0">
+          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-stroke/20 bg-surface-solid flex-shrink-0">
             {footer}
           </div>
         )}

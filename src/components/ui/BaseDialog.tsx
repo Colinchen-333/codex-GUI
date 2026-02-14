@@ -13,6 +13,9 @@ interface BaseDialogProps {
   footer?: ReactNode
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl'
   variant?: 'default' | 'danger' | 'warning'
+  showCloseButton?: boolean
+  closeOnBackdrop?: boolean
+  closeOnEscape?: boolean
 }
 
 const maxWidthClasses = {
@@ -38,6 +41,9 @@ export function BaseDialog({
   footer,
   maxWidth = 'md',
   variant = 'default',
+  showCloseButton = true,
+  closeOnBackdrop = true,
+  closeOnEscape = true,
 }: BaseDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -45,13 +51,13 @@ export function BaseDialog({
 
   const containerRef = useFocusTrap<HTMLDivElement>({
     isActive: isOpen,
-    onEscape: onClose,
-    initialFocusRef: closeButtonRef,
+    onEscape: closeOnEscape ? onClose : undefined,
+    initialFocus: showCloseButton ? closeButtonRef : 'container',
     restoreFocus: true,
   })
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    if (closeOnBackdrop && e.target === e.currentTarget) {
       onClose()
     }
   }
@@ -95,14 +101,16 @@ export function BaseDialog({
               {title}
             </h2>
           </div>
-          <button
-            ref={closeButtonRef}
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-surface-hover/[0.08] transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5 text-text-1" />
-          </button>
+          {showCloseButton && (
+            <button
+              ref={closeButtonRef}
+              onClick={onClose}
+              className="p-1 rounded-full hover:bg-surface-hover/[0.08] transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5 text-text-1" />
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">

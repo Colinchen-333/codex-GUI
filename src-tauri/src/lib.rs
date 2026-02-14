@@ -90,7 +90,7 @@ pub fn run() {
                     tracing::warn!("Failed to apply Sidebar vibrancy: {}", err);
                     let _ = apply_vibrancy(
                         &window,
-                        NSVisualEffectMaterial::AppearanceBased,
+                        NSVisualEffectMaterial::UnderWindowBackground,
                         None,
                         None,
                     );

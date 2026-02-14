@@ -82,11 +82,11 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-token-description-foreground">
+    <div className="flex items-center gap-1.5 text-text-2">
       {/* Shimmer effect spinner */}
       <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-token-text-tertiary/60 opacity-60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-token-description-foreground/80" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40 opacity-60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
       </span>
 
       {/* Shimmer text effect */}
@@ -96,27 +96,27 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
 
       {/* Pending approvals badge */}
       {pendingApprovals.length > 0 && (
-        <span className="flex items-center gap-1 rounded-md bg-token-list-hover-background px-1.5 py-0.5 text-xs font-medium text-token-description-foreground">
+        <span className="flex items-center gap-1 rounded-md bg-surface-hover/[0.08] px-1.5 py-0.5 text-xs font-semibold text-text-2">
           {pendingApprovals.length} pending
         </span>
       )}
 
       {/* Token rate */}
       {tokenRate > 0 && (
-        <span className="flex items-center gap-1 text-xs text-token-text-tertiary">
+        <span className="flex items-center gap-1 text-xs text-text-3">
           <Zap size={10} />
           {tokenRate} tok/s
         </span>
       )}
 
       {/* Elapsed time */}
-      <span className="flex items-center gap-1 text-xs text-token-text-tertiary">
+      <span className="flex items-center gap-1 text-xs text-text-3">
         <Clock size={11} />
         {formatElapsedCompact(elapsedMs)}
       </span>
 
       {/* Interrupt hint */}
-      <span className="text-xs text-token-text-tertiary/70">esc</span>
+      <span className="text-xs text-text-3 opacity-70">esc</span>
     </div>
   )
 })

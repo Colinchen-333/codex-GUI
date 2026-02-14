@@ -91,13 +91,13 @@ export function StatusBar() {
   return (
     <>
       <div
-        className="h-toolbar-sm flex items-center justify-between border-t border-token-border bg-token-surface-primary/85 px-3 text-[11px] text-token-text-tertiary backdrop-blur-md"
+        className="h-toolbar-sm flex items-center justify-between border-t border-stroke/20 bg-surface-solid/85 px-3 text-[11px] text-text-3 backdrop-blur-md"
         data-tauri-drag-region
       >
         <div className="no-drag pointer-events-auto flex items-center gap-2">
           <button
             type="button"
-            className="inline-flex h-6 items-center gap-1 rounded-md border border-token-border bg-token-surface-tertiary px-2 text-token-description-foreground"
+            className="inline-flex h-6 items-center gap-1 rounded-md border border-stroke/20 bg-surface-solid px-2 text-text-2"
           >
             Local
             <ChevronDown size={11} />
@@ -108,14 +108,14 @@ export function StatusBar() {
               'inline-flex h-6 items-center gap-1 rounded-md border px-2',
               permission.danger
                 ? 'border-orange-500/30 bg-orange-500/10 text-orange-500'
-                : 'border-token-border bg-token-surface-tertiary text-token-description-foreground'
+                : 'border-stroke/20 bg-surface-solid text-text-2'
             )}
           >
             {permission.danger && <ShieldAlert size={11} />}
             {permission.text}
           </span>
 
-          <span className="inline-flex h-6 items-center px-1 text-token-description-foreground">
+          <span className="inline-flex h-6 items-center px-1 text-text-2">
             {engineLabel}
           </span>
 
@@ -123,7 +123,7 @@ export function StatusBar() {
             type="button"
             onClick={handleRestartEngine}
             disabled={isReconnecting}
-            className="inline-flex h-6 items-center rounded-md px-1 text-token-description-foreground transition-colors hover:text-token-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-6 items-center rounded-md px-1 text-text-2 transition-colors hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Restart
           </button>
@@ -132,11 +132,11 @@ export function StatusBar() {
 
         <div className="flex items-center gap-2">
           {!isConnected && (
-            <span className="text-[11px] tracking-[0.14em] text-token-text-tertiary">AUTH REQUIRED</span>
+            <span className="text-[11px] tracking-[0.14em] text-text-3">AUTH REQUIRED</span>
           )}
 
           {(branch || selectedProject) && (
-            <span className="inline-flex h-6 items-center gap-1 rounded-md border border-token-border bg-token-surface-tertiary px-2 text-token-description-foreground">
+            <span className="inline-flex h-6 items-center gap-1 rounded-md border border-stroke/20 bg-surface-solid px-2 text-text-2">
               <GitBranch size={11} />
               {branch || 'main'}
               <ChevronDown size={11} />

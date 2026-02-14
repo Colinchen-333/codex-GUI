@@ -30,9 +30,9 @@ interface LandingSuggestion {
 }
 
 const LANDING_SUGGESTIONS: LandingSuggestion[] = [
-  { icon: <Gamepad2 size={18} className="text-token-text-tertiary" aria-hidden="true" />, prompt: 'Build a classic Snake game in this repo.' },
-  { icon: <FileText size={18} className="text-token-text-tertiary" aria-hidden="true" />, prompt: 'Create a one-page PDF that summarizes this app.' },
-  { icon: <Newspaper size={18} className="text-token-text-tertiary" aria-hidden="true" />, prompt: "Summarize last week's PRs by teammate and theme." },
+  { icon: <Gamepad2 size={18} className="text-text-3" aria-hidden="true" />, prompt: 'Build a classic Snake game in this repo.' },
+  { icon: <FileText size={18} className="text-text-3" aria-hidden="true" />, prompt: 'Create a one-page PDF that summarizes this app.' },
+  { icon: <Newspaper size={18} className="text-text-3" aria-hidden="true" />, prompt: "Summarize last week's PRs by teammate and theme." },
 ]
 
 // Timeout for resume operations to prevent permanent blocking
@@ -501,29 +501,29 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
   const displayError = localError || globalError
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-token-bg-primary">
-      <div className="h-12 shrink-0 border-b border-token-border bg-token-surface-tertiary/50 px-6">
+    <div className="flex flex-1 flex-col overflow-hidden bg-background">
+      <div className="h-12 shrink-0 border-b border-stroke/20 bg-surface-solid/70 px-6">
         <div className="flex h-full items-center justify-between">
-          <h1 className="text-[28px] font-semibold text-token-foreground">New thread</h1>
+          <h1 className="text-[28px] font-semibold text-text-1">New thread</h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => void handleAddProject()}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-surface-tertiary px-3 text-[12px] font-medium text-token-foreground transition-colors hover:bg-token-list-hover-background"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke/20 bg-surface-solid px-3 text-[12px] font-medium text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
             >
               <FolderOpen size={13} />
               Open
-              <ChevronDown size={12} className="text-token-text-tertiary" />
+              <ChevronDown size={12} className="text-text-3" />
             </button>
             <button
               type="button"
               onClick={onOpenCommitDialog}
               disabled={!project}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-surface-tertiary px-3 text-[12px] font-medium text-token-foreground transition-colors hover:bg-token-list-hover-background disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke/20 bg-surface-solid px-3 text-[12px] font-medium text-text-1 transition-colors hover:bg-surface-hover/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <GitCommit size={13} />
               Commit
-              <ChevronDown size={12} className="text-token-text-tertiary" />
+              <ChevronDown size={12} className="text-text-3" />
             </button>
           </div>
         </div>
@@ -532,10 +532,10 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
       <div className="flex flex-1 items-center justify-center px-6 py-8">
         <div className="w-full max-w-[940px]">
           <div className="mb-10 text-center">
-            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-token-border bg-token-surface-tertiary text-token-text-tertiary">
+            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-stroke/20 bg-surface-solid text-text-3">
               <Sparkles size={20} />
             </div>
-            <h2 className="text-5xl font-bold tracking-tight text-token-foreground">Let's build</h2>
+            <h2 className="text-5xl font-bold tracking-tight text-text-1">Let's build</h2>
             <button
               type="button"
               onClick={() => {
@@ -545,31 +545,31 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                   void handleAddProject()
                 }
               }}
-              className="mt-1 inline-flex items-center gap-1 text-4xl font-semibold text-token-text-tertiary transition-colors hover:text-token-foreground"
+              className="mt-1 inline-flex items-center gap-1 text-4xl font-semibold text-text-3 transition-colors hover:text-text-1"
             >
               {displayProjectName}
               <ChevronDown size={22} />
             </button>
           </div>
 
-          <div className="mb-3 text-right text-[13px] font-medium text-token-text-tertiary">Explore more</div>
+          <div className="mb-3 text-right text-[13px] font-medium text-text-3">Explore more</div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             {LANDING_SUGGESTIONS.map((suggestion) => (
               <button
                 key={suggestion.prompt}
                 type="button"
                 onClick={() => void startSessionWithPrompt(suggestion.prompt)}
-                className="rounded-3xl border border-token-border bg-token-surface-tertiary p-5 text-left transition-colors hover:bg-token-list-hover-background"
+                className="rounded-3xl border border-stroke/20 bg-surface-solid p-5 text-left transition-colors hover:bg-surface-hover/[0.06]"
               >
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-token-border bg-token-bg-primary">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stroke/20 bg-surface-hover/[0.06]">
                   {suggestion.icon}
                 </div>
-                <p className="text-[16px] font-medium leading-7 text-token-foreground">{suggestion.prompt}</p>
+                <p className="text-[16px] font-medium leading-7 text-text-1">{suggestion.prompt}</p>
               </button>
             ))}
           </div>
 
-          <div className="mt-8 rounded-3xl border border-token-border bg-token-surface-tertiary p-3 shadow-[var(--shadow-1)]">
+          <div className="mt-8 rounded-3xl border border-stroke/20 bg-surface-solid p-3 shadow-[var(--shadow-1)]">
             <textarea
               ref={draftRef}
               rows={2}
@@ -582,31 +582,31 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                 }
               }}
               placeholder="Ask Codex anything, @ to add files, / for commands"
-              className="w-full resize-none border-0 bg-transparent px-2 py-1 text-[16px] leading-7 text-token-foreground placeholder:text-token-text-tertiary focus:outline-none"
+              className="w-full resize-none border-0 bg-transparent px-2 py-1 text-[16px] leading-7 text-text-1 placeholder:text-text-3 focus:outline-none"
             />
 
             <div className="mt-2 flex items-center justify-between">
               <div className="flex items-center gap-2 text-[12px]">
                 <button
                   type="button"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-bg-primary px-2.5 text-token-description-foreground transition-colors hover:bg-token-list-hover-background"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke/20 bg-background px-2.5 text-text-2 transition-colors hover:bg-surface-hover/[0.06]"
                 >
                   <Plus size={13} />
                 </button>
-                <span className="inline-flex h-8 items-center rounded-full border border-token-border bg-token-bg-primary px-3 text-token-description-foreground">
+                <span className="inline-flex h-8 items-center rounded-full border border-stroke/20 bg-background px-3 text-text-2">
                   GPT-5.3-Codex
-                  <ChevronDown size={12} className="ml-1 text-token-text-tertiary" />
+                  <ChevronDown size={12} className="ml-1 text-text-3" />
                 </span>
-                <span className="inline-flex h-8 items-center rounded-full border border-token-border bg-token-bg-primary px-3 text-token-description-foreground">
+                <span className="inline-flex h-8 items-center rounded-full border border-stroke/20 bg-background px-3 text-text-2">
                   Extra High
-                  <ChevronDown size={12} className="ml-1 text-token-text-tertiary" />
+                  <ChevronDown size={12} className="ml-1 text-text-3" />
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-token-border bg-token-bg-primary text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-stroke/20 bg-background text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
                   title="Voice input"
                 >
                   <Mic size={15} />
@@ -619,8 +619,8 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                   className={cn(
                     'inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors',
                     isLoading
-                      ? 'cursor-not-allowed bg-token-list-hover-background text-token-text-tertiary'
-                      : 'bg-token-foreground text-token-bg-primary hover:bg-token-foreground/85'
+                      ? 'cursor-not-allowed bg-surface-hover/[0.08] text-text-3'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
                   )}
                   title="Start thread"
                 >
@@ -630,7 +630,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between px-1 text-[12px] text-token-text-tertiary">
+          <div className="mt-3 flex items-center justify-between px-1 text-[12px] text-text-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-1">
                 Local

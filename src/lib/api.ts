@@ -54,6 +54,9 @@ export interface Project {
   settingsJson: string | null
 }
 
+// Thread mode for session creation
+export type ThreadMode = 'local' | 'worktree' | 'cloud'
+
 // Session status types for agent state tracking
 export type SessionStatus = 'idle' | 'running' | 'completed' | 'failed' | 'interrupted'
 
@@ -84,6 +87,10 @@ export interface SessionMetadata {
   status: SessionStatus
   firstMessage: string | null
   tasksJson: string | null
+  // Worktree mode fields (frontend-only, stored in tags/settings JSON)
+  mode?: ThreadMode
+  worktreePath?: string | null
+  worktreeBranch?: string | null
 }
 
 export interface GitInfo {
@@ -308,6 +315,27 @@ export interface GitCommit {
   date: string
 }
 
+export interface GitFileStatus {
+  path: string
+  status: string
+  isStaged: boolean
+  statusLabel: string
+}
+
+export interface GitRemoteInfo {
+  remote: string | null
+  branch: string | null
+  ahead: number
+  behind: number
+}
+
+export interface WorktreeInfo {
+  path: string
+  branch: string
+  isMain: boolean
+  headCommit: string
+}
+
 // ==================== Config Types ====================
 
 export interface ConfigLayer {
@@ -359,6 +387,12 @@ export const projectApi = {
     isTauriAvailable()
       ? invokeWithTimeout<GitDiffResponse>('get_project_git_diff', { path }, 20000) // 20s timeout for git diff
       : Promise.resolve({ diff: null, isGitRepo: false }),
+  getGitDiffStaged: (path: string) =>
+    isTauriAvailable()
+      ? invokeWithTimeout<GitDiffResponse>('git_diff_staged', { path }, 20000)
+      : Promise.resolve({ diff: null, isGitRepo: false }),
+  gitDiffBranch: (projectPath: string, baseBranch: string) =>
+    invokeWithTimeout<string>('git_diff_branch', { projectPath, baseBranch }, 20000),
   listFiles: (path: string, query?: string, limit?: number) =>
     invoke<FileEntry[]>('list_project_files', { path, query, limit }),
   validateDirectory: (path: string) =>
@@ -368,6 +402,52 @@ export const projectApi = {
   getGitBranches: (path: string) => invoke<GitBranch[]>('get_git_branches', { path }),
   getGitCommits: (path: string, limit?: number) =>
     invoke<GitCommit[]>('get_git_commits', { path, limit }),
+  gitStatus: (path: string) =>
+    invokeOrFallback<GitFileStatus[]>([], 'git_status', { path }),
+  gitStageFiles: (path: string, files: string[]) =>
+    invoke<void>('git_stage_files', { path, files }),
+  gitUnstageFiles: (path: string, files: string[]) =>
+    invoke<void>('git_unstage_files', { path, files }),
+  gitCommit: (path: string, message: string) =>
+    invoke<string>('git_commit', { path, message }),
+  gitPush: (path: string, remote: string, branch: string) =>
+    invoke<void>('git_push', { path, remote, branch }),
+  gitRemoteInfo: (path: string) =>
+    invokeOrFallback<GitRemoteInfo>(
+      { remote: null, branch: null, ahead: 0, behind: 0 },
+      'git_remote_info',
+      { path }
+    ),
+  // PR operations
+  checkGhCli: (projectPath: string) =>
+    invokeOrFallback<boolean>(false, 'check_gh_cli', { projectPath }),
+  getCurrentBranch: (projectPath: string) =>
+    invoke<string>('get_current_branch', { projectPath }),
+  createPullRequest: (
+    projectPath: string,
+    title: string,
+    body: string,
+    baseBranch: string,
+    headBranch: string,
+    draft: boolean
+  ) =>
+    invokeWithTimeout<string>(
+      'create_pull_request',
+      { projectPath, title, body, baseBranch, headBranch, draft },
+      30000
+    ),
+
+  // Patch operations
+  gitApplyPatch: (projectPath: string, patch: string, cached: boolean, reverse = false) =>
+    invoke<void>('git_apply_patch', { projectPath, patch, cached, reverse }),
+
+  // Worktree operations
+  createWorktree: (projectPath: string, branchName: string, worktreePath?: string) =>
+    invoke<WorktreeInfo>('create_worktree', { projectPath, branchName, worktreePath }),
+  removeWorktree: (projectPath: string, worktreePath: string) =>
+    invoke<void>('remove_worktree', { projectPath, worktreePath }),
+  listWorktrees: (projectPath: string) =>
+    invokeOrFallback<WorktreeInfo[]>([], 'list_worktrees', { projectPath }),
 }
 
 // ==================== Session API ====================
@@ -639,6 +719,24 @@ export const allowlistApi = {
     invoke<void>('remove_from_allowlist', { projectId, commandPattern }),
 }
 
+// ==================== Lifecycle API ====================
+
+export const lifecycleApi = {
+  rendererReady: () =>
+    invokeOrFallback<void>(undefined, 'renderer_ready'),
+
+  rendererHeartbeat: () =>
+    invokeOrFallback<void>(undefined, 'renderer_heartbeat'),
+}
+
+// ==================== System API (Keep Awake) ====================
+
+export const systemApi = {
+  startKeepAwake: () => invoke<void>('start_keep_awake'),
+  stopKeepAwake: () => invoke<void>('stop_keep_awake'),
+  isKeepAwakeActive: () => invokeOrFallback<boolean>(false, 'is_keep_awake_active'),
+}
+
 // ==================== Codex CLI Import Types ====================
 
 export interface CodexProject {
@@ -747,6 +845,17 @@ export const codexImportApi = {
    */
   deleteSession: (sessionId: string) =>
     invoke<void>('delete_codex_session', { sessionId }),
+}
+
+// ==================== Terminal API ====================
+
+export interface TerminalOutput {
+  exitCode: number | null
+}
+
+export const terminalApi = {
+  execute: (cwd: string, command: string) =>
+    invokeWithTimeout<TerminalOutput>('execute_terminal_command', { cwd, command }, 120000), // 2 minute timeout for terminal commands
 }
 
 // ==================== Cache Utilities (P2.2) ====================

@@ -11,7 +11,6 @@ use std::time::Instant;
 
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value as JsonValue;
-use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin};
 use tokio::sync::{mpsc, oneshot, Mutex};
@@ -31,6 +30,8 @@ struct PendingRequest {
     created_at: Instant,
 }
 
+use crate::app_server::AppServerEvent;
+use crate::events::AppEventEmitter;
 use crate::{Error, Result};
 
 /// JSON-RPC request structure (without jsonrpc header as per app-server protocol)
@@ -80,7 +81,10 @@ pub struct AppServerProcess {
 
 impl AppServerProcess {
     /// Spawn a new app-server process
-    pub async fn spawn(app_handle: AppHandle) -> Result<Self> {
+    pub async fn spawn(
+        events: AppEventEmitter,
+        event_tx: mpsc::Sender<AppServerEvent>,
+    ) -> Result<Self> {
         // Find the codex binary
         let codex_path = Self::find_codex_binary()?;
 
@@ -113,7 +117,8 @@ impl AppServerProcess {
 
         // Spawn stdout reader task
         let pending_clone = pending_requests.clone();
-        let app_handle_clone = app_handle.clone();
+        let events_clone = events.clone();
+        let event_tx_clone = event_tx.clone();
         tokio::spawn(async move {
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
@@ -130,7 +135,7 @@ impl AppServerProcess {
                     line = lines.next_line() => {
                         match line {
                             Ok(Some(line)) => {
-                                Self::handle_message(&line, &pending_clone, &app_handle_clone).await;
+                                Self::handle_message(&line, &pending_clone, &events_clone).await;
                             }
                             Ok(None) => {
                                 tracing::info!("App server stdout closed (EOF)");
@@ -161,7 +166,17 @@ impl AppServerProcess {
                 }
 
                 // Emit disconnected event
-                let _ = app_handle_clone.emit("app-server-disconnected", ());
+                events_clone.emit("app-server-disconnected", ()).await;
+
+                // Notify supervisor for auto-restart
+                if let Err(err) = event_tx_clone
+                    .send(AppServerEvent::Disconnected {
+                        reason: reason.clone(),
+                    })
+                    .await
+                {
+                    tracing::warn!("Failed to send app server disconnect event: {}", err);
+                }
             }
         });
 
@@ -245,7 +260,7 @@ impl AppServerProcess {
     async fn handle_message(
         line: &str,
         pending_requests: &Arc<Mutex<HashMap<u64, PendingRequest>>>,
-        app_handle: &AppHandle,
+        events: &AppEventEmitter,
     ) {
         let message: JsonRpcMessage = match serde_json::from_str(line) {
             Ok(r) => r,
@@ -283,9 +298,7 @@ impl AppServerProcess {
 
                 tracing::debug!("Emitting server request: {} with params: {:?}", event_name, params);
 
-                if let Err(e) = app_handle.emit(&event_name, params) {
-                    tracing::warn!("Failed to emit server request {}: {}", event_name, e);
-                }
+                events.emit_json(&event_name, params).await;
             }
             // Notification (has method, no id)
             (None, Some(method), _, _) => {
@@ -299,9 +312,7 @@ impl AppServerProcess {
                     tracing::debug!("Emitting event: {} (no threadId)", event_name);
                 }
 
-                if let Err(e) = app_handle.emit(&event_name, params) {
-                    tracing::warn!("Failed to emit event {}: {}", event_name, e);
-                }
+                events.emit_json(&event_name, params).await;
             }
             _ => {
                 tracing::warn!("Unknown message type: {:?}", message);

@@ -32,27 +32,27 @@ export const ServerStatusIndicator = memo(function ServerStatusIndicator({
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        <div className="relative flex h-2.5 w-2.5">
+      <div className="flex items-center gap-1.5">
+        <div className="relative flex h-2 w-2">
           {isRunning && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-text-3/60 opacity-60" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-token-text-tertiary/60 opacity-60" />
           )}
           <span
             className={cn(
-              'relative inline-flex h-2.5 w-2.5 rounded-full',
-              statusKnown ? (isRunning ? 'bg-text-2' : 'bg-text-3/70') : 'bg-text-3/40'
+              'relative inline-flex h-2 w-2 rounded-full',
+              statusKnown ? (isRunning ? 'bg-token-charts-green' : 'bg-token-text-tertiary/70') : 'bg-token-text-tertiary/40'
             )}
           />
         </div>
-        <span className="flex items-center gap-1.5 text-xs text-text-2">
-          <Activity size={12} strokeWidth={2.5} />
-          Engine: {statusKnown ? (isRunning ? 'Running' : 'Stopped') : 'Checking'}
+        <span className="flex items-center gap-1 text-xs text-token-description-foreground">
+          <Activity size={11} strokeWidth={2.4} />
+          Engine {statusKnown ? (isRunning ? 'online' : 'offline') : 'checking'}
         </span>
       </div>
 
       {statusKnown && !isRunning && (
         <button
-          className="text-text-2 hover:text-text-1 transition-colors text-xs font-medium"
+          className="text-xs font-medium text-token-description-foreground transition-colors hover:text-token-foreground"
           onClick={() => void handleRestart()}
         >
           Restart

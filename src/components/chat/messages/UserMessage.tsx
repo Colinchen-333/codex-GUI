@@ -184,7 +184,7 @@ export const UserMessage = memo(
                       alt={`Attached ${i + 1}`}
                       loading="lazy"
                       decoding="async"
-                      className="h-32 w-32 rounded-lg object-cover border border-stroke/20 bg-black/20 shadow-[var(--shadow-1)]"
+                      className="h-32 w-32 rounded-lg object-cover border border-stroke/20 bg-overlay shadow-[var(--shadow-1)]"
                     />
                   ))}
                 </div>

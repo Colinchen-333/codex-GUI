@@ -116,7 +116,7 @@ export function SnapshotListDialog({ isOpen, onClose }: SnapshotListDialogProps)
   if (!isOpen) return null
 
   const errorFallback = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
       <div className="w-full max-w-md rounded-lg bg-background p-6 text-center shadow-xl">
         <h2 className="text-lg font-semibold">Snapshots unavailable</h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -134,7 +134,7 @@ export function SnapshotListDialog({ isOpen, onClose }: SnapshotListDialogProps)
 
   return (
     <ErrorBoundary fallback={errorFallback}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
         <div className="w-full max-w-lg rounded-lg bg-background shadow-xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-6 py-4">

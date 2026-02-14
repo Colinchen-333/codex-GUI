@@ -73,6 +73,22 @@ export const LazyImportCodexSessionDialog = lazy(
   () => import('./dialogs/ImportCodexSessionDialog').then((m) => ({ default: m.ImportCodexSessionDialog }))
 )
 
+/**
+ * NewThreadDialog - Create new thread with mode selection (Local/Worktree/Cloud)
+ * Estimated size: ~5KB
+ */
+export const LazyNewThreadDialog = lazy(
+  () => import('./dialogs/NewThreadDialog').then((m) => ({ default: m.NewThreadDialog }))
+)
+
+/**
+ * CreatePRDialog - Create GitHub pull request
+ * Estimated size: ~6KB
+ */
+export const LazyCreatePRDialog = lazy(
+  () => import('./dialogs/CreatePRDialog').then((m) => ({ default: m.CreatePRDialog }))
+)
+
 // ============================================================================
 // Wrapper Components with Suspense and Error Boundaries
 // ============================================================================
@@ -82,7 +98,7 @@ export const LazyImportCodexSessionDialog = lazy(
  */
 function LazyErrorFallback({ onRetry }: { onRetry?: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
       <div className="w-full max-w-md rounded-lg bg-background shadow-xl p-6 text-center">
         <div className="text-4xl mb-4">!</div>
         <h3 className="text-lg font-semibold mb-2">Failed to load component</h3>
@@ -210,6 +226,30 @@ interface ImportCodexSessionDialogProps extends DialogProps {
 export const ImportCodexSessionDialog = withLazyLoading<ImportCodexSessionDialogProps>(
   LazyImportCodexSessionDialog as ComponentType<ImportCodexSessionDialogProps>,
   <ListDialogSkeleton title="Import Codex CLI Session" />
+)
+
+/**
+ * NewThreadDialog with loading skeleton
+ */
+interface NewThreadDialogProps extends DialogProps {
+  projectPath: string | null
+  onCreateLocal: () => void
+  onCreateWorktree: (branchName: string, worktreePath: string) => void
+}
+
+export const NewThreadDialog = withLazyLoading<NewThreadDialogProps>(
+  LazyNewThreadDialog as ComponentType<NewThreadDialogProps>,
+  <DialogSkeleton title="New Thread" />
+)
+
+/**
+ * CreatePRDialog with loading skeleton
+ */
+type CreatePRDialogLazyProps = DialogProps
+
+export const CreatePRDialog = withLazyLoading<CreatePRDialogLazyProps>(
+  LazyCreatePRDialog as ComponentType<CreatePRDialogLazyProps>,
+  <FormDialogSkeleton title="Create Pull Request" />
 )
 
 // ============================================================================

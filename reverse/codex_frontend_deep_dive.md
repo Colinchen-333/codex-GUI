@@ -1,0 +1,976 @@
+# Codex Desktop 前端深度逆向（静态）
+
+## 版本与入口
+- app.asar package: `/tmp/codex_asar/package.json`
+- product: `Codex`
+- version: `260203.1501`
+- electron: `40.0.0`
+- build flavor: `prod`
+- renderer 入口：`/tmp/codex_asar/webview/index.html` 加载 `assets/index-NnBfxTxd.js` + `assets/index-C54D9p6n.css`
+
+## 路由 -> 组件
+- `/debug` -> `LEt`
+- `/login` -> `agn`
+- `/welcome` -> `Sgn`
+- `/select-workspace` -> `lgn`
+- `/skills` -> `c6n`
+- `/diff` -> `IJt`
+- `/plan-summary` -> `B4n`
+- `/file-preview` -> `BJt`
+- `/` -> `yfn`
+- `/first-run` -> `I5n`
+- `/local/:conversationId` -> `R4n`
+- `/thread-overlay/:conversationId` -> `S6n`
+- `/inbox` -> `mmn`
+- `/inbox/:itemId` -> `oge`
+- `/worktree-init-v2/:pendingWorktreeId` -> `E6n`
+- `/announcement` -> `E3t`
+- `/remote/:taskId` -> `y5n`
+- `/settings` -> `k5n`
+
+## 设计 Token（CSS 变量）
+- `--color-token-*` 数量：85
+- 关键布局变量（抽样）:
+- `--codex-chat-code-font-size`
+- `--codex-chat-font-size`
+- `--codex-titlebar-tint`
+- `--conversation-block-gap`
+- `--conversation-tool-assistant-gap`
+- `--diffs-addition-color-override`
+- `--diffs-deletion-color-override`
+- `--diffs-font-family`
+- `--diffs-font-size`
+- `--diffs-gap-block`
+- `--diffs-line-height`
+- `--diffs-min-number-column-width`
+- `--height-toolbar`
+- `--height-toolbar-sm`
+- `--padding-panel`
+- `--padding-panel-base`
+- `--padding-row-x`
+- `--padding-row-y`
+- 关键结构选择器（抽样）:
+- `.accordion-content[data-state=closed]`
+- `.accordion-content[data-state=open]`
+- `.accordion-trigger[data-state=open]`
+- `.home-use-case-gallery[data-state=closing]`
+- `.home-use-case-gallery[data-state=open]`
+- `.toast-root[data-state=entered]`
+- `.toast-root[data-state=entering]`
+- `.toast-root[data-state=exiting]`
+- Command Palette（cmdk）选择器:
+- `[cmdk-dialog]`
+- `[cmdk-empty]`
+- `[cmdk-input]`
+- `[cmdk-item]`
+- `[cmdk-list]`
+- `[cmdk-root]`
+
+## 页面级还原线索（按路由）
+### `/debug`
+- root component: `LEt`
+- 覆盖到的组件节点数（BFS<=3）：6
+- i18n keys：29
+- className 字符串：26
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `LEt`
+- `LEt` -> `AEt`
+- `AEt` -> `TEt`
+- `LEt` -> `EEt`
+- `LEt` -> `SEt`
+- `LEt` -> `vEt`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `debug` (29): debug.childProcesses.empty, debug.childProcesses.loading, debug.childProcesses.title, debug.childProcesses.titleClosed, debug.entries.fallbackTitle, debug.onboarding.override.app, debug.onboarding.override.auto, debug.onboarding.override.login, debug.onboarding.override.welcome, debug.onboarding.override.workspace, debug.onboarding.state, debug.onboarding.title…
+- layout/样式线索（className 抽样）：
+- `border-token-border/50 flex w-full items-center gap-2 border-t py-1.5 text-left first:border-none`
+- `fixed inset-0 text-sm`
+- `flex flex-col`
+- `flex flex-col gap-3 pb-4`
+- `flex flex-col gap-3 py-1.5`
+- `flex flex-col py-1.5`
+- `flex flex-wrap gap-2`
+- `flex items-center gap-1`
+- `flex items-center justify-between gap-2`
+- `flex min-w-[180px] flex-col gap-0.5`
+- `h-toolbar-sm draggable text-token-description-foreground fixed left-0 right-0 flex items-center justify-center font-medium`
+- `inline-flex items-center gap-2 rounded border border-token-border px-3 py-1 text-xs text-token-foreground hover:bg-token-foreground/5 disabled:cursor-not-allowed disabled:opacity-50`
+- `inline-flex items-center justify-center rounded border border-token-border px-3 py-1 text-xs text-token-foreground`
+- `min-w-0 flex-1`
+- `rounded border border-token-border bg-token-foreground/5 px-3 py-2`
+- `rounded border px-3 py-1 text-xs`
+- `text-token-description-foreground`
+- `text-token-description-foreground ml-2 shrink-0`
+- `text-token-description-foreground text-xs`
+- `text-token-description-foreground truncate text-xs`
+- `text-xs font-medium text-token-foreground`
+- `top-toolbar-sm fixed inset-0 flex flex-col gap-px overflow-scroll pb-4`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `LEt`: `function LEt(){const t=ht(),e=E1(),[n,r]=M.useState([]),[i,s]=M.useState(!1),o=e.authMethod??"none",[a,l]=M.useState(!1);M.useEffect(()=>{const g=E9;if(!g)return;const v=y=>{const b=y.data;b?.kind==="add"?r(x=>{const _=x.filter(C=>C.id!==b.id);return _.push(b.entry),_}):b?.kind==…`
+- `EEt`: `function EEt(){const t=oe.c(38),e=_r(),n=E1(),r=ht(),[i,s]=wr(JSe),[o,a]=M.useState(!1),l=o&&e==="electron";let c;t[0]!==l?(c={queryConfig:{enabled:l}},t[0]=l,t[1]=c):c=t[1];const d=gn("workspace-root-options",c).data?.roots.length??0;let f;t[2]!==r?(f=r.formatMessage({id:"debug.…`
+- `vEt`: `function vEt(){const t=oe.c(6),[e,n]=M.useState(!1);let r;t[0]!==e?(r={queryConfig:{enabled:e,intervalMs:1e3}},t[0]=e,t[1]=r):r=t[1];const{data:i,isLoading:s}=gn("child-processes",r);let o;if(t[2]!==i?.processes||t[3]!==s||t[4]!==e){const c=[...(i?.processes??[]).filter(wEt)].sor…`
+- `AEt`: `function AEt(){const t=oe.c(13),[e,n]=M.useState(!1);let r;t[0]!==e?(r={queryConfig:{enabled:e}},t[0]=e,t[1]=r):r=t[1];const{data:i}=gn("workspace-root-options",r);let s;t[2]!==i?.roots?(s=i?.roots??[],t[2]=i?.roots,t[3]=s):s=t[3];const o=s;let a;t[4]!==i?.labels?(a=i?.labels??{}…`
+- `TEt`: `function TEt(t){const e=oe.c(22),{title:n,subtitle:r,icon:i,rightActions:s,status:o,onClick:a}=t,l=a?"hover:bg-token-foreground/5 cursor-pointer":"cursor-default";let c;e[0]!==l?(c=Ie("border-token-border/50 flex w-full items-center gap-2 border-t py-1.5 text-left first:border-no…`
+
+### `/login`
+- root component: `agn`
+- 覆盖到的组件节点数（BFS<=3）：11
+- i18n keys：30
+- className 字符串：35
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `agn`
+- `agn` -> `K4n`
+- `K4n` -> `J4n`
+- `K4n` -> `Q4n`
+- `K4n` -> `Z4n`
+- `K4n` -> `dge`
+- `K4n` -> `fge`
+- `agn` -> `ogn`
+- `ogn` -> `Ete`
+- `ogn` -> `sgn`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `electron` (17): electron.onboarding.login.apikey.cancel, electron.onboarding.login.apikey.continue, electron.onboarding.login.apikey.label, electron.onboarding.login.apikey.open, electron.onboarding.login.apikey.placeholder, electron.onboarding.login.chatgpt.cancel, electron.onboarding.login.chatgpt.continue, electron.onboarding.login.devbox, electron.onboarding.login.error, electron.onboarding.login.snake.start, electron.onboarding.login.sshConfig.cancel, electron.onboarding.login.sshConfig.continue…
+- `codex` (13): codex.loggedOut.apiKeyPrompt.cancel, codex.loggedOut.apiKeyPrompt.confirm, codex.loggedOut.apiKeyPrompt.getKey, codex.loggedOut.apiKeyPrompt.inputLabel, codex.loggedOut.apiKeyPrompt.placeholder, codex.loggedOut.cloudTasksDisabledWithApiKey, codex.loggedOut.cloudTasksDisabledWithCopilotAndApiKey, codex.loggedOut.signIn, codex.loggedOut.signIn.cancel, codex.loggedOut.signInWithCopilot, codex.loggedOut.title, codex.loggedOut.useApiKey…
+- layout/样式线索（className 抽样）：
+- `-ml-6 h-full w-full`
+- `absolute inset-0 bg-token-bg-primary`
+- `absolute inset-0 z-10 flex flex-col items-center`
+- `bg-token-dropdown-background/80 border-token-border mx-auto mb-8 mt-4 w-[min(90vw,640px)] rounded-2xl border px-4 py-4 backdrop-blur-lg`
+- `bg-token-foreground/10 w-full justify-center !rounded-full px-4 py-2 font-medium backdrop-blur-md`
+- `bg-token-input-background text-token-foreground border-token-border focus:border-token-focus-border mt-4 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none`
+- `bg-token-side-bar-background fixed inset-0 flex items-center justify-center overflow-hidden`
+- `fixed inset-0 overflow-hidden select-none`
+- `flex flex-col gap-3 w-full`
+- `flex items-center gap-2`
+- `flex justify-end gap-2`
+- `flex w-full justify-center pb-4 sm:pb-6`
+- `flex-1 flex justify-center py-2`
+- `group flex items-center justify-center rounded-full p-2`
+- `h-full w-full`
+- `h-full w-full text-token-foreground`
+- `h-toolbar-sm draggable text-token-description-foreground fixed inset-x-0 top-0 z-10 flex items-center justify-center font-medium text-sm select-none`
+- `max-w-[200px] gap-3 flex flex-col w-full`
+- `mt-1 text-center text-lg text-token-description-foreground`
+- `mt-4 flex items-center justify-end gap-2 min-[280px]:justify-between`
+- `mt-5 text-center text-sm text-token-description-foreground hover:underline`
+- `mx-auto inline-flex w-max flex-col items-stretch`
+- `pointer-events-none absolute inset-0`
+- `pointer-events-none flex w-full flex-1 items-center justify-center pt-5`
+- `px-4`
+- `text-base font-medium text-token-foreground`
+- `text-center text-[24px] font-medium text-token-foreground mt-4`
+- `text-token-description-foreground mt-2 w-full text-center text-[10px]`
+- `text-token-foreground`
+- `text-token-foreground block text-sm`
+- `text-token-foreground mb-4 max-w-[250px] text-3xl font-medium leading-tight`
+- `text-token-text-link-foreground cursor-interaction inline-flex items-center gap-1 text-sm hover:underline max-[280px]:hidden`
+- `w-full justify-center py-2.5`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `ogn`: `function ogn(){const t=fDe(),e=E1(),n=t1(),r=ht(),i=vi(),s=Cr(),o=po(),a=u1(aQ),l=F=>{i.warning(r.formatMessage({id:"electron.onboarding.login.error",defaultMessage:"Sign-in failed: {rawMessage}",description:"Toast shown when sign-in fails on the desktop onboarding page"},{rawMes…`
+- `J4n`: `function J4n(t){const e=oe.c(31),{apiKeyValue:n,setApiKeyValue:r,apiKeyInputRef:i,isApiKeyLoginPending:s,setIsApiKeyLoginPending:o,setIsApiKeySignInVisible:a,handleApiKeySubmit:l}=t,c=ht();let u;e[0]===Symbol.for("react.memo_cache_sentinel")?(u=h.jsx(Z,{id:"codex.loggedOut.apiKey…`
+- `Q4n`: `function Q4n(t){const e=oe.c(17),{setApiKeyValue:n,defaultApiKeyFromEnv:r,isCopilotSignInAvailable:i,setIsApiKeySignInVisible:s}=t;let o;e[0]!==r||e[1]!==n||e[2]!==s?(o=()=>{s(!0),n(p=>p.length>0?p:r??"")},e[0]=r,e[1]=n,e[2]=s,e[3]=o):o=e[3];let a;e[4]===Symbol.for("react.memo_ca…`
+- `K4n`: `function K4n(){const t=E1(),e=vi(),n=t1(),r=ht(),[i,s]=M.useState(null),o=i!=null,a=gBe(),[l,c]=M.useState(!1),[u,d]=M.useState(null),[f,p]=M.useState(""),[m,g]=M.useState(!1),v=M.useRef(null),y=M.useRef(null),b=Cr(),x=I=>{const O=r.formatMessage({id:"codex.signInFailed.message",…`
+- `dge`: `function dge(t){const e=oe.c(6),{isPrimary:n,handleChatGptSignIn:r,isChatGptSignInPending:i}=t;let s;e[0]!==i?(s=i?h.jsx(Z,{id:"codex.loggedOut.signIn.cancel",defaultMessage:"Cancel Sign-in",description:"Cancel button for sign in"}):h.jsx(Z,{id:"codex.loggedOut.signIn",defaultMes…`
+
+### `/welcome`
+- root component: `Sgn`
+- 覆盖到的组件节点数（BFS<=3）：2
+- i18n keys：5
+- className 字符串：8
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `Sgn`
+- `Sgn` -> `Ete`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `electron` (5): electron.onboarding.shell.title, electron.onboarding.welcome.continue, electron.onboarding.welcome.doubleLimits.description, electron.onboarding.welcome.freego.description, electron.onboarding.welcome.new.title.anon
+- layout/样式线索（className 抽样）：
+- `absolute inset-0 bg-token-bg-primary`
+- `fixed inset-0 overflow-hidden select-none`
+- `flex w-full flex-col items-center gap-3 px-6 pt-2 text-center`
+- `flex w-full max-w-[360px] flex-col items-center gap-6`
+- `h-toolbar-sm draggable text-token-description-foreground fixed inset-x-0 top-0 z-10 flex items-center justify-center font-medium text-sm select-none`
+- `max-w-[290px] text-[15px] leading-6 text-token-description-foreground`
+- `text-[24px] font-semibold text-token-foreground`
+- `w-[168px] justify-center px-[16px] py-[8px] text-[13px] font-medium leading-6`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `Sgn`: `function Sgn(){const t=oe.c(18);let e;t[0]===Symbol.for("react.memo_cache_sentinel")?(e={placeholderData:{roots:[],labels:{}}},t[0]=e):e=t[0];const{data:n}=gn("workspace-root-options",e),r=po(),i=t1(),s=u1(aQ),{planAtLogin:o}=E1(),a=n?.roots.length??0;let l;t[1]!==r||t[2]!==i||t[…`
+- `Ete`: `function Ete(t){const e=oe.c(9),{children:n,fullBleed:r,hideHeader:i}=t,s=r===void 0?!1:r,o=i===void 0?!1:i;let a;e[0]===Symbol.for("react.memo_cache_sentinel")?(a=h.jsx("div",{className:"absolute inset-0 bg-token-bg-primary"}),e[0]=a):a=e[0];let l;e[1]!==o?(l=o?null:h.jsx("div",…`
+
+### `/select-workspace`
+- root component: `lgn`
+- 覆盖到的组件节点数（BFS<=3）：7
+- i18n keys：14
+- className 字符串：30
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `lgn`
+- `lgn` -> `Ete`
+- `lgn` -> `bgn`
+- `bgn` -> `bBe`
+- `bgn` -> `xgn`
+- `bgn` -> `yBe`
+- `lgn` -> `ygn`
+- `ygn` -> `bBe`
+- `ygn` -> `yBe`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `electron` (13): electron.onboarding.shell.title, electron.onboarding.workspace.continue, electron.onboarding.workspace.empty, electron.onboarding.workspace.listLabel, electron.onboarding.workspace.loading, electron.onboarding.workspace.openFolder, electron.onboarding.workspace.selectAll, electron.onboarding.workspace.skip, electron.onboarding.workspace.skip.error, electron.onboarding.workspace.skip.error.unknown, electron.onboarding.workspace.skipping, electron.onboarding.workspace.subtitle…
+- `workspace-root-select-all` (1): workspace-root-select-all
+- layout/样式线索（className 抽样）：
+- `absolute inset-0 bg-token-bg-primary`
+- `fixed inset-0 overflow-hidden select-none`
+- `flex h-[240px] w-full flex-col gap-2 overflow-y-auto rounded-2xl border border-token-border bg-token-surface-primary px-5 py-4`
+- `flex min-w-0 flex-col text-left`
+- `flex w-full flex-col gap-2`
+- `flex w-full flex-col gap-3`
+- `flex w-full flex-col gap-4`
+- `flex w-full flex-col items-center gap-2`
+- `flex w-full items-center gap-4`
+- `flex w-full items-center justify-center gap-2 rounded-2xl border border-token-border bg-token-surface-primary px-5 py-6`
+- `flex w-full max-w-[330px] flex-col items-center gap-6`
+- `flex-1 justify-center text-[13px] font-medium leading-6`
+- `flex-1 justify-center whitespace-nowrap border-token-button-border bg-transparent text-[13px] font-medium leading-6 enabled:hover:bg-token-foreground/5`
+- `h-10 w-10`
+- `h-4 w-4 text-token-foreground`
+- `h-[18px] w-[18px] rounded-[3px] border-[0.9px]`
+- `h-toolbar-sm draggable text-token-description-foreground fixed inset-x-0 top-0 z-10 flex items-center justify-center font-medium text-sm select-none`
+- `relative flex items-center gap-2`
+- `relative flex items-start gap-2 last:border-b-0`
+- `text-[13px] font-medium leading-6 text-token-foreground`
+- `text-center text-[15px] leading-6 text-token-description-foreground`
+- `text-center text-[24px] font-semibold text-token-foreground`
+- `text-center text-sm text-token-description-foreground`
+- `text-center text-sm text-token-error-foreground`
+- `text-sm text-token-description-foreground`
+- `truncate text-[12px] leading-[22px] text-token-description-foreground`
+- `truncate text-[13px] font-medium leading-6 text-token-foreground`
+- `w-full justify-center py-2.5`
+- `w-full justify-center text-[13px] font-medium leading-6`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `bgn`: `function bgn(t){const e=oe.c(38),{isLoadingRoots:n,hasAvailableRoots:r,availableOptions:i,selectedRoots:s,selectAllState:o,handleToggleSelectAll:a,handleToggleWorkspace:l,intl:c,handleOpenFolder:u,handleContinue:d,hasSelectedRoots:f,isRemoteHost:p,handleSkip:m,isSkipPending:g,ski…`
+- `bBe`: `function bBe(t){const e=oe.c(11),{handleSkip:n,isSkipPending:r,skipErrorMessage:i}=t;let s;e[0]!==i?(s=i!=null?h.jsx("div",{className:"text-center text-sm text-token-error-foreground",children:h.jsx(Z,{id:"electron.onboarding.workspace.skip.error",defaultMessage:"Couldn't create …`
+- `yBe`: `function yBe(t){const e=oe.c(7),{children:n,showIcon:r}=t;let i;e[0]!==r?(i=r?h.jsx(zR,{className:"h-10 w-10","aria-hidden":"true"}):null,e[0]=r,e[1]=i):i=e[1];let s;e[2]===Symbol.for("react.memo_cache_sentinel")?(s=h.jsx("span",{className:"text-center text-[24px] font-semibold t…`
+- `Ete`: `function Ete(t){const e=oe.c(9),{children:n,fullBleed:r,hideHeader:i}=t,s=r===void 0?!1:r,o=i===void 0?!1:i;let a;e[0]===Symbol.for("react.memo_cache_sentinel")?(a=h.jsx("div",{className:"absolute inset-0 bg-token-bg-primary"}),e[0]=a):a=e[0];let l;e[1]!==o?(l=o?null:h.jsx("div",…`
+- `ygn`: `function ygn(t){const e=oe.c(11),{isRemoteHost:n,handleOpenFolder:r,handleSkip:i,isSkipPending:s,skipErrorMessage:o}=t;let a;e[0]===Symbol.for("react.memo_cache_sentinel")?(a=h.jsx(Z,{id:"electron.onboarding.workspace.openFolder",defaultMessage:"Add project",description:"Button l…`
+
+### `/skills`
+- root component: `c6n`
+- 覆盖到的组件节点数（BFS<=3）：14
+- i18n keys：35
+- className 字符串：48
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `c6n`
+- `c6n` -> `Cge`
+- `c6n` -> `b6n`
+- `b6n` -> `o6n`
+- `b6n` -> `x6n`
+- `c6n` -> `w6n`
+- `w6n` -> `t6n`
+- `c6n` -> `y6n`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `skills` (33): skills.card.contentsError, skills.card.disable, skills.card.disableSuccess, skills.card.disabledBadge, skills.card.enable, skills.card.enableSuccess, skills.card.loadingContents, skills.card.more, skills.card.open, skills.card.removeFailed, skills.card.removeSuccess, skills.card.toggleEnabledError…
+- `common` (1): common.close
+- `skills-search` (1): skills-search
+- layout/样式线索（className 抽样）：
+- `bg-token-bg-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg`
+- `bg-token-charts-red text-token-charts-red border-transparent enabled:hover:bg-token-charts-red data-[state=open]:bg-token-charts-red`
+- `bg-token-input-background/75 border-token-input-border h-token-button-composer backdrop-blur-sm no-drag flex items-center gap-2 rounded-lg border px-2.5 py-0 text-base leading-[18px] shadow-sm`
+- `border-token-border-default text-token-text-secondary border bg-transparent px-1.5 py-0.5 text-xs font-medium`
+- `border-token-border-default text-token-text-secondary flex items-center gap-1 border bg-transparent px-1.5 py-0.5 text-xs font-medium`
+- `border-token-border/40 flex flex-col gap-2.5 rounded-2xl border p-2.5 transition-colors hover:bg-token-foreground/5`
+- `flex flex-col gap-1`
+- `flex flex-col gap-4`
+- `flex flex-wrap items-center gap-1.5`
+- `flex h-full min-h-0 flex-col gap-4`
+- `flex items-center gap-2`
+- `flex items-center gap-3`
+- `flex items-end justify-between gap-4`
+- `flex min-h-0 flex-1 flex-col gap-9 pb-10`
+- `flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-token-border-default/70`
+- `flex min-h-0 flex-1 items-center justify-center`
+- `flex min-h-0 flex-1 w-full`
+- `flex min-w-0 flex-1 flex-col justify-center gap-0.5`
+- `flex min-w-0 flex-1 items-center gap-3`
+- `flex min-w-0 items-center gap-2`
+- `flex min-w-0 items-center justify-between gap-2`
+- `flex shrink-0 items-center`
+- `flex shrink-0 items-center gap-1`
+- `flex w-full items-center justify-between gap-2`
+- `flex w-full justify-end`
+- `h-full min-h-0 overflow-y-auto p-4`
+- `heading-xl font-normal text-token-foreground`
+- `icon-sm text-token-text-secondary`
+- `icon-xxs text-token-text-tertiary`
+- `min-w-[160px] flex-1 sm:flex-none sm:w-[220px]`
+- `p-panel flex-1 overflow-y-auto`
+- `skills-grid grid gap-4`
+- `skills-page-container mx-auto flex min-h-full w-full max-w-[1100px] flex-1 flex-col gap-8`
+- `skills-page-surface flex h-full flex-col text-base`
+- `text-lg font-normal text-token-description-foreground`
+- `text-token-foreground text-base font-medium opacity-75 pl-2 pr-0.5`
+- `text-token-foreground truncate font-medium`
+- `text-token-input-foreground placeholder:text-token-input-placeholder-foreground w-full bg-transparent text-base leading-[18px] outline-none`
+- `text-token-text-secondary flex items-center gap-2 text-sm`
+- `text-token-text-secondary text-sm`
+- `text-token-text-secondary text-sm leading-relaxed`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `o6n`: `function o6n(t){const e=oe.c(100),{skill:n,displayName:r,scopeBadges:i,repoRoot:s,showActions:o,onSkillsUpdated:a}=t,l=o===void 0?!0:o,c=ht(),u=po(),d=B3(),f=Cr(),p=Hr(),m=vi(),g=O1("open-file"),[v,y]=M.useState(!1),b=iv(),x=r??n.name;let _;e[0]!==a||e[1]!==p?(_=()=>{a?.(),p.inva…`
+- `c6n`: `function c6n(){const t=oe.c(88),e=ht(),n=po(),{data:r}=v6(),i=B3(),s=Hr(),o=vi(),[a,l]=M.useState(null),[c,u]=M.useState(null);let d;t[0]===Symbol.for("react.memo_cache_sentinel")?(d=Ht=>{l(Ht)},t[0]=d):d=t[0];const f=d;let p;t[1]===Symbol.for("react.memo_cache_sentinel")?(p=Ht=>…`
+- `LBe`: `function LBe(t){const e=oe.c(32),{icon:n,title:r,titleText:i,description:s,suggestedPrompt:o,skillPath:a,isOpen:l,onOpenChange:c,footer:u}=t,d=ht();let f;e[0]!==o?(f=o?.trim(),e[0]=o,e[1]=f):f=e[1];const p=f,m=p!=null&&p.length>0,g=l&&a!=null;let v;e[2]!==a||e[3]!==g||e[4]!==i?(v…`
+- `w6n`: `function w6n(t){const e=oe.c(29),{isLoading:n,errorMessage:r,skills:i,searchQuery:s,canInstall:o,repoRoot:a,onInstall:l,installedSkillIds:c,installingSkillId:u}=t;let d,f,p;if(e[0]!==o||e[1]!==r||e[2]!==c||e[3]!==u||e[4]!==n||e[5]!==l||e[6]!==a||e[7]!==s||e[8]!==i){p=Symbol.for("…`
+- `b6n`: `function b6n(t){const e=oe.c(14),{isLoading:n,uniqueSkillCount:r,filteredSkills:i,getScopeBadgeLabel:s,roots:o,onSkillsUpdated:a}=t;if(n){let u;return e[0]===Symbol.for("react.memo_cache_sentinel")?(u=h.jsx("div",{className:"flex min-h-0 flex-1 items-center justify-center",childr…`
+
+### `/diff`
+- root component: `IJt`
+- 覆盖到的组件节点数（BFS<=3）：6
+- i18n keys：7
+- className 字符串：11
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `IJt`
+- `IJt` -> `NJt`
+- `NJt` -> `OJt`
+- `NJt` -> `PJt`
+- `NJt` -> `ree`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `codex` (5): codex.diffView.filesChanged, codex.diffView.linesAdded, codex.diffView.linesDeleted, codex.diffView.richPreviewToggle, codex.diffView.switchToUnified
+- `left` (1): left
+- `right` (1): right
+- layout/样式线索（className 抽样）：
+- `flex flex-col gap-1 overflow-y-auto p-[var(--padding-panel)] pt-0`
+- `flex h-full flex-col`
+- `flex items-center gap-1`
+- `flex items-center gap-2 text-sm`
+- `flex items-center justify-between pl-6 pr-2 py-2`
+- `icon-xs text-token-description-foreground`
+- `text-token-charts-green`
+- `text-token-charts-red`
+- `text-token-error-foreground p-4`
+- `text-token-input-foreground`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `NJt`: `function NJt(t){const e=oe.c(61),{diffContent:n,conversationId:r}=t;let i;e[0]!==r?(i={conversationId:r},e[0]=r,e[1]=i):i=e[1];const{commentProps:s}=see(i);let o;e[2]!==n?(o=Js(n),e[2]=n,e[3]=o):o=e[3];const a=o;let l;e[4]!==a?(l=iee(a),e[4]=a,e[5]=l):l=e[5];const c=l,[u,d]=wr(ee…`
+- `PJt`: `function PJt(t){const e=oe.c(3),{className:n}=t;let r;e[0]===Symbol.for("react.memo_cache_sentinel")?(r=h.jsx(Z,{id:"codex.diffView.switchToUnified",defaultMessage:"Switch to unified diff",description:"Tooltip to switch to unified diff view"}),e[0]=r):r=e[0];let i;return e[1]!==n…`
+- `OJt`: `function OJt(t){const e=oe.c(3),{className:n}=t;let r;e[0]===Symbol.for("react.memo_cache_sentinel")?(r=h.jsx(Z,{id:"codex.diffView.switchToUnified",defaultMessage:"Switch to unified diff",description:"Tooltip to switch to unified diff view"}),e[0]=r):r=e[0];let i;return e[1]!==n…`
+- `IJt`: `function IJt(){const t=oe.c(5),e=DJt();if("error"in e){let r;return t[0]!==e.error?(r=h.jsx("div",{className:"text-token-error-foreground p-4",children:e.error}),t[0]=e.error,t[1]=r):r=t[1],r}let n;return t[2]!==e.conversationId||t[3]!==e.diffContent?(n=h.jsx(NJt,{diffContent:e.d…`
+- `ree`: `function ree({diffViewClassName:t,diff:e,viewType:n,stickyHeader:r,hunkSeparators:i,enableComments:s=!1,comments:o,modelComments:a,onCommentsChange:l,defaultOpen:c=!0,diffViewWrap:u=!1,showHunkActions:d=!1,onHunkAction:f,hunkActionsVariant:p="unstaged",cwd:m,richPreviewEnabled:g=…`
+
+### `/plan-summary`
+- root component: `B4n`
+- 覆盖到的组件节点数（BFS<=3）：6
+- i18n keys：8
+- className 字符串：23
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `B4n`
+- `B4n` -> `H4n`
+- `B4n` -> `z4n`
+- `z4n` -> `JFe`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `localConversation` (8): localConversation.planSummary.collapse, localConversation.planSummary.collapseTooltip, localConversation.planSummary.expand, localConversation.planSummary.expandTooltip, localConversation.planSummary.openInNewWindow, localConversation.planSummary.openInNewWindow.tooltip, localConversation.planSummary.title, localConversation.planSummary.viewPlan
+- layout/样式线索（className 抽样）：
+- `bg-token-foreground/10 h-3 w-3/6 rounded`
+- `bg-token-foreground/10 h-3 w-4/6 rounded`
+- `bg-token-foreground/10 h-3 w-5/6 rounded`
+- `bg-token-foreground/10 size-8 rounded-lg`
+- `bg-token-foreground/20 h-4 w-24 rounded`
+- `border-token-border animate-pulse overflow-hidden rounded-2xl border bg-token-editor-background/50`
+- `border-token-border/60 flex items-center gap-3 border-b px-4 py-3`
+- `flex items-center gap-1`
+- `gap-1`
+- `overflow-y-auto p-[var(--padding-panel)]`
+- `p-[var(--padding-panel)]`
+- `pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-token-input-background to-transparent`
+- `pointer-events-none absolute inset-x-0 bottom-3 flex justify-center`
+- `px-4 py-3`
+- `relative flex flex-wrap items-center justify-between gap-2 px-3 py-2`
+- `relative overflow-clip rounded-lg bg-token-foreground/5`
+- `relative overflow-hidden`
+- `space-y-3 px-4 py-4`
+- `text-token-foreground text-base font-semibold leading-tight`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `JFe`: `function JFe(t){const e=oe.c(42),{item:n,conversationId:r,cwd:i,hideCodeBlocks:s,defaultCollapsed:o,showOpenButton:a}=t,l=s===void 0?!1:s,c=o===void 0?!1:o,u=a===void 0?!0:a,[d,f]=M.useState(c),p=ht(),m=u&&n.completed;let g;e[0]!==p||e[1]!==d?(g=d?p.formatMessage({id:"localConver…`
+- `H4n`: `function H4n(){const t=oe.c(2);let e;t[0]===Symbol.for("react.memo_cache_sentinel")?(e=h.jsxs("div",{className:"border-token-border/60 flex items-center gap-3 border-b px-4 py-3",children:[h.jsx("div",{className:"bg-token-foreground/10 size-8 rounded-lg"}),h.jsx("div",{className:…`
+- `tDe`: `function tDe(t){const e=oe.c(5),{markdown:n,conversationId:r,cwd:i,hideCodeBlocks:s}=t,o=r===void 0?null:r,a=i===void 0?null:i;let l;return e[0]!==o||e[1]!==a||e[2]!==s||e[3]!==n?(l=h.jsx("div",{className:"px-4 py-3",children:h.jsx(p4,{className:"text-size-chat",conversationId:o,…`
+- `z4n`: `function z4n(t){const e=oe.c(5),{planContent:n,conversationId:r}=t;let i;e[0]!==n?(i={type:"assistant-message",content:n,completed:!0,structuredOutput:void 0},e[0]=n,e[1]=i):i=e[1];let s;return e[2]!==r||e[3]!==i?(s=h.jsx("div",{className:"overflow-y-auto p-[var(--padding-panel)]…`
+- `eDe`: `function eDe(t){const e=oe.c(5),{className:n,children:r}=t;let i;e[0]!==n?(i=Ie("relative overflow-clip rounded-lg bg-token-foreground/5",n),e[0]=n,e[1]=i):i=e[1];let s;return e[2]!==r||e[3]!==i?(s=h.jsx("div",{className:i,children:r}),e[2]=r,e[3]=i,e[4]=s):s=e[4],s}`
+
+### `/file-preview`
+- root component: `BJt`
+- 覆盖到的组件节点数（BFS<=3）：1
+- i18n keys：1
+- className 字符串：3
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `BJt`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `wham` (1): wham.diff.binaryFile
+- layout/样式线索（className 抽样）：
+- `flex h-full items-center justify-center text-token-text-tertiary`
+- `h-full`
+- `h-full overflow-auto`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `BJt`: `function BJt(){const t=oe.c(9),e=eo();let n;t[0]!==e.state?(n=FJt(e.state)?e.state:null,t[0]=e.state,t[1]=n):n=t[1];const r=n;if(!r){let l;return t[2]===Symbol.for("react.memo_cache_sentinel")?(l=h.jsx("div",{className:"h-full"}),t[2]=l):l=t[2],l}if(QR.lookup(r.filePath)==="appli…`
+
+### `/`
+- root component: `yfn`
+- 覆盖到的组件节点数（BFS<=3）：54
+- i18n keys：102
+- className 字符串：132
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `yfn`
+- `yfn` -> `Lje`
+- `Lje` -> `C0n`
+- `Lje` -> `Gun`
+- `Lje` -> `Nun`
+- `Lje` -> `S0n`
+- `Lje` -> `T0n`
+- `Lje` -> `Wun`
+- `Lje` -> `k0n`
+- `Lje` -> `n0n`
+- `yfn` -> `Oje`
+- `yfn` -> `Sfn`
+- `yfn` -> `X4e`
+- `yfn` -> `X_e`
+- `yfn` -> `Y4e`
+- `yfn` -> `a4e`
+- `yfn` -> `cFe`
+- `cFe` -> `hdn`
+- `yfn` -> `dte`
+- `yfn` -> `fdn`
+- `yfn` -> `hFe`
+- `hFe` -> `Ddn`
+- `yfn` -> `udn`
+- `yfn` -> `ute`
+- `ute` -> `Mdn`
+- `ute` -> `kdn`
+- `ute` -> `qbe`
+- `ute` -> `rCe`
+- `yfn` -> `wfn`
+- `yfn` -> `yte`
+- `yte` -> `BFe`
+- `yte` -> `H3n`
+- `yte` -> `cfn`
+- `yte` -> `dfn`
+- `yte` -> `g3n`
+- `yte` -> `hfn`
+- `yte` -> `jFe`
+- `yte` -> `pfn`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `codex` (56): codex.appUpsellBanner.cbpApi.message, codex.appUpsellBanner.download, codex.appUpsellBanner.freeGo.message, codex.appUpsellBanner.later, codex.appUpsellBanner.learnMoreLowercase, codex.appUpsellBanner.new, codex.appUpsellBanner.proPlusBusiness.message, codex.appUpsellBanner.title, codex.common.retry, codex.recentTasksMenu.count, codex.recentTasksMenu.errorCloud.inline, codex.recentTasksMenu.tooltip…
+- `localConversationPage` (16): localConversationPage.copyPath, localConversationPage.createBranchButtonLabel, localConversationPage.forcePushError, localConversationPage.gitActions, localConversationPage.openInTarget, localConversationPage.openPrimaryTarget, localConversationPage.pushError, localConversationPage.pushModal.branchLabel, localConversationPage.pushModal.branchUnknown, localConversationPage.pushModal.cancel, localConversationPage.pushModal.confirm, localConversationPage.pushModal.description…
+- `latestModel` (4): latestModel.dismiss, latestModel.learnMore, latestModel.subtitle, latestModel.title
+- `diff` (3): diff.actionButton.revertSectionLabel, diff.actionButton.stageSectionLabel, diff.actionButton.unstageSectionLabel
+- `localConversation` (3): localConversation.sync.buttonLabel, localConversation.sync.modal.loading.title, localConversation.syncSetup.checkoutOnLocal
+- `review` (3): review.commit.generate.emptyResponse, review.commit.generate.failed, review.commit.generate.missingPrompt
+- `header` (2): header.recentChats, header.recentTasks.seeAll
+- `home` (2): home.header.getPlus, home.hero.letsBuild
+- layout/样式线索（className 抽样）：
+- `!bg-token-charts-purple/10 !text-token-charts-purple hover:!bg-token-charts-purple/20`
+- `!rounded-2xl border border-token-border dark:!border-token-border bg-token-side-bar-background py-3 pl-3.5 pr-3`
+- `-z-1 text-token-foreground/20 electron:hidden pointer-events-none fixed left-1/2 top-[calc(50%_-_55px)] h-12 w-12 -translate-x-1/2 -translate-y-1/2`
+- `@container/left-panel`
+- `absolute inset-0 flex items-center justify-center text-xs font-medium`
+- `bg-token-button-secondary-background/30 icon-sm flex items-center justify-center rounded-[4px]`
+- `bg-token-dropdown-background/90 ring-token-border pointer-events-auto flex items-center justify-center gap-2 rounded-full px-2 py-1 shadow-lg ring-[0.5px] backdrop-blur-sm`
+- `bg-token-input-background border-token-border relative flex w-full items-center gap-1.5 rounded-md border-[0.5px] text-sm`
+- `bg-token-surface-muted text-token-foreground-muted rounded-md px-3 py-2 text-xs`
+- `bg-token-terminal-background relative h-full w-full`
+- `bg-transparent px-3 py-1.5`
+- `block min-w-0 max-w-full truncate`
+- `block px-2 pt-2 text-sm text-token-description-foreground`
+- `border-token-border mx-2 border-t-[0.5px]`
+- `draggable extension:px-panel`
+- `extension:py-row-y electron:h-toolbar browser:h-toolbar flex items-center justify-between`
+- `flex flex-1 items-center`
+- `flex flex-1 items-center gap-5`
+- `flex flex-col`
+- `flex flex-col gap-2`
+- `flex flex-col gap-3`
+- `flex flex-col items-center gap-1`
+- `flex flex-col items-center gap-3 text-center`
+- `flex flex-shrink-0 items-center`
+- `flex flex-shrink-0 items-center gap-2`
+- `flex gap-1`
+- `flex grow flex-row items-center gap-1 pb-1`
+- `flex h-9 items-center justify-between`
+- `flex h-full flex-col`
+- `flex h-full min-h-0 flex-col pr-3`
+- `flex items-center gap-1`
+- `flex items-center gap-1.5`
+- `flex items-center gap-1.5 text-sm font-medium`
+- `flex items-center gap-2`
+- `flex items-center justify-between px-[var(--padding-row-x)]`
+- `flex items-center justify-center py-2`
+- `flex items-center justify-end gap-2 pt-1`
+- `flex max-h-[300px] w-[calc(var(--radix-popper-available-width)_-_var(--padding-panel))] flex-col gap-1`
+- `flex max-w-[300px] text-token-text-secondary items-center gap-0.5 overflow-hidden whitespace-nowrap font-normal`
+- `flex min-h-0 min-w-0 flex-1 overflow-hidden`
+- `flex min-h-0 w-full flex-1`
+- `flex min-w-0 flex-1`
+- `flex min-w-0 flex-1 flex-col gap-1.5`
+- `flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-3`
+- `flex min-w-0 flex-1 items-center gap-1 text-base`
+- `flex min-w-0 items-center gap-0.5 `
+- `flex min-w-0 items-center gap-1`
+- `flex min-w-[160px] flex-col gap-0.5`
+- `flex w-full cursor-pointer items-center gap-0 rounded-md px-[var(--padding-row-x)] py-1 text-sm opacity-40 hover:opacity-80`
+- `flex w-full flex-col px-3`
+- `flex w-full max-w-[320px] min-w-0 items-center gap-1 px-2 py-1 text-base`
+- `flex w-full min-w-0 items-center gap-0.5`
+- `flex w-full min-w-0 items-center gap-2 overflow-hidden`
+- `flex-1`
+- `flex-1 overflow-x-hidden overflow-y-auto pt-2`
+- `flex-shrink-0`
+- `flex-shrink-0 opacity-75`
+- `gap-0 rounded-l-none border-l-0 pl-0.5 pr-1.5`
+- `group/inline -mx-[var(--padding-row-x)] flex flex-col gap-px rounded-xl pb-1 transition-colors`
+- `h-8 w-8 shrink-0`
+- `h-full`
+- `h-toolbar-sm px-panel absolute left-0 right-0 top-0 z-50 flex items-center justify-between text-sm leading-none`
+- `heading-xl mt-2 font-normal text-token-foreground select-none`
+- `icon-2xs text-token-description-foreground`
+- `icon-md text-token-foreground`
+- `icon-xs text-token-description-foreground`
+- `icon-xs text-token-input-placeholder-foreground`
+- `inline-flex items-stretch overflow-hidden`
+- `mb-2 flex flex-col gap-2`
+- `min-w-0 flex-1 truncate whitespace-nowrap`
+- `min-w-0 flex-auto gap-0 overflow-hidden px-0.5`
+- `min-w-0 truncate`
+- `mr-1 flex flex-shrink-0 items-center`
+- `mr-1 flex h-9 items-center`
+- `mr-3 line-clamp-1 flex min-w-0 flex-1 items-center gap-1 truncate`
+- `mx-auto flex w-full flex-col gap-3`
+- `pointer-events-auto mx-auto flex w-full max-w-[var(--thread-composer-max-width)] flex-col gap-2 px-panel pb-2`
+- `pointer-events-none absolute bottom-10 left-1/2 z-10 -translate-x-1/2`
+- `pointer-events-none absolute inset-x-0 bottom-0`
+- `px-3 py-1.5`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `udn`: `function udn(){const t=oe.c(28),{platform:e,isLoading:n}=kX(),[r,i]=wr(cdn),{authMethod:s,planAtLogin:o,isLoading:a}=E1(),l=s==="chatgpt";let c;t[0]!==l?(c={queryConfig:{enabled:l}},t[0]=l,t[1]=c):c=t[1];const{data:u,isLoading:d}=gn("account-info",c),f=s==="chatgpt",p=s==="apikey…`
+- `b3n`: `function b3n(t){const e=oe.c(45),{source:n,diffFilter:r,onSelectDiffFilter:i,baseBranch:s,baseBranchRemote:o,currentBranch:a}=t,l=ht();if(n==="cloud"){let B;return e[0]===Symbol.for("react.memo_cache_sentinel")?(B=h.jsx(Z,{id:"codex.review.source.cloud",defaultMessage:"Cloud chan…`
+- `v3n`: `function v3n(t){const e=oe.c(51),{wrap:n,setWrap:r,onToggleFileTree:i,isFileTreeOpen:s,showDiffModeToggle:o,diffMode:a,onSelectDiffMode:l,toggleDiffViewAriaLabel:c,showCopyGitApplyCommand:u,copyGitApplyCommandDisabled:d,onClickCopyGitApplyCommand:f,richPreviewEnabled:p,onToggleRi…`
+- `Lje`: `function Lje(t){const e=oe.c(134),{conversationId:n,cwd:r,codexWorktree:i}=t,s=n===void 0?null:n,o=ht(),a=vi(),l=Cr(),[c,u]=M.useState(!1),[d,f]=M.useState(!1),[p,m]=M.useState(!1),[g,v]=M.useState(null),[y,b]=M.useState(!1),[x,_]=M.useState(!1),[C,k]=M.useState(!1),[E,T]=M.useSt…`
+- `Vun`: `function Vun(t){const e=oe.c(17),{target:n,isLoading:r,canPush:i,onPush:s}=t;let o;e[0]===Symbol.for("react.memo_cache_sentinel")?(o=h.jsx(Tr.Header,{icon:h.jsx(KI,{className:"icon-md text-token-foreground"})}),e[0]=o):o=e[0];let a;e[1]===Symbol.for("react.memo_cache_sentinel")?(…`
+
+### `/first-run`
+- root component: `I5n`
+- 覆盖到的组件节点数（BFS<=3）：5
+- i18n keys：33
+- className 字符串：35
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `I5n`
+- `I5n` -> `N5n`
+- `N5n` -> `B5n`
+- `N5n` -> `gut`
+- `N5n` -> `j5n`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `codex` (32): codex.legal.autonomy.details, codex.legal.autonomy.details.link, codex.legal.autonomy.title, codex.legal.backButton, codex.legal.cloud.taskOne.meta, codex.legal.cloud.taskOne.title, codex.legal.cloud.taskThree.meta, codex.legal.cloud.taskThree.stats.negative, codex.legal.cloud.taskThree.stats.positive, codex.legal.cloud.taskThree.title, codex.legal.cloud.taskTwo.meta, codex.legal.cloud.taskTwo.stats.negative…
+- `composer` (1): composer.placeholder.newTask.doAnything
+- layout/样式线索（className 抽样）：
+- `!text-token-description-foreground underline hover:no-underline`
+- `absolute bottom-10 left-1/2 z-20 w-full max-w-lg -translate-x-1/2 px-6`
+- `absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 [@media(max-height:500px)]:hidden`
+- `bg-token-dropdown-background border-token-border relative flex flex-1 flex-col gap-4 overflow-y-auto rounded-2xl border p-2 shadow-2xl`
+- `bg-token-dropdown-background border-token-border relative flex flex-col items-center justify-center gap-4 rounded-2xl border px-4 py-4 shadow-2xl`
+- `bg-token-dropdown-background border-token-border relative rounded-xl p-2 font-mono shadow-xl`
+- `bg-token-dropdown-background border-token-border relative rounded-xl p-2 pb-2.5 font-mono`
+- `bg-token-foreground flex h-[32px] w-[34px] items-center justify-center rounded-full p-0`
+- `bg-token-side-bar-background electron:!bg-transparent relative flex h-full w-full items-center justify-center overflow-hidden px-4`
+- `border-token-border size-token-button-composer rounded-full border p-1`
+- `flex items-center gap-2 text-sm font-medium`
+- `flex justify-center px-2`
+- `flex w-full items-center justify-between gap-4`
+- `flex w-full items-center justify-end`
+- `flex w-full min-w-0 flex-nowrap items-center justify-start gap-[5px]`
+- `flex-1 text-sm font-medium`
+- `mb-0 mt-10 px-2`
+- `mb-2 flex items-center justify-center`
+- `mt-3 space-y-4 overflow-y-auto`
+- `mx-auto flex w-full max-w-[400px] items-center justify-between gap-2`
+- `pointer-events-none absolute inset-0 -ml-6`
+- `pointer-events-none absolute inset-0 z-10`
+- `relative h-full w-full`
+- `text-md text-token-description-foreground pl-2 pt-2 opacity-40`
+- `text-token-description-foreground mx-auto w-full max-w-sm text-center text-base`
+- `text-token-description-foreground text-mono pointer-events-none px-2 py-1 text-[11px] uppercase tracking-[0.2em]`
+- `text-token-dropdown-background`
+- `text-token-foreground flex flex-1 flex-col`
+- `text-token-foreground mx-auto w-full max-w-sm text-center text-base font-medium leading-tight`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `N5n`: `function N5n(t){const e=oe.c(64),{initialStep:n,onAccept:r,hasCloudAccess:i,isUsingCopilotAuth:s}=t,[o,a]=ar.useState(n),l=$5n(560);let c;e[0]===Symbol.for("react.memo_cache_sentinel")?(c={initialColumns:130,initialRows:100,initialMode:"composite",preferredVideoKeyword:"blossom"}…`
+- `j5n`: `function j5n(t){const e=oe.c(10),{variant:n,isWideViewport:r}=t,i=r?560:320,s=r?320:240;let o;e[0]!==n?(o=function(){return n==="intro"?h.jsxs("div",{className:"bg-token-dropdown-background border-token-border relative flex flex-1 flex-col gap-4 overflow-y-auto rounded-2xl border…`
+- `B5n`: `function B5n(t){const e=oe.c(9),{isUsingCopilotAuth:n}=t;let r,i,s;if(n){r=Sm;let a;e[0]===Symbol.for("react.memo_cache_sentinel")?(a=h.jsx(Z,{id:"codex.legal.copilot.title",defaultMessage:"Powered by GitHub Copilot",description:"Statement that Codex uses user's Copilot account"}…`
+- `gut`: `function gut({children:t,isValidProp:e,...n}`
+- `I5n`: `function I5n(){const t=oe.c(11),e=zFe(),{authMethod:n}=E1(),r=n==="chatgpt",i=n==="copilot";let s;e:switch(e){case"2025-09-15-full-chatgpt-auth":{s=Qg;break e}case"2025-09-15-apikey-auth":{s=rm;break e}case"none":case void 0:r?s=Qg:s=rm}const o=t1(),{setData:a}=ls(j1.NUX_2025_09_…`
+
+### `/local/:conversationId`
+- root component: `R4n`
+- 覆盖到的组件节点数（BFS<=3）：10
+- i18n keys：5
+- className 字符串：18
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `R4n`
+- `R4n` -> `S4n`
+- `S4n` -> `A4n`
+- `S4n` -> `M4n`
+- `S4n` -> `T4n`
+- `S4n` -> `k4n`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `codex` (3): codex.review.copyGitApplyCommand.toast, codex.review.noDiff.gitInit.createRepository, codex.review.noDiff.gitInit.creating
+- `terminal` (2): terminal.close, terminal.title
+- layout/样式线索（className 抽样）：
+- `bg-token-dropdown-background/90 ring-token-border pointer-events-auto flex items-center justify-center gap-2 rounded-full px-2 py-1 shadow-lg ring-[0.5px] backdrop-blur-sm`
+- `bg-token-terminal-background relative h-full w-full`
+- `flex gap-1`
+- `flex h-full flex-col`
+- `flex items-center gap-1`
+- `flex min-h-0 min-w-0 flex-1 overflow-hidden`
+- `flex-1`
+- `h-toolbar-sm px-panel absolute left-0 right-0 top-0 z-50 flex items-center justify-between text-sm leading-none`
+- `pointer-events-none absolute bottom-10 left-1/2 z-10 -translate-x-1/2`
+- `relative w-full grid h-full min-h-0 grid-rows-[auto_1fr]`
+- `text-token-description-foreground/50 mono text-sm`
+- `text-token-error-foreground`
+- `top-toolbar-sm pl-panel absolute inset-0 bottom-3 overflow-visible tracking-normal`
+- `w-[30%] min-w-[220px] max-w-[400px]`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `yte`: `function yte(t){const e=oe.c(228),{id:n,lastTurnDiff:r,mode:i,cwd:s}=t;let o;e[0]!==n?(o={conversationId:n,enableComments:!0},e[0]=n,e[1]=o):o=e[1];const{commentProps:a}=see(o),l=vi(),c=ht(),[u,d]=wr(Cwe),[f,p]=wr(hR),m=Hr(),g=ho();let v;e[2]!==g?(v=el(g),e[2]=g,e[3]=v):v=e[3];co…`
+- `Oje`: `function Oje(t){const e=oe.c(47),{conversationId:n,cwd:r,isActive:i,sessionId:s,onClose:o}=t,a=i===void 0?!1:i,l=ht(),u=_r()==="electron";let d;e[0]!==u?(d={enabled:u},e[0]=u,e[1]=d):d=e[1];const{data:f}=w1(N1.CODE_FONT_FAMILY,d);let p;e[2]!==u?(p={enabled:u},e[2]=u,e[3]=p):p=e[3…`
+- `_4n`: `function _4n(t){const e=oe.c(43),{conversationId:n,title:r,cwd:i,onToggleTerminal:s,isTerminalOpen:o,isDiffPanelOpen:a,onToggleReviewPanel:l,trailing:c}=t,u=ht(),d=Hs.useGateValue(nN);let f,p;e[0]!==i?(f=i?i:null,p=Ste(f),e[0]=i,e[1]=f,e[2]=p):(f=e[1],p=e[2]);const m=p,{data:g}=W…`
+- `S4n`: `function S4n(t){const e=oe.c(49),{conversationId:n}=t,r=n,[i,s]=wr(Nje);let o;e[0]!==r||e[1]!==i?(o=Dje(i,r),e[0]=r,e[1]=i,e[2]=o):o=e[2];const a=o,[l,c]=wr(zI);let u;e[3]!==a||e[4]!==s||e[5]!==r||e[6]!==i?(u=()=>{const T=!a;s(Tx(i,r,T)),T||hje()},e[3]=a,e[4]=s,e[5]=r,e[6]=i,e[7]…`
+- `k4n`: `function k4n(t){const e=oe.c(14),{conversationId:n,onToggleTerminal:r,isTerminalOpen:i,isDiffPanelOpen:s,onToggleReviewPanel:o,onShowTerminal:a}=t,l=xa(n,E4n),c=xa(n,gh),u=UL(n),d=l?n:null;let f;e[0]!==n||e[1]!==u||e[2]!==l||e[3]!==a?(f=l?h.jsx(C4n,{conversationId:n,cwd:u,onShowT…`
+
+### `/thread-overlay/:conversationId`
+- root component: `S6n`
+- 覆盖到的组件节点数（BFS<=3）：3
+- i18n keys：2
+- className 字符串：12
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `S6n`
+- `S6n` -> `kte`
+- `S6n` -> `mBe`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `threadOverlay` (2): threadOverlay.toolbar.title, threadOverlay.toolbar.toggleAlwaysOnTop
+- layout/样式线索（className 抽样）：
+- `draggable h-toolbar-sm relative flex items-center px-3`
+- `flex flex-col gap-0`
+- `gap-2`
+- `h-full`
+- `h-full [--padding-panel:calc(var(--padding-panel-base)/2)]`
+- `h-full w-full overflow-hidden`
+- `max-w-[70%] truncate`
+- `ml-auto flex items-center gap-0`
+- `text-token-foreground/25 pointer-events-none absolute inset-x-0 flex justify-center text-base font-medium`
+- `text-token-input-foreground border-token-border rounded-xl border px-3 py-2 text-base shadow-sm outline-none`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `S6n`: `function S6n(){const t=oe.c(38),e=ht(),{conversationId:n}=C8(),r=m6(n??null),[i,s]=M.useState(!1);let o;t[0]!==r?(o=gh(r),t[0]=r,t[1]=o):o=t[1];const a=o,c=_r()==="electron";let u;t[2]!==c?(u={enabled:c},t[2]=c,t[3]=u):u=t[3];const{data:d}=w1(N1.OPAQUE_WINDOWS,u);if(!n){let B;ret…`
+- `mBe`: `function mBe(t){const e=oe.c(77),{conversationId:n,cwd:r,title:i,onArchiveSuccess:s}=t,o=ht(),{archiveThread:a,renameThread:l,copyAppLink:c}=nCe(),[u,d]=M.useState(!1),[f,p]=M.useState(""),{isPinned:m,togglePin:g}=eCe(n);if(!n)return null;let v;e[0]!==i?(v=()=>{p(i??""),d(!0)},e[…`
+- `kte`: `const kte=t=>M.createElement("svg",{width:24,height:24,viewBox:"0 0 24 24",fill:"none",xmlns:"http://www.w3.org/2000/svg",...t}`
+
+### `/inbox`
+- root component: `mmn`
+- 覆盖到的组件节点数（BFS<=3）：20
+- i18n keys：54
+- className 字符串：80
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `mmn`
+- `mmn` -> `gmn`
+- `gmn` -> `Q4e`
+- `gmn` -> `aFe`
+- `gmn` -> `amn`
+- `gmn` -> `kmn`
+- `gmn` -> `lFe`
+- `gmn` -> `lge`
+- `gmn` -> `nBe`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `inbox` (37): inbox.archived.deleteError, inbox.archived.deleteSuccess, inbox.automations.createError, inbox.automations.deleteConfirm.cancel, inbox.automations.deleteConfirm.confirm, inbox.automations.deleteConfirm.description, inbox.automations.deleteConfirm.title, inbox.automations.deleteError, inbox.automations.editTooltip, inbox.automations.inProgress, inbox.automations.learnMore, inbox.automations.new…
+- `settings` (9): settings.automations.cancel, settings.automations.create, settings.automations.dialog.editTitle, settings.automations.dialog.newTitle, settings.automations.dialog.title, settings.automations.loading, settings.automations.save, settings.dataControls.archivedChats.unarchiveError, settings.dataControls.archivedChats.unarchiveSuccess
+- `automation-run-delete` (1): automation-run-delete
+- `codex` (1): codex.localTaskRow.archiveTask
+- `inbox-left` (1): inbox-left
+- `inbox-right` (1): inbox-right
+- `localTaskRow` (1): localTaskRow.archiveError
+- `mark-read` (1): mark-read
+- layout/样式线索（className 抽样）：
+- `-mb-20 text-token-foreground`
+- `absolute inset-0`
+- `absolute inset-y-0 right-0 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100`
+- `automation-row group flex h-9 items-center justify-between gap-3 rounded-md px-2 py-2 text-base cursor-interaction`
+- `bg-token-border flex-none self-stretch data-[panel-group-direction=horizontal]:h-full data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=horizontal]:w-px data-[panel-group-direction=vertical]:w-full`
+- `bg-token-border self-stretch w-px`
+- `bg-token-charts-purple/15 text-token-charts-purple px-1.5 py-0.5 text-sm font-medium whitespace-nowrap`
+- `bg-token-charts-red text-token-charts-red border-transparent enabled:hover:bg-token-charts-red data-[state=open]:bg-token-charts-red`
+- `border-b border-token-border`
+- `border-token-border-default text-token-text-secondary border bg-transparent px-1.5 py-0.5 text-xs font-medium`
+- `border-token-border-default text-token-text-tertiary border bg-transparent px-1.5 py-0.5 pt-0.5 text-inherit font-normal mt-1`
+- `electron:font-medium inline-flex min-w-0 items-center gap-2`
+- `extension:py-row-y electron:h-toolbar browser:h-toolbar flex w-full items-center justify-end gap-1.5 px-panel`
+- `extension:py-row-y electron:h-toolbar browser:h-toolbar grid w-full min-w-0 items-center`
+- `flex flex-1 items-center justify-center`
+- `flex flex-col gap-1`
+- `flex flex-col items-center gap-3 pb-6 pt-10 text-center`
+- `flex h-4 w-4 items-center justify-center`
+- `flex h-full flex-1`
+- `flex h-full w-full flex-col bg-token-surface-tertiary px-4`
+- `flex h-toolbar min-w-0 items-center justify-between gap-2 px-panel`
+- `flex items-center gap-2`
+- `flex items-center gap-2 rounded-md px-2 py-2 text-sm text-token-description-foreground`
+- `flex items-center gap-3 text-sm text-token-description-foreground`
+- `flex items-start justify-between gap-3`
+- `flex min-h-0 flex-1 flex-col overflow-y-auto pb-8`
+- `flex min-w-0 flex-1 flex-col gap-0.5 leading-tight`
+- `flex min-w-0 flex-1 items-center gap-1.5 text-base text-token-foreground electron:font-medium`
+- `flex min-w-0 flex-1 items-center gap-2`
+- `flex min-w-0 flex-1 items-start gap-2`
+- `flex min-w-0 items-center gap-2`
+- `flex shrink-0 items-center text-sm text-token-description-foreground`
+- `flex-1`
+- `font-semibold text-token-text-primary`
+- `gap-1`
+- `gap-2`
+- `gap-3`
+- `group flex items-center gap-2 rounded-md pl-2 pr-3 py-2 text-base [content-visibility:auto] [contain-intrinsic-size:auto_64px]`
+- `h-2 w-2 rounded-full`
+- `h-full w-full`
+- `heading-xl text-token-foreground flex items-center gap-2 font-normal`
+- `icon-xs shrink-0 text-token-description-foreground`
+- `icon-xs shrink-0 text-token-disabled-foreground`
+- `inbox-toolbar flex h-toolbar min-w-0 items-center justify-between gap-2`
+- `inbox-toolbar__actions flex shrink-0 items-center gap-px`
+- `inline-flex items-center gap-1 text-token-text-primary`
+- `min-h-0 flex-1 overflow-y-auto`
+- `min-w-0 truncate text-base`
+- `mr-1 h-3 w-3 text-token-charts-purple`
+- `mx-auto flex w-full max-w-3xl flex-col gap-4`
+- `relative`
+- `relative flex min-w-[4.5rem] items-center justify-end self-center`
+- `relative h-full w-full`
+- `size-2 rounded-full`
+- `sticky -top-[var(--padding-panel)] z-10 bg-token-main-surface-primary electron:bg-token-side-bar-background browser:bg-token-bg-primary px-2 py-2 text-sm text-token-description-foreground`
+- `text-lg text-token-description-foreground`
+- `text-token-description-foreground`
+- `text-token-description-foreground absolute right-0 opacity-0 transition-opacity group-hover:opacity-100`
+- `text-token-description-foreground flex w-5 shrink-0 items-center justify-center`
+- `text-token-description-foreground hover:text-token-foreground focus-visible:outline-token-focus transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 mt-2`
+- `text-token-description-foreground transition-opacity group-hover:opacity-0`
+- `text-token-link hover:underline underline-offset-2`
+- `transition-opacity group-hover:opacity-0`
+- `truncate font-normal text-token-description-foreground text-sm`
+- `truncate text-sm text-token-description-foreground`
+- `truncate text-token-foreground`
+- `vertical-scroll-fade-mask flex h-full w-full flex-col gap-3 overflow-y-auto p-panel`
+- `w-full`
+- `w-full min-w-0`
+- `whitespace-nowrap text-sm tabular-nums text-token-description-foreground transition-opacity`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `gmn`: `function gmn(t){const e=oe.c(123),{selectedItemId:n,automations:r,isAutomationsLoading:i}=t,[s,o]=M.useState(Smn),[a,l]=ZUe();let c;e[0]!==a?(c=a.get("automationId"),e[0]=a,e[1]=c):c=e[1];const u=c;let d;e[2]!==a?(d=a.get("automationMode"),e[2]=a,e[3]=d):d=e[3];const f=d,p=u!=nul…`
+- `oBe`: `function oBe(t){const e=oe.c(59),{showTrigger:n}=t,{isAutomationModalOpen:r,closeAutomationModal:i,closeAutomationEditor:s,selectedAutomation:o,automationStartedLabel:a,automationRunCount:l,automationDraft:c,setAutomationDraft:u,canSaveAutomation:d,isEditingAutomation:f,isSavingA…`
+- `Q4e`: `function Q4e(t){const e=oe.c(44),{automation:n,displayName:r,workspaceLabel:i,scheduleLabel:s,startsInLabel:o,isInProgress:a,isPaused:l,isSelected:c,onSelect:u,onPauseAutomation:d,onResumeAutomation:f}=t;let p;e[0]!==n||e[1]!==u?(p={onSelect:()=>{u(n)}},e[0]=n,e[1]=u,e[2]=p):p=e[…`
+- `Nfn`: `function Nfn(t){const e=oe.c(63),{itemId:n,title:r,subtitle:i,workspaceLabel:s,leadingIcon:o,timestamp:a,threadId:l,isActive:c,isUnread:u,archiveLabel:d,onMarkRead:f,onMarkUnread:p,onArchive:m,onSelect:g,isDimmed:v,status:y}=t,b=c===void 0?!1:c,x=u===void 0?!1:u,_=v===void 0?!1:v…`
+- `amn`: `function amn(t){const e=oe.c(22),{hasAutomations:n,unreadCount:r,activeAutomationCount:i,isManageView:s,onSelectSuggestedTask:o,emptyStateIllustration:a}=t;if(!n){let p;e[0]===Symbol.for("react.memo_cache_sentinel")?(p=h.jsx(zfn,{}),e[0]=p):p=e[0];let m;e[1]===Symbol.for("react.m…`
+
+### `/inbox/:itemId`
+- root component: `oge`
+- 覆盖到的组件节点数（BFS<=3）：4
+- i18n keys：5
+- className 字符串：15
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `oge`
+- `oge` -> `omn`
+- `omn` -> `lmn`
+- `omn` -> `tBe`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `inbox` (4): inbox.archived.inlineLabel.auto, inbox.archived.inlineLabel.manual, inbox.archived.noMessageFound, inbox.rightPanel.noThread
+- `localConversationPage` (1): localConversationPage.error.toast
+- layout/样式线索（className 抽样）：
+- `bg-token-text-link-foreground/20 text-token-foreground flex items-center justify-center gap-1 py-1.5 text-sm`
+- `border-token-border bg-token-input-background text-token-description-foreground w-full rounded-xl border px-3 py-2 text-sm`
+- `flex h-full w-full flex-col`
+- `flex h-full w-full flex-col bg-token-surface-tertiary text-sm`
+- `flex h-full w-full items-center justify-center bg-token-surface-tertiary`
+- `flex min-h-0 flex-1 flex-col overflow-y-auto`
+- `flex w-full max-w-2xl flex-col gap-4 px-6 py-6`
+- `h-full w-full`
+- `min-h-0 flex-1`
+- `mx-auto w-full max-w-[var(--thread-composer-max-width)] px-panel pt-6`
+- `px-panel z-10 mx-auto flex w-full max-w-[var(--thread-composer-max-width)] flex-col pb-2`
+- `text-token-description-foreground flex h-full w-full items-center justify-center bg-token-surface-tertiary text-sm`
+- `text-token-foreground overflow-x-auto [&>ol:first-child]:mt-0 [&>ul:first-child]:mt-0`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `tBe`: `function tBe(t){const e=oe.c(29),{item:n,automations:r}=t;let i,s,o,a,l;if(e[0]!==r||e[1]!==n.archivedAssistantMessage||e[2]!==n.archivedReason||e[3]!==n.automationId){i=n.archivedAssistantMessage?.trim()??null,a=n.archivedReason==="manual";let y;e[9]!==r||e[10]!==n.automationId?…`
+- `lmn`: `function lmn(t){const e=oe.c(30),{threadId:n,item:r,archivedItem:i,automations:s}=t,[o,a]=M.useState(umn),[l]=M.useState(cmn);let c;e[0]!==n?(c=n,e[0]=n,e[1]=c):c=e[1];const u=c,d=m6(u),f=d?.id===u?d:null,p=f==null,m=p&&o-l>=1500;let g;e[2]!==n?(g=n.startsWith("pending:"),e[2]=n,…`
+- `omn`: `function omn(t){const e=oe.c(9),{item:n,automations:r}=t;if(!n)return null;const i=n.threadId,s=gw(n.status),o=i?.startsWith("pending:")??!1;if(i==null||s&&o){if(s){let u;return e[0]!==r||e[1]!==n?(u=h.jsx(tBe,{item:n,automations:r}),e[0]=r,e[1]=n,e[2]=u):u=e[2],u}let c;return e[…`
+- `oge`: `function oge(){const t=oe.c(3),{selectedItem:e,automations:n}=iBe();let r;return t[0]!==n||t[1]!==e?(r=h.jsx(omn,{item:e,automations:n}),t[0]=n,t[1]=e,t[2]=r):r=t[2],r}`
+
+### `/worktree-init-v2/:pendingWorktreeId`
+- root component: `E6n`
+- 覆盖到的组件节点数（BFS<=3）：3
+- i18n keys：8
+- className 字符串：18
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `E6n`
+- `E6n` -> `xte`
+- `xte` -> `thn`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `worktreeInitV2` (7): worktreeInitV2.cancel, worktreeInitV2.output.empty, worktreeInitV2.status.error, worktreeInitV2.status.running, worktreeInitV2.status.success, worktreeInitV2.title, worktreeInitV2.workLocallyInstead
+- `composer` (1): composer.localTaskError
+- layout/样式线索（className 抽样）：
+- `flex flex-col gap-4`
+- `flex items-center gap-2`
+- `flex items-center justify-between gap-3`
+- `flex min-h-0 flex-1 flex-col`
+- `h-full`
+- `min-h-0 flex-1`
+- `px-2.5 md:px-panel mx-auto max-w-[var(--thread-content-max-width)]`
+- `px-panel z-10 mx-auto flex w-full max-w-[var(--thread-composer-max-width)] flex-col gap-2`
+- `px-panel z-10 mx-auto flex w-full max-w-[var(--thread-composer-max-width)] flex-col pb-2`
+- `relative flex h-full flex-col [--thread-footer-overlap:0px] electron:[--thread-footer-overlap:var(--radius-4xl)]`
+- `relative mx-auto flex min-h-0 w-full flex-1 flex-col`
+- `sticky top-0 z-10`
+- `text-token-description-foreground text-sm`
+- `text-token-error-foreground text-sm`
+- `text-token-input-placeholder-foreground`
+- `vertical-scroll-fade-mask min-h-[500px] max-h-[500px] bg-token-editor-background text-token-input-placeholder-foreground text-size-code flex flex-1 flex-col overflow-x-auto overflow-y-auto whitespace-pre rounded-lg border border-token-border p-3 font-mono text-sm`
+- `vertical-scroll-fade-mask-top [--edge-fade-distance:2rem] pb-8 pt-[var(--edge-fade-distance)] px-panel electron:md:px-0 overflow-y-auto`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `E6n`: `function E6n(){const t=oe.c(49),e=t1(),n=Cr(),r=B3(),i=vi(),s=ht(),{pendingWorktreeId:o}=C8(),a=M.useRef(null),{updatePendingWorktree:l,abortAndRemovePendingWorktree:c}=Z8(),u=Qmt(o);let d;t[0]!==c||t[1]!==s||t[2]!==n||t[3]!==e||t[4]!==u||t[5]!==r||t[6]!==i?(d={mutationFn:async B…`
+- `xte`: `function xte(t){const e=oe.c(54);let n,r,i,s,o,a,l,c,u,d,f,p,m,g;e[0]!==t?({header:d,banner:r,aboveFooter:n,children:s,footer:c,className:o,bodyClassName:i,scrollViewClassName:m,footerClassName:u,contentWrapperClassName:l,containerRef:a,onScrollContainerChange:f,tabIndex:g,...p}=…`
+- `thn`: `function thn(t){const e=oe.c(15),{children:n,scrollViewClassName:r,scrollAnchorTopOffset:i,onScrollContainerChange:s}=t,o=i===void 0?0:i,a=M.useRef(null);let l;e[0]!==o?(l={initial:"instant",resize:"instant",targetScrollTop:(b,x)=>{const{scrollElement:_}=x;return _&&nhn(a,o)?_.sc…`
+
+### `/announcement`
+- root component: `E3t`
+- 覆盖到的组件节点数（BFS<=3）：2
+- i18n keys：7
+- className 字符串：13
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `E3t`
+- `E3t` -> `k3t`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `codexUpgradeModal` (7): codexUpgradeModal.body, codexUpgradeModal.image.altText, codexUpgradeModal.productName, codexUpgradeModal.smarterAndFaster, codexUpgradeModal.title, codexUpgradeModal.tryNewModel, codexUpgradeModal.useExistingModel
+- layout/样式线索（className 抽样）：
+- `absolute inset-0 flex items-center justify-center px-6 text-center text-xl font-semibold text-white max-[500px]:text-lg`
+- `bg-token-bg-primary pointer-events-auto fixed inset-0 z-50 h-full w-full items-center justify-center overflow-hidden px-8 py-10 text-center`
+- `flex flex-col gap-4`
+- `justify-center gap-2 text-lg`
+- `pointer-events-none absolute inset-0 -ml-6`
+- `relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl`
+- `relative m-auto flex h-full max-w-lg flex-col justify-between gap-10 overflow-auto`
+- `text-token-description-foreground pb-8 text-lg leading-7 max-[500px]:text-base max-[500px]:leading-5`
+- `text-token-text-link-foreground`
+- `w-full object-contain`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `k3t`: `function k3t(){const t=oe.c(41),e=ht(),{dismissAnnouncement:n}=LZ(),{modelSettings:r,setModelAndReasoningEffort:i}=g6();let s;t[0]===Symbol.for("react.memo_cache_sentinel")?(s={initialColumns:180,initialRows:110,initialMode:"composite",preferredVideoKeyword:"blossom"},t[0]=s):s=t…`
+- `E3t`: `function E3t(){const t=oe.c(2),{showAnnouncement:e}=LZ();if(!e){let r;return t[0]===Symbol.for("react.memo_cache_sentinel")?(r=h.jsx(gc,{to:"/",replace:!0}),t[0]=r):r=t[0],r}let n;return t[1]===Symbol.for("react.memo_cache_sentinel")?(n=h.jsx(k3t,{}),t[1]=n):n=t[1],n}`
+
+### `/remote/:taskId`
+- root component: `y5n`
+- 覆盖到的组件节点数（BFS<=3）：22
+- i18n keys：40
+- className 字符串：69
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `y5n`
+- `y5n` -> `g5n`
+- `g5n` -> `Vgn`
+- `g5n` -> `Xgn`
+- `g5n` -> `kBe`
+- `y5n` -> `kBe`
+- `kBe` -> `Lgn`
+- `kBe` -> `a5n`
+- `kBe` -> `s5n`
+- `kBe` -> `ute`
+- `kBe` -> `xte`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `codex` (34): codex.applyDropdown.header.changes, codex.applyDropdown.header.fileCount, codex.applyDropdown.header.rows, codex.applyDropdown.header.title, codex.applyDropdown.header.workspace, codex.applyOrRevertBanner.apply, codex.applyOrRevertBanner.applyMessage, codex.applyOrRevertBanner.applyMessageDifferentEnvironment, codex.applyOrRevertBanner.applyMessageDifferentEnvironment.tooltip, codex.applyOrRevertBanner.reapply, codex.applyOrRevertBanner.revert, codex.applyOrRevertBanner.revertMessage…
+- `localConversationPage` (3): localConversationPage.createPullRequestButtonLabel, localConversationPage.createPullRequestError, localConversationPage.viewPullRequestButtonLabel
+- `header` (2): header.recentChats, header.recentTasks.seeAll
+- `review` (1): review.commit.loading.title.createPr
+- layout/样式线索（className 抽样）：
+- `absolute inset-0 flex items-center justify-center text-xs font-medium`
+- `bg-token-dropdown-background/90 ring-token-border pointer-events-auto flex items-center justify-center gap-2 rounded-full px-2 py-1 shadow-lg ring-[0.5px] backdrop-blur-sm`
+- `bg-token-text-link-foreground/20 text-token-foreground group flex items-center justify-center gap-1 py-1.5 text-sm focus:!outline-none`
+- `draggable extension:px-panel`
+- `extension:py-row-y electron:h-toolbar browser:h-toolbar flex items-center justify-between`
+- `flex flex-col gap-0.5`
+- `flex flex-col gap-2`
+- `flex flex-col gap-3 pb-1 pt-2`
+- `flex flex-col items-center justify-center gap-2 py-6`
+- `flex flex-shrink-0 items-center gap-2`
+- `flex flex-wrap gap-2 self-end`
+- `flex flex-wrap items-center gap-3 text-sm`
+- `flex h-full flex-col`
+- `flex items-center gap-1`
+- `flex items-center gap-2`
+- `flex min-h-0 flex-1 flex-col`
+- `flex min-h-0 min-w-0 flex-1 overflow-hidden`
+- `flex min-h-full w-full items-center justify-center`
+- `flex min-w-0 items-center gap-1`
+- `flex w-full cursor-pointer items-center gap-0 rounded-md px-[var(--padding-row-x)] py-1 text-sm opacity-40 hover:opacity-80`
+- `flex-1`
+- `group/inline -mx-[var(--padding-row-x)] flex flex-col gap-px rounded-xl pb-1 transition-colors`
+- `h-full`
+- `heading-lg text-token-foreground`
+- `hide-scrollbar mb-2 flex flex-none shrink-0 gap-2 overflow-x-auto overflow-y-visible whitespace-nowrap`
+- `icon-lg text-token-foreground`
+- `max-w-[120px]`
+- `max-w-[200px]`
+- `min-h-0 flex-1`
+- `mr-1 flex flex-shrink-0 items-center`
+- `mr-3 line-clamp-1 flex min-w-0 flex-1 items-center gap-1 truncate`
+- `p-2`
+- `pointer-events-none absolute bottom-10 left-1/2 z-10 -translate-x-1/2`
+- `px-2.5 md:px-panel mx-auto max-w-[var(--thread-content-max-width)]`
+- `px-panel z-10 mx-auto flex w-full max-w-[var(--thread-composer-max-width)] flex-col gap-2`
+- `px-panel z-10 mx-auto flex w-full max-w-[var(--thread-composer-max-width)] flex-col pb-2`
+- `py-2`
+- `relative flex h-full flex-col [--thread-footer-overlap:0px] electron:[--thread-footer-overlap:var(--radius-4xl)]`
+- `relative h-full`
+- `relative inline-flex size-4 justify-center`
+- `relative mx-auto flex min-h-0 w-full flex-1 flex-col`
+- `relative w-full grid h-full min-h-0 grid-rows-[auto_1fr]`
+- `sticky top-0 z-10`
+- `text-token-description-foreground`
+- `text-token-description-foreground text-sm mb-1`
+- `text-token-editor-warning-foreground text-sm text-center text-balance`
+- `text-token-editor-warning-foreground truncate text-base`
+- `text-token-foreground electron:font-medium min-w-0 flex-1 truncate !px-0 !py-0 text-left text-sm hover:!bg-transparent hover:opacity-80`
+- `text-token-foreground font-medium`
+- `text-token-foreground min-w-0 flex-1 text-base`
+- `text-token-input-placeholder-foreground mb-2 flex items-center gap-2 text-base`
+- `vertical-scroll-fade-mask-top [--edge-fade-distance:2rem] pb-8 pt-[var(--edge-fade-distance)] px-panel electron:md:px-0 overflow-y-auto`
+- `w-[30%] min-w-[220px] max-w-[400px]`
+- `wrap-anywhere`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `Dgn`: `function Dgn(t){const e=oe.c(57),{turnId:n,diff:r,taskEnvironment:i}=t;let s;e[0]!==r||e[1]!==i||e[2]!==n?(s={turnId:n,diff:r,taskEnvironment:i},e[0]=r,e[1]=i,e[2]=n,e[3]=s):s=e[3];const{hasAppliedCodeLocally:o,canApply:a,isApplying:l,apply:c,revert:u,results:d,setResultsOpen:f,i…`
+- `Lgn`: `function Lgn(t){const e=oe.c(53),{turnId:n,diff:r,taskEnvironment:i}=t;let s;e[0]!==r||e[1]!==i||e[2]!==n?(s={turnId:n,diff:r,taskEnvironment:i},e[0]=r,e[1]=i,e[2]=n,e[3]=s):s=e[3];const{hasAppliedCodeLocally:o,canApply:a,isApplying:l,apply:c,revert:u,results:d,setResultsOpen:f,i…`
+- `zgn`: `function zgn(t){const e=oe.c(49),{taskId:n,turns:r,selectedTurn:i,diffTaskTurn:s,size:o}=t,a=o===void 0?"toolbar":o,l=ht(),c=vi(),u=Fmt(),d=M.useRef(!1),f=M.useRef(null),[p,m]=M.useState(null);let g;if(e[0]!==s||e[1]!==i||e[2]!==r){g=new Map;for(const me of r)g.set(me.id,me);i&&g…`
+- `yte`: `function yte(t){const e=oe.c(228),{id:n,lastTurnDiff:r,mode:i,cwd:s}=t;let o;e[0]!==n?(o={conversationId:n,enableComments:!0},e[0]=n,e[1]=o):o=e[1];const{commentProps:a}=see(o),l=vi(),c=ht(),[u,d]=wr(Cwe),[f,p]=wr(hR),m=Hr(),g=ho();let v;e[2]!==g?(v=el(g),e[2]=g,e[3]=v):v=e[3];co…`
+- `kBe`: `function kBe(t){const e=oe.c(73),{taskDetailsQuery:n,taskTurnsQuery:r,turns:i,selectedTurnId:s,setSelectedTurnId:o,selectedTurn:a}=t,l=_r(),c=u1(I6),u=cte(),{taskId:d}=C8(),{data:f,isLoading:p,error:m}=n,{mutate:g}=Kmt(d??""),v=f?.current_assistant_turn,[y]=wBe(s);let b;e[0]!==v?…`
+
+### `/settings`
+- root component: `k5n`
+- 覆盖到的组件节点数（BFS<=3）：3
+- i18n keys：16
+- className 字符串：8
+- 组件调用图（深度 2 展开，扁平列出）：
+- Root: `k5n`
+- `k5n` -> `C5n`
+- `C5n` -> `z0n`
+- i18n keys（按 prefix 聚类，展示前 8 组）：
+- `settings` (16): settings.nav.account, settings.nav.agent, settings.nav.ariaLabel, settings.nav.back, settings.nav.data-controls, settings.nav.environments, settings.nav.externalTooltip, settings.nav.general-settings, settings.nav.git-settings, settings.nav.local-environments, settings.nav.mcp-settings, settings.nav.notImplemented…
+- layout/样式线索（className 抽样）：
+- `bg-token-surface-secondary w-token-sidebar flex shrink-0 flex-col`
+- `draggable h-toolbar w-full`
+- `flex h-full min-h-0`
+- `group relative mb-2 flex w-full items-center gap-2 rounded-lg px-row-x py-row-y text-base outline-none`
+- `icon-xs text-token-text-secondary opacity-50`
+- `min-w-0 flex-1 overflow-visible`
+- `px-row-x`
+- 关键组件切片（按 i18n 数量排序，展示前 5 个的 excerpt）：
+- `z0n`: `function z0n(t){const e=oe.c(12),{slug:n}=t;switch(n){case"account":{let r;return e[0]===Symbol.for("react.memo_cache_sentinel")?(r=h.jsx(Z,{id:"settings.nav.account",defaultMessage:"Account",description:"Title for account settings section"}),e[0]=r):r=e[0],r}case"general-setting…`
+- `C5n`: `function C5n(t){const e=oe.c(36),{activeSection:n,onSelect:r,className:i,onBack:s}=t,o=ht(),a=_r();let l,c,u,d,f,p,m;if(e[0]!==n||e[1]!==i||e[2]!==o||e[3]!==s||e[4]!==r||e[5]!==a){const b=a==="extension"?wM:wM.filter(S5n);let x;e[13]===Symbol.for("react.memo_cache_sentinel")?(x=h…`
+- `k5n`: `function k5n(){const t=oe.c(21),e=t1(),n=Vl("/settings/:section/*");let r;t[0]!==n?.params?(r=wM.find(v=>v.slug===n?.params.section)?.slug??xM,t[0]=n?.params,t[1]=r):r=t[1];const i=r,s=Pi(EBe);let o;t[2]!==s||t[3]!==e?(o=()=>yge(e,s),t[2]=s,t[3]=e,t[4]=o):o=t[4];const a=o;let l,c…`
+
+## 导航触发点（粗提取）
+说明：这里是从 bundle 里按字符串/正则粗扫得到的，后续可继续精确到“事件源组件 -> handler -> route”。
+- 发现 navigate-to-route 相关窗口：8
+- offset `1960978` routes_in_window: /inbox?automationMode=create
+- offset `1961207` routes_in_window: /inbox?automationMode=create
+- offset `1961297` routes_in_window: /inbox?automationMode=create
+- offset `2220001` routes_in_window: /inbox?automationMode=create, /settings, /skills
+- offset `2220179` routes_in_window: /inbox?automationMode=create, /settings, /skills
+- offset `2220276` routes_in_window: /inbox?automationMode=create, /settings, /skills
+- offset `5885610` routes_in_window: /login
+- offset `5889560` routes_in_window: /thread-overlay/

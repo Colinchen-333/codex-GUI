@@ -3,6 +3,17 @@
 use std::path::Path;
 use crate::Result;
 
+/// Run blocking IO work on a dedicated thread.
+pub async fn spawn_blocking_io<F, T>(f: F) -> Result<T>
+where
+    F: FnOnce() -> Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|err| crate::Error::Other(format!("Blocking task failed: {err}")))?
+}
+
 /// Validate and canonicalize a path, preventing traversal attacks
 ///
 /// This function ensures that a path is valid, exists, and is canonicalized

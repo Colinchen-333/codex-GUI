@@ -49,7 +49,7 @@ export const AccountInfoSection = memo(function AccountInfoSection() {
           {accountInfo.account.planType && ` (${accountInfo.account.planType})`}
         </span>
       ) : (
-        <span className="text-text-3 uppercase tracking-widest text-xs">
+        <span className="text-text-3 uppercase tracking-[0.2em] text-[10px] font-medium opacity-80">
           Auth Required
         </span>
       )}

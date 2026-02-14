@@ -1,9 +1,9 @@
 import { memo, useMemo, useCallback } from 'react'
-import { Star, Pin, PinOff, Archive, Pencil, Trash2, Copy } from 'lucide-react'
+import { Star, Pin, PinOff, Archive, Pencil, Trash2, Copy, GitBranch } from 'lucide-react'
 import { List } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { cn, formatAbsoluteTime } from '../../../lib/utils'
-import type { SessionStatus } from '../../../lib/api'
+import type { SessionStatus, ThreadMode } from '../../../lib/api'
 import { useSessionsStore } from '../../../stores/sessions'
 import { useProjectsStore } from '../../../stores/projects'
 import { ContextMenu, type ContextMenuItem } from '../../ui/ContextMenu'
@@ -22,6 +22,8 @@ export interface Session {
   status: SessionStatus
   firstMessage: string | null
   tasksJson: string | null
+  mode?: ThreadMode
+  worktreeBranch?: string | null
 }
 
 export interface SessionListProps {
@@ -142,7 +144,7 @@ function SessionRowInner({
       <ContextMenu items={contextMenuItems}>
         <button
           className={cn(
-            'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
+            'group w-full h-[calc(var(--spacing)*9)] rounded-md px-2 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
             isSelected
               ? 'bg-surface-selected/[0.08] text-text-1'
               : 'text-text-1 hover:bg-surface-hover/[0.06]',
@@ -211,6 +213,15 @@ function SessionRowInner({
                   )}
                 >
                   {projectName}
+                </span>
+              </>
+            )}
+            {session.mode === 'worktree' && session.worktreeBranch && (
+              <>
+                <span className={cn('text-text-3/70', isSelected && 'text-text-3/80')}>·</span>
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] truncate max-w-[80px]">
+                  <GitBranch size={9} className="flex-shrink-0" />
+                  {session.worktreeBranch}
                 </span>
               </>
             )}
@@ -329,7 +340,7 @@ export const SessionList = memo(function SessionList({
   const renderStandardList = () => {
     return (
       <div
-        className="space-y-0.5"
+        className="space-y-0.5 stagger-children"
         role="listbox"
         aria-label="Sessions list"
         id="sessions-panel"
@@ -391,13 +402,13 @@ export const SessionList = memo(function SessionList({
             <ContextMenu key={session.sessionId} items={contextMenuItems}>
               <button
                 className={cn(
-                  'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
+                  'group w-full h-[36px] rounded-[6px] px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden flex flex-col justify-center',
                   isSelected
-                    ? 'bg-surface-selected/[0.08] text-text-1'
-                    : 'text-text-1 hover:bg-surface-hover/[0.06]',
+                    ? 'bg-surface-hover/[0.08] text-text-1'
+                    : 'text-text-2 hover:bg-surface-hover/[0.04] hover:text-text-1',
                   isRunning &&
                     !isSelected &&
-                    'border border-stroke/40 bg-surface-hover/[0.12]'
+                    'bg-surface-hover/[0.02] border border-surface-hover/[0.04]'
                 )}
                 onClick={() =>
                   onSelect(
@@ -409,15 +420,19 @@ export const SessionList = memo(function SessionList({
                 aria-selected={isSelected}
               >
                 {/* First row: Status icon + Session name + Task progress */}
-                <div className="flex items-center gap-2">
-                  <StatusIcon status={session.status} />
+                <div className="flex items-center gap-2.5">
+                  <StatusIcon status={session.status} className={cn("opacity-80 transition-opacity group-hover:opacity-100", isSelected && "opacity-100")} />
                   {session.isFavorite && (
                     <Star
                       size={12}
-                      className="text-text-3 flex-shrink-0 fill-text-3/70"
+                      className={cn("flex-shrink-0 fill-current opacity-60", isSelected ? "text-text-2" : "text-text-3")}
+                      strokeWidth={1.5}
                     />
                   )}
-                  <span className={cn("truncate text-[14px] leading-tight flex-1", isSelected ? "font-semibold" : "font-medium")}>
+                  <span className={cn(
+                    "truncate text-[13px] leading-none flex-1 tracking-tight", 
+                    isSelected ? "font-medium" : "font-normal"
+                  )}>
                     {displayName}
                   </span>
                   {/* Task progress indicator */}
@@ -427,10 +442,11 @@ export const SessionList = memo(function SessionList({
                   />
                 </div>
                 {/* Second row: Status label + Timestamp + Project name (for global search) */}
-                <div className="flex items-center gap-1.5 mt-0.5 text-[12px] leading-tight">
+                <div className="flex items-center gap-1.5 mt-1 text-[11px] leading-none opacity-60 group-hover:opacity-80 transition-opacity">
                   <span
                     className={cn(
-                      'text-text-3 transition-colors',
+                      'transition-colors',
+                      isRunning && 'animate-breathe-text text-blue-400',
                       isSelected && 'text-text-2'
                     )}
                   >
@@ -438,43 +454,35 @@ export const SessionList = memo(function SessionList({
                   </span>
                   {timeStr && (
                     <>
-                      <span
-                        className={cn(
-                          'text-text-3/70',
-                          isSelected && 'text-text-3/80'
-                        )}
-                      >
-                        ·
-                      </span>
-                      <span
-                        className={cn(
-                          'text-text-3',
-                          isSelected && 'text-text-2'
-                        )}
-                      >
-                        {timeStr}
-                      </span>
+                      <span className="opacity-50">·</span>
+                      <span>{timeStr}</span>
                     </>
                   )}
                   {/* Show project name in global search results */}
                   {projectName && (
                     <>
+                      <span className="opacity-50">·</span>
                       <span
                         className={cn(
-                          'text-text-3/70',
-                          isSelected && 'text-text-3/80'
-                        )}
-                      >
-                        ·
-                      </span>
-                      <span
-                        className={cn(
-                          'px-1.5 py-0.5 rounded bg-surface-hover/[0.12] text-text-3 truncate max-w-[120px]',
-                          isSelected &&
-                            'bg-surface-hover/[0.18] text-text-2'
+                          'px-1.5 py-0.5 rounded-[4px] bg-surface-hover/[0.06] text-[10px] truncate max-w-[120px]',
+                          isSelected && 'bg-surface-hover/[0.1]'
                         )}
                       >
                         {projectName}
+                      </span>
+                    </>
+                  )}
+                  {/* Worktree branch indicator */}
+                  {session.mode === 'worktree' && session.worktreeBranch && (
+                    <>
+                      <span className="opacity-50">·</span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[4px] bg-primary/10 text-primary text-[10px] truncate max-w-[100px]',
+                        )}
+                      >
+                        <GitBranch size={9} className="flex-shrink-0" />
+                        {session.worktreeBranch}
                       </span>
                     </>
                   )}

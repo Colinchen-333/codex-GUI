@@ -355,9 +355,9 @@ export function ProgressSteps({ steps, className }: ProgressStepsProps) {
             <div
               className={cn(
                 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 transition-colors',
-                step.status === 'completed' && 'bg-green-500 border-green-500 text-white',
+                step.status === 'completed' && 'bg-status-success border-status-success text-status-success-foreground',
                 step.status === 'active' && 'bg-primary border-primary text-primary-foreground',
-                step.status === 'error' && 'bg-destructive border-destructive text-white',
+                step.status === 'error' && 'bg-destructive border-destructive text-destructive-foreground',
                 step.status === 'pending' && 'bg-background border-border text-muted-foreground'
               )}
             >

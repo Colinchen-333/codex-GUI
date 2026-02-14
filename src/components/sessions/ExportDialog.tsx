@@ -88,7 +88,7 @@ export function ExportDialog({ isOpen, threadId, onClose }: ExportDialogProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
       <div className="bg-card rounded-xl shadow-xl border border-border/50 w-full max-w-md mx-4 overflow-hidden">

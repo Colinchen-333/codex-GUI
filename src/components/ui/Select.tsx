@@ -18,9 +18,9 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'siz
 }
 
 const sizeStyles: Record<SelectSize, string> = {
-  sm: 'h-8 px-2.5 pr-8 text-xs rounded-[var(--radius-sm)]',
-  md: 'h-9 px-3 pr-9 text-[13px] rounded-[var(--radius-md)]',
-  lg: 'h-11 px-4 pr-10 text-sm rounded-[var(--radius-lg)]',
+  sm: 'h-8 px-2.5 pr-8 text-xs rounded-sm',
+  md: 'h-9 px-3 pr-9 text-[13px] rounded-md',
+  lg: 'h-11 px-4 pr-10 text-sm rounded-lg',
 }
 
 const iconSizeStyles: Record<SelectSize, { size: number; right: string }> = {

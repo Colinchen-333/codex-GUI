@@ -4,17 +4,27 @@ import { cn } from '../../../lib/utils'
  * Base Skeleton component for loading states
  * Provides a shimmer animation effect for placeholder content
  */
+type SkeletonShape = 'text' | 'circle' | 'card'
+
 export interface SkeletonProps {
   className?: string
   animate?: boolean
+  shape?: SkeletonShape
 }
 
-export function Skeleton({ className, animate = true }: SkeletonProps) {
+const shapeStyles: Record<SkeletonShape, string> = {
+  text: 'rounded-md',
+  circle: 'rounded-full',
+  card: 'rounded-xl',
+}
+
+export function Skeleton({ className, animate = true, shape = 'text' }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'rounded-md bg-secondary/50',
-        animate && 'animate-pulse',
+        'bg-secondary/50',
+        shapeStyles[shape],
+        animate && 'loading-shimmer',
         className
       )}
     />
@@ -57,7 +67,7 @@ export interface DialogSkeletonProps {
 
 export function DialogSkeleton({ title = 'Loading...', className }: DialogSkeletonProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
       <div
         className={cn(
           'w-full max-w-md rounded-lg bg-background shadow-xl animate-in zoom-in-95 duration-200',
@@ -189,7 +199,7 @@ export function ListDialogSkeleton({ title = 'Loading...' }: { title?: string })
  */
 export function FormDialogSkeleton({ title = 'Loading...' }: { title?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
       <div className="w-full max-w-lg rounded-lg bg-background shadow-xl animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">

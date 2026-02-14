@@ -1,53 +1,50 @@
 import { useEffect, useRef, useState, useMemo, useCallback, useReducer } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { ArrowUp, ChevronDown, FolderOpen, GitBranch, GitCommit, Mic, Plus, ShieldAlert, Sparkles } from 'lucide-react'
+import { open } from '@tauri-apps/plugin-dialog'
 import { useProjectsStore } from '../../stores/projects'
-
-interface AppShellContext {
-  onToggleRightPanel?: () => void
-  rightPanelOpen?: boolean
-  onOpenCommitDialog?: () => void
-}
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
-import { useServerConnectionStore } from '../../stores/server-connection'
 import {
   useSettingsStore,
   mergeProjectSettings,
   getEffectiveWorkingDirectory,
 } from '../../stores/settings'
 import { ChatView } from '../chat/ChatView'
-import { logError } from '../../lib/errorUtils'
+import { logError, parseError } from '../../lib/errorUtils'
 import { SessionTabs } from '../sessions/SessionTabs'
-import { parseError } from '../../lib/errorUtils'
+import { TerminalPanel } from '../terminal/TerminalPanel'
 import { log } from '../../lib/logger'
 import { useToast } from '../ui/Toast'
-import { open } from '@tauri-apps/plugin-dialog'
+import { cn } from '../../lib/utils'
+
+interface AppShellContext {
+  onToggleRightPanel?: () => void
+  rightPanelOpen?: boolean
+  onOpenCommitDialog?: () => void
+}
+
+interface LandingSuggestion {
+  emoji: string
+  prompt: string
+}
+
+const LANDING_SUGGESTIONS: LandingSuggestion[] = [
+  { emoji: '🎮', prompt: 'Build a classic Snake game in this repo.' },
+  { emoji: '📜', prompt: 'Create a one-page PDF that summarizes this app.' },
+  { emoji: '📰', prompt: "Summarize last week's PRs by teammate and theme." },
+]
 
 // Timeout for resume operations to prevent permanent blocking
 const RESUME_TIMEOUT_MS = 30000
 
-// ==================== Session Switch State Machine ====================
-// Explicit state machine for session switching to replace implicit ref flags
-
-/**
- * Session switch states
- * - idle: No switch in progress
- * - transitioning: Switch initiated, checking if session is loaded
- * - resuming: Loading unloaded session from backend
- */
 type SessionStatus = 'idle' | 'transitioning' | 'resuming'
 
-/**
- * Queued session switch with timestamp for staleness detection
- */
 interface QueuedSessionSwitch {
   sessionId: string
   timestamp: number
 }
 
-/**
- * Session switch state machine state
- */
 interface SessionSwitchState {
   status: SessionStatus
   targetSessionId: string | null
@@ -56,9 +53,6 @@ interface SessionSwitchState {
   timeoutId: ReturnType<typeof setTimeout> | null
 }
 
-/**
- * Session switch events
- */
 type SessionSwitchEvent =
   | { type: 'SELECT_SESSION'; sessionId: string }
   | { type: 'SESSION_ALREADY_LOADED' }
@@ -70,9 +64,6 @@ type SessionSwitchEvent =
   | { type: 'CLEAR_SESSION' }
   | { type: 'CLEANUP' }
 
-/**
- * Initial state for session switch state machine
- */
 const initialSessionState: SessionSwitchState = {
   status: 'idle',
   targetSessionId: null,
@@ -86,9 +77,6 @@ function pruneQueuedSessions(queue: QueuedSessionSwitch[]): QueuedSessionSwitch[
   return queue.filter((entry) => now - entry.timestamp <= RESUME_TIMEOUT_MS)
 }
 
-/**
- * Session switch reducer - handles all state transitions
- */
 function sessionSwitchReducer(
   state: SessionSwitchState,
   event: SessionSwitchEvent
@@ -96,13 +84,10 @@ function sessionSwitchReducer(
   switch (event.type) {
     case 'SELECT_SESSION': {
       const { sessionId } = event
-
-      // Same session as previous - no-op
       if (state.prevSessionId === sessionId) {
         return state
       }
 
-      // If already transitioning/resuming, queue the request (with deduplication)
       if (state.status !== 'idle') {
         const filteredQueue = state.queue.filter((q) => q.sessionId !== sessionId)
         const prunedQueue = pruneQueuedSessions(filteredQueue)
@@ -112,7 +97,6 @@ function sessionSwitchReducer(
         }
       }
 
-      // Start transitioning
       return {
         ...state,
         status: 'transitioning',
@@ -121,7 +105,6 @@ function sessionSwitchReducer(
     }
 
     case 'SESSION_ALREADY_LOADED': {
-      // Session was already loaded, transition complete
       return {
         ...state,
         status: 'idle',
@@ -130,7 +113,6 @@ function sessionSwitchReducer(
     }
 
     case 'START_RESUME': {
-      // Starting async resume operation
       return {
         ...state,
         status: 'resuming',
@@ -139,7 +121,6 @@ function sessionSwitchReducer(
     }
 
     case 'RESUME_COMPLETE': {
-      // Resume succeeded
       return {
         ...state,
         status: 'idle',
@@ -151,7 +132,6 @@ function sessionSwitchReducer(
 
     case 'RESUME_FAILED':
     case 'RESUME_TIMEOUT': {
-      // Resume failed or timed out - return to idle
       return {
         ...state,
         status: 'idle',
@@ -161,7 +141,6 @@ function sessionSwitchReducer(
     }
 
     case 'PROCESS_QUEUE': {
-      // Process next queued session switch
       const prunedQueue = pruneQueuedSessions(state.queue)
       if (prunedQueue.length === 0 || state.status !== 'idle') {
         return state
@@ -177,7 +156,6 @@ function sessionSwitchReducer(
     }
 
     case 'CLEAR_SESSION': {
-      // Session deselected
       return {
         ...state,
         status: 'idle',
@@ -187,7 +165,6 @@ function sessionSwitchReducer(
     }
 
     case 'CLEANUP': {
-      // Component unmounting - clear everything
       return {
         ...initialSessionState,
         timeoutId: null,
@@ -201,31 +178,34 @@ function sessionSwitchReducer(
 
 export function MainArea() {
   const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
-
-  // Multi-session state - only subscribe to what we need for rendering
   const threads = useThreadStore((state) => state.threads)
-  // Use proper selector instead of getter to avoid potential re-render loops
   const focusedThreadState = useThreadStore(selectFocusedThread)
   const activeThread = focusedThreadState?.thread ?? null
-
   const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
+  const settings = useSettingsStore((state) => state.settings)
+  const startThread = useThreadStore((state) => state.startThread)
+  const canAddSession = useThreadStore((state) => state.canAddSession)
+  const context = useOutletContext<AppShellContext>() ?? {}
+  const { showToast } = useToast()
+  const [terminalVisible, setTerminalVisible] = useState(false)
 
-  // Session switch state machine
   const [sessionState, dispatch] = useReducer(sessionSwitchReducer, initialSessionState)
-
-  // Ref to hold current state for async operations (avoids stale closure)
   const sessionStateRef = useRef(sessionState)
   const isMountedRef = useRef(true)
 
-  // Sync ref with state in effect to avoid render-time ref update
   useEffect(() => {
     sessionStateRef.current = sessionState
   }, [sessionState])
 
-  // Load Git info when project is selected
+  // Listen for terminal toggle events (from KeyboardShortcuts Cmd+J)
+  useEffect(() => {
+    const handleToggle = () => setTerminalVisible((prev) => !prev)
+    window.addEventListener('codex:toggle-terminal', handleToggle)
+    return () => window.removeEventListener('codex:toggle-terminal', handleToggle)
+  }, [])
+
   useEffect(() => {
     if (selectedProjectId) {
-      // Use getState() to get current projects and avoid dependency issues
       const currentProjects = useProjectsStore.getState().projects
       const project = currentProjects.find((p) => p.id === selectedProjectId)
       if (project) {
@@ -234,12 +214,10 @@ export function MainArea() {
     }
   }, [selectedProjectId])
 
-  // Cleanup on unmount
   useEffect(() => {
     isMountedRef.current = true
     return () => {
       isMountedRef.current = false
-      // Clear timeout if any
       if (sessionStateRef.current.timeoutId) {
         clearTimeout(sessionStateRef.current.timeoutId)
       }
@@ -247,11 +225,9 @@ export function MainArea() {
     }
   }, [])
 
-  // Process session switch when state machine enters 'transitioning'
   useEffect(() => {
     const { status, targetSessionId } = sessionState
 
-    // Only process when transitioning with a target
     if (status !== 'transitioning' || !targetSessionId) {
       return
     }
@@ -261,7 +237,6 @@ export function MainArea() {
       const isLoaded = !!threadState.threads[targetSessionId]
 
       if (isLoaded) {
-        // Session already loaded, just switch to it
         if (threadState.focusedThreadId !== targetSessionId) {
           threadState.switchThread(targetSessionId)
         }
@@ -269,14 +244,12 @@ export function MainArea() {
         return
       }
 
-      // Check if we can add more sessions
       if (!threadState.canAddSession()) {
         log.warn(`[MainArea] Maximum sessions reached, cannot resume: ${targetSessionId}`, 'MainArea')
         dispatch({ type: 'RESUME_FAILED' })
         return
       }
 
-      // Start resume with timeout protection
       const timeoutId = setTimeout(() => {
         log.warn('[MainArea] Resume operation timed out after 30s', 'MainArea')
         if (isMountedRef.current) {
@@ -288,8 +261,6 @@ export function MainArea() {
 
       try {
         await useThreadStore.getState().resumeThread(targetSessionId)
-
-        // Clear timeout on success
         clearTimeout(timeoutId)
         if (isMountedRef.current) {
           dispatch({ type: 'RESUME_COMPLETE', sessionId: targetSessionId })
@@ -299,7 +270,7 @@ export function MainArea() {
         logError(error, {
           context: 'MainArea',
           source: 'layout',
-          details: 'Failed to resume session'
+          details: 'Failed to resume session',
         })
         if (isMountedRef.current) {
           dispatch({ type: 'RESUME_FAILED' })
@@ -308,13 +279,11 @@ export function MainArea() {
     }
 
     void processTransition()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally depend only on status and targetSessionId to avoid re-running when queue changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only specific properties from sessionState are used, not the entire object
   }, [sessionState.status, sessionState.targetSessionId])
 
-  // Process queue when returning to idle
   useEffect(() => {
     if (sessionState.status === 'idle' && sessionState.queue.length > 0) {
-      // Use setTimeout to avoid synchronous dispatch during render
       const timerId = setTimeout(() => {
         dispatch({ type: 'PROCESS_QUEUE' })
       }, 0)
@@ -322,7 +291,6 @@ export function MainArea() {
     }
   }, [sessionState.status, sessionState.queue])
 
-  // Handle session selection changes
   useEffect(() => {
     if (!selectedSessionId) {
       dispatch({ type: 'CLEAR_SESSION' })
@@ -332,277 +300,356 @@ export function MainArea() {
     dispatch({ type: 'SELECT_SESSION', sessionId: selectedSessionId })
   }, [selectedSessionId])
 
-  // Callback for creating a new session from SessionTabs
   const handleNewSession = useCallback(() => {
-    // This will trigger StartSessionView to appear
-    // by not having an active thread for the selected project
+    if (!selectedProjectId) {
+      showToast('Please select a project first', 'error')
+      return
+    }
+    if (!canAddSession()) {
+      showToast('Maximum sessions reached. Close one and retry.', 'error')
+      return
+    }
+
+    const project = useProjectsStore.getState().projects.find((p) => p.id === selectedProjectId)
+    if (!project) {
+      return
+    }
+
+    const effective = mergeProjectSettings(settings, project.settingsJson)
+    const cwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
+
+    void startThread(
+      selectedProjectId,
+      cwd,
+      effective.model,
+      effective.sandboxMode,
+      effective.approvalPolicy
+    ).catch((error) => {
+      log.error(`Failed to start new session from tabs: ${error}`, 'MainArea')
+      showToast(`Failed to start session: ${parseError(error)}`, 'error')
+    })
+  }, [canAddSession, selectedProjectId, settings, showToast, startThread])
+
+  // Compute terminal working directory
+  const terminalCwd = useMemo(() => {
+    if (!selectedProjectId) return ''
+    const project = useProjectsStore.getState().projects.find((p) => p.id === selectedProjectId)
+    if (!project) return ''
+    return getEffectiveWorkingDirectory(project.path, project.settingsJson)
+  }, [selectedProjectId])
+
+  const handleToggleTerminal = useCallback(() => {
+    setTerminalVisible((prev) => !prev)
   }, [])
 
-  // No project selected - show welcome
   if (!selectedProjectId) {
-    return <WelcomeView />
+    return <NewThreadLanding projectId={null} onOpenCommitDialog={context.onOpenCommitDialog} />
   }
 
-  // Check if we have any active threads
   const hasActiveThreads = Object.keys(threads).length > 0
 
-  // Show start session view if no active threads
   if (!hasActiveThreads) {
-    return <StartSessionView projectId={selectedProjectId} />
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <NewThreadLanding projectId={selectedProjectId} onOpenCommitDialog={context.onOpenCommitDialog} />
+        {terminalCwd && (
+          <TerminalPanel
+            cwd={terminalCwd}
+            visible={terminalVisible}
+            onClose={handleToggleTerminal}
+          />
+        )}
+      </div>
+    )
   }
-
-  const context = useOutletContext<AppShellContext>() ?? {}
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <SessionTabs 
+      <SessionTabs
         onNewSession={handleNewSession}
         onToggleRightPanel={context.onToggleRightPanel}
         rightPanelOpen={context.rightPanelOpen}
         onOpenCommitDialog={context.onOpenCommitDialog}
+        terminalVisible={terminalVisible}
+        onToggleTerminal={handleToggleTerminal}
       />
-      
-      {activeThread ? (
-        <ChatView />
-      ) : (
-        <StartSessionView projectId={selectedProjectId} />
-      )}
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {activeThread ? (
+          <ChatView />
+        ) : (
+          <NewThreadLanding projectId={selectedProjectId} onOpenCommitDialog={context.onOpenCommitDialog} />
+        )}
+
+        {terminalCwd && (
+          <TerminalPanel
+            cwd={terminalCwd}
+            visible={terminalVisible}
+            onClose={handleToggleTerminal}
+          />
+        )}
+      </div>
     </div>
   )
 }
 
-// Welcome View when no project is selected
-function WelcomeView() {
-  const { addProject } = useProjectsStore()
+interface NewThreadLandingProps {
+  projectId: string | null
+  onOpenCommitDialog?: () => void
+}
+
+function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingProps) {
+  const { projects, addProject } = useProjectsStore()
+  const settings = useSettingsStore((state) => state.settings)
+  const startThread = useThreadStore((state) => state.startThread)
+  const sendMessage = useThreadStore((state) => state.sendMessage)
+  const canAddSession = useThreadStore((state) => state.canAddSession)
+  const maxSessions = useThreadStore((state) => state.maxSessions)
+  const isLoading = useThreadStore((state) => state.isLoading)
+  const globalError = useThreadStore((state) => state.globalError)
   const { showToast } = useToast()
 
-  const handleAddProject = async () => {
+  const [draft, setDraft] = useState('')
+  const [localError, setLocalError] = useState<string | null>(null)
+  const draftRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const project = useMemo(
+    () => (projectId ? projects.find((item) => item.id === projectId) ?? null : null),
+    [projectId, projects]
+  )
+
+  const effectiveSettings = useMemo(
+    () => mergeProjectSettings(settings, project?.settingsJson ?? null),
+    [settings, project?.settingsJson]
+  )
+
+  const handleAddProject = useCallback(async () => {
     try {
       const selected = await open({ directory: true, multiple: false, title: 'Select Project Folder' })
       if (selected && typeof selected === 'string') {
         await addProject(selected)
       }
     } catch (error) {
-      log.error(`Failed to add project: ${error}`, 'MainArea')
+      log.error(`Failed to add project from landing: ${error}`, 'MainArea')
       showToast('Failed to add project', 'error')
     }
-  }
+  }, [addProject, showToast])
 
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 md:px-8 py-10">
-      <div className="max-w-md text-center">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
-          <span className="text-lg">✨</span>
-        </div>
-        <h1 className="mb-3 text-2xl font-semibold text-text-1">
-          Welcome to Codex Desktop
-        </h1>
-        <p className="mb-6 text-sm text-text-3">
-          Select a project from the sidebar or add a new project to get started.
-        </p>
-        <button
-          className="mb-6 w-full rounded-md border border-stroke/40 bg-surface-solid px-4 py-2.5 text-sm font-semibold text-text-1 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08]"
-          onClick={handleAddProject}
-        >
-          Add Project
-        </button>
-        <div className="rounded-md border border-stroke/30 bg-surface-solid p-5 text-left">
-          <h2 className="mb-2 text-sm font-semibold text-text-1">Quick Start</h2>
-          <ol className="text-sm text-text-3">
-            <li className="mb-2">1. Add a project folder</li>
-            <li className="mb-2">2. Start a new session to chat with Codex</li>
-            <li>3. Review and apply changes safely</li>
-          </ol>
-        </div>
-      </div>
-    </div>
-  )
-}
+  const startSessionWithPrompt = useCallback(
+    async (prompt: string) => {
+      if (!projectId || !project) {
+        await handleAddProject()
+        return
+      }
 
-// Start Session View when project is selected but no thread
-interface StartSessionViewProps {
-  projectId: string
-}
-
-function StartSessionView({ projectId }: StartSessionViewProps) {
-  const projects = useProjectsStore((state) => state.projects)
-  const gitInfo = useProjectsStore((state) => state.gitInfo)
-  const startThread = useThreadStore((state) => state.startThread)
-  const isLoading = useThreadStore((state) => state.isLoading)
-  const globalError = useThreadStore((state) => state.globalError)
-  const canAddSession = useThreadStore((state) => state.canAddSession)
-  const maxSessions = useThreadStore((state) => state.maxSessions)
-  const threads = useThreadStore((state) => state.threads)
-  const settings = useSettingsStore((state) => state.settings)
-  const [localError, setLocalError] = useState<string | null>(null)
-  const { status: serverStatus, isConnected: isServerConnected } = useServerConnectionStore()
-
-  const project = projects.find((p) => p.id === projectId)
-  const info = gitInfo[projectId]
-  const currentSessionCount = Object.keys(threads).length
-
-  // Compute effective settings for display (merged with project overrides)
-  const effectiveSettings = useMemo(
-    () => mergeProjectSettings(settings, project?.settingsJson ?? null),
-    [settings, project?.settingsJson]
-  )
-
-  const serverReady = serverStatus ? serverStatus.isRunning : isServerConnected ? null : false
-
-  const prevProjectIdRef = useRef<string | undefined>(undefined)
-  useEffect(() => {
-    if (prevProjectIdRef.current !== undefined && prevProjectIdRef.current !== projectId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting error state when project changes
       setLocalError(null)
-    }
-    prevProjectIdRef.current = projectId
-  }, [projectId])
 
-  if (!project) return null
+      if (!canAddSession()) {
+        setLocalError(`Maximum sessions (${maxSessions}) reached. Close one and retry.`)
+        return
+      }
 
-  const handleStartSession = async () => {
-    setLocalError(null)
+      const message = prompt.trim()
+      if (!message) {
+        showToast('Enter a prompt to start the thread', 'info')
+        return
+      }
 
-    // Check if we can add more sessions
-    if (!canAddSession()) {
-      setLocalError(`Maximum number of parallel sessions (${maxSessions}) reached. Please close a session first.`)
-      return
-    }
+      const cwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
 
-    // Get effective working directory (may be overridden in project settings)
-    const effectiveCwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
+      try {
+        await startThread(
+          projectId,
+          cwd,
+          effectiveSettings.model,
+          effectiveSettings.sandboxMode,
+          effectiveSettings.approvalPolicy
+        )
 
-    log.debug('[StartSession] Starting session with:', 'MainArea')
+        const activeThreadId = useThreadStore.getState().activeThread?.id
+        if (activeThreadId) {
+          await sendMessage(message, undefined, undefined, activeThreadId)
+        }
 
-    try {
-      await startThread(
-        projectId,
-        effectiveCwd,
-        effectiveSettings.model,
-        effectiveSettings.sandboxMode,
-        effectiveSettings.approvalPolicy
-      )
-      log.debug('[StartSession] Session started successfully', 'MainArea')
-    } catch (error) {
-      log.error(`[StartSession] Failed to start session: ${error}`, 'MainArea')
-      setLocalError(parseError(error))
-    }
-  }
+        setDraft('')
+      } catch (error) {
+        const parsed = parseError(error)
+        setLocalError(parsed)
+        showToast(`Failed to start thread: ${parsed}`, 'error')
+      }
+    },
+    [
+      canAddSession,
+      effectiveSettings.approvalPolicy,
+      effectiveSettings.model,
+      effectiveSettings.sandboxMode,
+      handleAddProject,
+      maxSessions,
+      project,
+      projectId,
+      sendMessage,
+      showToast,
+      startThread,
+    ]
+  )
 
+  const handleSubmitDraft = useCallback(() => {
+    void startSessionWithPrompt(draft)
+  }, [draft, startSessionWithPrompt])
+
+  const displayProjectName = project?.displayName || project?.path.split('/').pop() || 'Projects'
   const displayError = localError || globalError
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 md:px-8 py-10">
-      <div className="max-w-md text-center">
-        <div className="mb-6">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
-            <span className="text-lg">💡</span>
+    <div className="flex flex-1 flex-col overflow-hidden bg-token-bg-primary">
+      <div className="h-12 shrink-0 border-b border-token-border bg-token-surface-tertiary/50 px-6">
+        <div className="flex h-full items-center justify-between">
+          <h1 className="text-[28px] font-semibold text-token-foreground">New thread</h1>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleAddProject()}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-surface-tertiary px-3 text-[12px] font-medium text-token-foreground transition-colors hover:bg-token-list-hover-background"
+            >
+              <FolderOpen size={13} />
+              Open
+              <ChevronDown size={12} className="text-token-text-tertiary" />
+            </button>
+            <button
+              type="button"
+              onClick={onOpenCommitDialog}
+              disabled={!project}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-surface-tertiary px-3 text-[12px] font-medium text-token-foreground transition-colors hover:bg-token-list-hover-background disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <GitCommit size={13} />
+              Commit
+              <ChevronDown size={12} className="text-token-text-tertiary" />
+            </button>
           </div>
-          <h1 className="mb-1 text-xl font-semibold text-text-1">
-            {project.displayName || project.path.split('/').pop()}
-          </h1>
-          <p className="text-xs text-text-3">{project.path}</p>
         </div>
+      </div>
 
-        {/* Git Info */}
-        {info?.isGitRepo && (
-          <div className="mb-6 rounded-md border border-stroke/30 bg-surface-solid p-4 text-left">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-3">Branch:</span>
-              <span className="font-mono">{info.branch}</span>
+      <div className="flex flex-1 items-center justify-center px-6 py-8">
+        <div className="w-full max-w-[940px]">
+          <div className="mb-10 text-center">
+            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-token-border bg-token-surface-tertiary text-token-text-tertiary">
+              <Sparkles size={20} />
             </div>
-            {info.isDirty !== null && (
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-text-3">Status:</span>
-                <span className={info.isDirty ? 'text-yellow-500' : 'text-green-500'}>
-                  {info.isDirty ? 'Uncommitted changes' : 'Clean'}
+            <h2 className="text-5xl font-bold tracking-tight text-token-foreground">Let's build</h2>
+            <button
+              type="button"
+              onClick={() => {
+                if (projectId) {
+                  draftRef.current?.focus()
+                } else {
+                  void handleAddProject()
+                }
+              }}
+              className="mt-1 inline-flex items-center gap-1 text-4xl font-semibold text-token-text-tertiary transition-colors hover:text-token-foreground"
+            >
+              {displayProjectName}
+              <ChevronDown size={22} />
+            </button>
+          </div>
+
+          <div className="mb-3 text-right text-[13px] font-medium text-token-text-tertiary">Explore more</div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {LANDING_SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion.prompt}
+                type="button"
+                onClick={() => void startSessionWithPrompt(suggestion.prompt)}
+                className="rounded-3xl border border-token-border bg-token-surface-tertiary p-5 text-left transition-colors hover:bg-token-list-hover-background"
+              >
+                <div className="mb-3 text-xl">{suggestion.emoji}</div>
+                <p className="text-[16px] font-medium leading-7 text-token-foreground">{suggestion.prompt}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-8 rounded-3xl border border-token-border bg-token-surface-tertiary p-3 shadow-[var(--shadow-1)]">
+            <textarea
+              ref={draftRef}
+              rows={2}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  handleSubmitDraft()
+                }
+              }}
+              placeholder="Ask Codex anything, @ to add files, / for commands"
+              className="w-full resize-none border-0 bg-transparent px-2 py-1 text-[16px] leading-7 text-token-foreground placeholder:text-token-text-tertiary focus:outline-none"
+            />
+
+            <div className="mt-2 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[12px]">
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-bg-primary px-2.5 text-token-description-foreground transition-colors hover:bg-token-list-hover-background"
+                >
+                  <Plus size={13} />
+                </button>
+                <span className="inline-flex h-8 items-center rounded-full border border-token-border bg-token-bg-primary px-3 text-token-description-foreground">
+                  GPT-5.3-Codex
+                  <ChevronDown size={12} className="ml-1 text-token-text-tertiary" />
+                </span>
+                <span className="inline-flex h-8 items-center rounded-full border border-token-border bg-token-bg-primary px-3 text-token-description-foreground">
+                  Extra High
+                  <ChevronDown size={12} className="ml-1 text-token-text-tertiary" />
                 </span>
               </div>
-            )}
-            {info.lastCommit && (
-              <div className="mt-2 text-xs text-text-3">
-                Last commit: {info.lastCommit}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-token-border bg-token-bg-primary text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+                  title="Voice input"
+                >
+                  <Mic size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSubmitDraft}
+                  disabled={isLoading}
+                  className={cn(
+                    'inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors',
+                    isLoading
+                      ? 'cursor-not-allowed bg-token-list-hover-background text-token-text-tertiary'
+                      : 'bg-token-foreground text-token-bg-primary hover:bg-token-foreground/85'
+                  )}
+                  title="Start thread"
+                >
+                  <ArrowUp size={16} />
+                </button>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Error Display */}
-        {displayError && (
-          <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-left">
-            <div className="flex items-start gap-2">
-              <span className="text-destructive">Warning</span>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">Failed to start session</p>
-                <p className="mt-1 text-xs text-destructive/80 break-words">{displayError}</p>
-                {displayError.includes('Codex CLI not found') && (
-                  <div className="mt-2 text-xs text-text-3">
-                    <p>Please install Codex CLI first:</p>
-                    <code className="mt-1 block rounded bg-surface-hover/[0.08] px-2 py-1 font-mono">
-                      npm install -g @anthropic/codex
-                    </code>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
-        )}
 
-        <button
-          className="w-full rounded-md border border-stroke/40 bg-surface-solid px-6 py-3 text-sm font-semibold text-text-1 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.08] disabled:opacity-50 flex items-center justify-center gap-2"
-          onClick={handleStartSession}
-          disabled={isLoading || !canAddSession()}
-        >
-          {isLoading && (
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="none"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          )}
-          {isLoading ? 'Starting Session...' : 'Start New Session'}
-        </button>
-
-        {/* Session count warning */}
-        {!canAddSession() && (
-          <div className="mt-4 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
-            <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
-              <span>Warning</span>
-              <span>Maximum sessions ({maxSessions}) reached. Close a session to start a new one.</span>
+          <div className="mt-3 flex items-center justify-between px-1 text-[12px] text-token-text-tertiary">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1">
+                Local
+                <ChevronDown size={11} />
+              </span>
+              <span className="inline-flex items-center gap-1 text-orange-500">
+                <ShieldAlert size={11} />
+                Full access
+              </span>
             </div>
+            <span className="inline-flex items-center gap-1">
+              <GitBranch size={11} />
+              main
+              <ChevronDown size={11} />
+            </span>
           </div>
-        )}
 
-        {/* Server Status Warning */}
-        {serverReady === false && (
-          <div className="mt-4 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
-            <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
-              <span>Warning</span>
-              <span>Codex engine is not running. It will start automatically when you begin a session.</span>
+          {displayError && (
+            <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-[12px] text-destructive">
+              {displayError}
             </div>
-          </div>
-        )}
-
-        {/* Model Info */}
-        <div className="mt-4 text-xs text-text-3">
-          Model: <span className="font-medium text-text-2">{effectiveSettings.model || 'default'}</span>
-          {' | '}
-          Sandbox: <span className="font-medium text-text-2">{effectiveSettings.sandboxMode}</span>
-          {' | '}
-          Sessions: <span className="font-medium text-text-2">{currentSessionCount}/{maxSessions}</span>
-          {project?.settingsJson && (
-            <span className="text-blue-500 ml-2">(project settings active)</span>
           )}
         </div>
       </div>
@@ -610,4 +657,4 @@ function StartSessionView({ projectId }: StartSessionViewProps) {
   )
 }
 
-export { WelcomeView, StartSessionView }
+export { NewThreadLanding }

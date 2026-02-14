@@ -121,6 +121,47 @@ Tauri + React 桌面应用，为 Codex CLI 提供图形界面。
 **New Dependencies:**
 - `cmdk`: Command palette library
 
+### 2025-02-05: Comprehensive Audit & Fix Session
+
+**Visual QA:**
+- Screenshots taken for all 13 routes
+- App redirects to onboarding flow when no backend data (expected behavior)
+
+**Accessibility Fixes (6 issues fixed):**
+- `BaseDialog.tsx`: `aria-label="关闭"` → `aria-label="Close"`
+- `CommitDialog.tsx`: Added `aria-label="Close"` to IconButton
+- `CommitDialog.tsx`: Added `aria-label="Include unstaged changes"` to Switch
+- `CommitDialog.tsx`: Linked label to textarea via `htmlFor`/`id`
+- `Sidebar.tsx`: Changed interactive divs to proper `<button>` elements
+- `ThreadOverlayPage.tsx`: Added `aria-label="Message input"` to input
+
+**Semantic Token System Expansion (`src/index.css` + `tailwind.config.js`):**
+- Added `--overlay` and `--overlay-heavy` for backdrop colors
+- Added `--switch-knob`, `--switch-track-off`, `--switch-track-on` for Switch component
+- Added `--status-success`, `--status-warning`, `--status-error`, `--status-info` with `-foreground` and `-muted` variants
+- Tailwind config extended with all new semantic colors
+
+**Hardcoded Color Removal (15 files updated):**
+- `bg-black/50` → `bg-overlay` (12 occurrences across dialogs)
+- `bg-black/60` → `bg-overlay-heavy` (CommitDialog)
+- `bg-black/70` → `bg-overlay-heavy` (ConnectionStatus)
+- `bg-white` → `bg-switch-knob` (Switch component)
+- `bg-yellow-500/*` → `bg-status-warning-muted` (CloseSessionDialog)
+
+**API Analysis (Read-only):**
+- Confirmed pure Tauri IPC architecture
+- Key files: `api.ts`, `events.ts`, `apiCache.ts`
+- 30+ Tauri commands, 20+ event listeners
+- Mock data only used in tests, production uses real backend
+
+**Test Coverage Added:**
+- UI Component Unit Tests: 64 tests (Button, Input, Switch)
+  - `src/components/ui/__tests__/Button.test.tsx`
+  - `src/components/ui/__tests__/Input.test.tsx`
+  - `src/components/ui/__tests__/Switch.test.tsx`
+- Page Integration Tests: 19 tests
+  - `e2e/pages.spec.ts` (Navigation, Accessibility, Dark Mode)
+
 ---
 
 ## Key Files

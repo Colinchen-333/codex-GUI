@@ -94,7 +94,7 @@ export function WorktreeRestoreBanner({
           size="sm"
           onClick={handleRestore}
           loading={status === 'restoring'}
-          className="bg-amber-600 text-white hover:bg-amber-700 border-0"
+          className="bg-status-warning text-status-warning-foreground hover:bg-status-warning/90 border-0"
         >
           Restore
         </Button>

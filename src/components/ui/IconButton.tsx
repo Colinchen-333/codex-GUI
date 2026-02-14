@@ -17,9 +17,9 @@ const variantStyles: Record<IconButtonVariant, string> = {
 }
 
 const sizeStyles: Record<IconButtonSize, string> = {
-  sm: 'h-7 w-7 rounded-[var(--radius-sm)]',
-  md: 'h-8 w-8 rounded-[var(--radius-md)]',
-  lg: 'h-10 w-10 rounded-[var(--radius-lg)]',
+  sm: 'h-7 w-7 rounded-sm',
+  md: 'h-8 w-8 rounded-md',
+  lg: 'h-10 w-10 rounded-lg',
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
@@ -28,7 +28,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <button
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center transition-colors',
+          'inline-flex items-center justify-center transition-[color,background-color,border-color,transform]',
+          'active:scale-[0.95]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           'disabled:pointer-events-none disabled:opacity-50',
           variantStyles[variant],

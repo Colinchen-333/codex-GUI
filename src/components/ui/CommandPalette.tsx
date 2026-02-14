@@ -13,9 +13,14 @@ import {
   Sun,
   Keyboard,
   HelpCircle,
+  FolderOpen,
+  Bug,
+  Terminal,
+  TextCursorInput,
 } from 'lucide-react'
-import { cn } from '../../lib/utils'
+
 import { useTheme } from '../../hooks/useTheme'
+import { useAppStore } from '../../stores/app'
 
 interface CommandItem {
   id: string
@@ -94,6 +99,20 @@ export function CommandPalette({
       group: 'Navigation',
     },
     {
+      id: 'browse-files',
+      label: 'Browse Files',
+      icon: <FolderOpen size={16} />,
+      action: () => navigate('/file-preview'),
+      group: 'Navigation',
+    },
+    {
+      id: 'debug-panel',
+      label: 'Debug Panel',
+      icon: <Bug size={16} />,
+      action: () => navigate('/debug'),
+      group: 'Navigation',
+    },
+    {
       id: 'go-settings',
       label: 'Open Settings',
       icon: <Settings size={16} />,
@@ -109,10 +128,42 @@ export function CommandPalette({
       group: 'Preferences',
     },
     {
+      id: 'toggle-terminal',
+      label: 'Toggle Terminal',
+      icon: <Terminal size={16} />,
+      shortcut: ['⌘', 'J'],
+      action: () => window.dispatchEvent(new CustomEvent('codex:toggle-terminal')),
+      group: 'Actions',
+    },
+    {
+      id: 'clear-thread',
+      label: 'Clear Thread',
+      icon: <TextCursorInput size={16} />,
+      shortcut: ['⌘', 'L'],
+      action: () => {
+        void import('../../stores/thread').then(({ useThreadStore }) => {
+          const { focusedThreadId, clearThread } = useThreadStore.getState()
+          if (focusedThreadId) {
+            clearThread()
+          }
+        })
+        useAppStore.getState().triggerFocusInput()
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'toggle-review-pane',
+      label: 'Toggle Review Pane',
+      icon: <GitBranch size={16} />,
+      shortcut: ['⌘', '/'],
+      action: () => window.dispatchEvent(new CustomEvent('codex:toggle-review-panel')),
+      group: 'Actions',
+    },
+    {
       id: 'keyboard-shortcuts',
       label: 'Keyboard Shortcuts',
       icon: <Keyboard size={16} />,
-      shortcut: ['⌘', '/'],
+      shortcut: ['?'],
       action: () => onOpenKeyboardShortcuts?.(),
       group: 'Help',
     },
@@ -137,11 +188,11 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center pt-[20vh] bg-black/50 backdrop-blur-sm dialog-overlay-enter"
+      className="command-menu-dialog fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center pt-[20vh] bg-overlay backdrop-blur-sm codex-dialog-overlay"
       onClick={onClose}
     >
       <Command
-        className="w-full max-w-[560px] rounded-[var(--radius-xl)] border border-stroke/20 bg-surface-solid shadow-[var(--shadow-2xl)] overflow-hidden dialog-content-enter"
+        className="codex-dialog w-full max-w-[560px] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         loop
       >
@@ -151,23 +202,18 @@ export function CommandPalette({
             value={search}
             onValueChange={setSearch}
             placeholder="Type a command or search..."
-            className="flex-1 h-12 bg-transparent text-[14px] text-text-1 placeholder:text-text-3 focus:outline-none"
+            className="flex-1 h-12 bg-transparent text-[14px] text-text-1 placeholder:text-text-3"
           />
-          <kbd className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-[var(--radius-xs)] bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono">
+          <kbd className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-xs bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono">
             ESC
           </kbd>
         </div>
 
-        <Command.List className="max-h-[320px] overflow-y-auto p-2">
-          <Command.Empty className="py-6 text-center text-sm text-text-3">
-            No results found.
-          </Command.Empty>
+        <Command.List>
+          <Command.Empty>No results found.</Command.Empty>
 
           {groups.map((group) => (
-            <Command.Group key={group} heading={group} className="mb-2">
-              <div className="px-2 py-1.5 text-[11px] font-semibold text-text-3 uppercase tracking-wider">
-                {group}
-              </div>
+            <Command.Group key={group} heading={group}>
               {commands
                 .filter((c) => c.group === group)
                 .map((command) => (
@@ -175,12 +221,7 @@ export function CommandPalette({
                     key={command.id}
                     value={command.label}
                     onSelect={() => handleAction(command.action)}
-                    className={cn(
-                      'flex items-center justify-between gap-3 px-3 py-2.5 rounded-[var(--radius-md)] cursor-pointer',
-                      'text-text-2 hover:bg-surface-hover/[0.08] hover:text-text-1',
-                      'data-[selected=true]:bg-surface-hover/[0.08] data-[selected=true]:text-text-1',
-                      'transition-colors'
-                    )}
+                    className="justify-between"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-text-3">{command.icon}</span>
@@ -191,7 +232,7 @@ export function CommandPalette({
                         {command.shortcut.map((key, i) => (
                           <kbd
                             key={i}
-                            className="min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-[var(--radius-xs)] bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono"
+                            className="min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-xs bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono"
                           >
                             {key}
                           </kbd>
@@ -225,6 +266,7 @@ export function CommandPalette({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- Intentional: exports hook alongside component
 export function useCommandPalette() {
   const [isOpen, setIsOpen] = useState(false)
 

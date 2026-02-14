@@ -6,11 +6,13 @@ import { ToastProvider } from './components/ui/Toast'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { ConnectionStatus } from './components/ui/ConnectionStatus'
 import { GlobalErrorHandler } from './components/ui/GlobalErrorHandler'
+import { NotificationListener } from './components/NotificationListener'
 import { useProjectsStore } from './stores/projects'
 import { useSessionsStore } from './stores/sessions'
 import { useThreadStore, cleanupThreadResources } from './stores/thread/index'
 import { clearGlobalRollbackStack } from './hooks/useOptimisticUpdate'
 import { setupEventListeners, cleanupEventListeners } from './lib/events'
+import { lifecycleApi } from './lib/api'
 import { log } from './lib/logger'
 import { logError } from './lib/errorUtils'
 import { router } from './router'
@@ -24,6 +26,7 @@ function App() {
   // Use ref to access latest store functions without causing re-renders
   const unlistenersRef = useRef<(() => void)[]>([])
   const listenersSetupRef = useRef(false)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Check if onboarding is needed
   useEffect(() => {
@@ -104,6 +107,12 @@ function App() {
       .then((listeners) => {
         if (isMounted) {
           unlistenersRef.current = listeners
+          void lifecycleApi.rendererReady()
+          if (!heartbeatRef.current) {
+            heartbeatRef.current = setInterval(() => {
+              void lifecycleApi.rendererHeartbeat()
+            }, 5000)
+          }
         } else {
           // Component unmounted before setup completed, cleanup immediately
           cleanupEventListeners(listeners)
@@ -128,6 +137,10 @@ function App() {
       // Cleanup thread resources (timers, buffers) to prevent memory leaks
       cleanupThreadResources()
       clearGlobalRollbackStack()
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current)
+        heartbeatRef.current = null
+      }
     }
   }, []) // Empty deps - only run once
 
@@ -150,6 +163,7 @@ function App() {
     <ErrorBoundary>
       <ToastProvider>
         <GlobalErrorHandler />
+        <NotificationListener />
         <RouterProvider router={router} />
         <ConnectionStatus />
       </ToastProvider>

@@ -71,7 +71,7 @@ export function ConnectionStatus() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy">
       <div className="w-full max-w-sm rounded-lg bg-background p-6 shadow-xl">
         <div className="text-center">
           {isReconnecting ? (

@@ -64,7 +64,7 @@ export function CloseSessionDialog({ isOpen, threadId, onClose }: CloseSessionDi
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
       <div
@@ -109,7 +109,7 @@ export function CloseSessionDialog({ isOpen, threadId, onClose }: CloseSessionDi
 
           {/* Warning if running */}
           {isRunning && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-700 dark:text-yellow-400 mb-4">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-status-warning-muted border border-status-warning/30 text-status-warning mb-4">
               <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
               <p className="text-xs">
                 This session is currently running. Closing it will interrupt the current operation.

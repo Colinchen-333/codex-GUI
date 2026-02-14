@@ -84,3 +84,23 @@ export {
   useUndoRedoShortcuts,
   getUndoRedoShortcutDisplay,
 } from './useUndoRedoShortcuts'
+
+// Voice input (Web Speech API)
+export {
+  useVoiceInput,
+  type UseVoiceInputOptions,
+  type UseVoiceInputReturn,
+} from './useVoiceInput'
+
+// Notifications
+export {
+  useNotifications,
+  type NotificationType,
+  type UseNotificationsReturn,
+} from './useNotifications'
+
+// Keep awake (caffeinate)
+export {
+  useKeepAwake,
+  type UseKeepAwakeReturn,
+} from './useKeepAwake'

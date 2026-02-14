@@ -23,6 +23,66 @@ export interface FileDiff {
   raw?: string
 }
 
+/** Comment attached to a specific line in a diff */
+export interface DiffComment {
+  id: string
+  hunkIndex: number
+  lineIndex: number
+  content: string
+  author?: string
+  createdAt: number
+}
+
+/**
+ * Build a unified-diff patch string for a single hunk.
+ * This generates a valid patch that can be applied with `git apply`.
+ */
+export function buildHunkPatch(filePath: string, hunk: DiffHunk, oldPath?: string): string {
+  const aPath = oldPath ?? filePath
+  const lines: string[] = [
+    `--- a/${aPath}`,
+    `+++ b/${filePath}`,
+    `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`,
+  ]
+
+  for (const line of hunk.lines) {
+    if (line.type === 'add') {
+      lines.push(`+${line.content}`)
+    } else if (line.type === 'remove') {
+      lines.push(`-${line.content}`)
+    } else {
+      lines.push(` ${line.content}`)
+    }
+  }
+
+  // Ensure trailing newline
+  return lines.join('\n') + '\n'
+}
+
+/**
+ * Build a full-file patch from all hunks.
+ */
+export function buildFilePatch(filePath: string, hunks: DiffHunk[], oldPath?: string): string {
+  const aPath = oldPath ?? filePath
+  const header = `--- a/${aPath}\n+++ b/${filePath}\n`
+
+  const hunkStrings = hunks.map((hunk) => {
+    const hunkLines = [`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`]
+    for (const line of hunk.lines) {
+      if (line.type === 'add') {
+        hunkLines.push(`+${line.content}`)
+      } else if (line.type === 'remove') {
+        hunkLines.push(`-${line.content}`)
+      } else {
+        hunkLines.push(` ${line.content}`)
+      }
+    }
+    return hunkLines.join('\n')
+  })
+
+  return header + hunkStrings.join('\n') + '\n'
+}
+
 // Helper to parse unified diff string
 export function parseDiff(diffString: string): DiffHunk[] {
   const lines = diffString.split('\n')

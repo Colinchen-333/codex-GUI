@@ -42,7 +42,7 @@ const LazyCodeBlock = memo(function LazyCodeBlock({ language, children }: { lang
 
   useEffect(() => {
     if (!theme) {
-      void loadTheme().then(setTheme)
+      void loadTheme().then(setTheme).catch((err) => console.error('Failed to load syntax theme:', err))
     }
   }, [theme])
 

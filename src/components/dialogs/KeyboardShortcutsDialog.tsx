@@ -20,6 +20,9 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['⌘', ','], description: 'Open settings' },
       { keys: ['⌘', 'K'], description: 'Focus message input' },
       { keys: ['⌘', 'N'], description: 'New session' },
+      { keys: ['⌘', 'J'], description: 'Toggle terminal' },
+      { keys: ['⌘', 'L'], description: 'Clear thread' },
+      { keys: ['⌘', '/'], description: 'Toggle review pane' },
       { keys: ['Esc'], description: 'Stop generation (double-tap) / Close dialogs' },
       { keys: ['?'], description: 'Show keyboard shortcuts' },
     ],
@@ -72,7 +75,7 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay"
       onClick={onClose}
     >
       <div

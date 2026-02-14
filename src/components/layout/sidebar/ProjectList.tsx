@@ -83,7 +83,7 @@ export const ProjectList = memo(function ProjectList({
               // Use Tauri shell to open folder
               void import('@tauri-apps/plugin-shell').then(async ({ open }) => {
                 await open(project.path)
-              })
+              }).catch((err) => console.error('Failed to open folder:', err))
             },
           },
           {
@@ -98,19 +98,21 @@ export const ProjectList = memo(function ProjectList({
           <ContextMenu key={project.id} items={contextMenuItems}>
             <button
               className={cn(
-                'group w-full h-12 rounded-md px-3 py-1.5 text-left transition-colors relative overflow-hidden flex flex-col justify-center',
+                'group flex w-full flex-col justify-center h-[36px] rounded-[6px] px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden',
                 isSelected
-                  ? 'bg-surface-selected/[0.12] text-text-1'
-                  : 'text-text-1 hover:bg-surface-hover/[0.08]'
+                  ? 'bg-surface-hover/[0.08] text-text-1'
+                  : 'text-text-2 hover:bg-surface-hover/[0.04] hover:text-text-1'
               )}
               onClick={() => onSelect(project.id)}
               role="option"
               aria-selected={isSelected}
             >
-              <div className="truncate text-[14px] leading-tight font-medium">{displayName}</div>
+              <div className={cn("truncate text-[13px] leading-none tracking-tight mb-1", isSelected ? "font-medium" : "font-normal")}>
+                {displayName}
+              </div>
               <div className={cn(
-                "truncate text-[12px] leading-tight transition-colors",
-                isSelected ? "text-text-2" : "text-text-3"
+                "truncate text-[11px] leading-none transition-opacity",
+                isSelected ? "opacity-80" : "opacity-50 group-hover:opacity-70"
               )}>
                 {project.path}
               </div>

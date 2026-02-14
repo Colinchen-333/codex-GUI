@@ -8,3 +8,8 @@ mod process;
 
 pub use ipc_bridge::IpcBridge;
 pub use process::AppServerProcess;
+
+#[derive(Debug, Clone)]
+pub enum AppServerEvent {
+    Disconnected { reason: String },
+}

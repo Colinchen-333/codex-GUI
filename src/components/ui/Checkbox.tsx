@@ -11,8 +11,8 @@ interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'typ
 }
 
 const sizeStyles: Record<CheckboxSize, { box: string; icon: number; label: string }> = {
-  sm: { box: 'h-4 w-4 rounded-[var(--radius-xs)]', icon: 12, label: 'text-sm' },
-  md: { box: 'h-5 w-5 rounded-[var(--radius-sm)]', icon: 14, label: 'text-sm' },
+  sm: { box: 'h-4 w-4 rounded-xs', icon: 12, label: 'text-sm' },
+  md: { box: 'h-5 w-5 rounded-sm', icon: 14, label: 'text-sm' },
 }
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(

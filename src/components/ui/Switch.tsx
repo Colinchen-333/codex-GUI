@@ -46,7 +46,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
       >
         <span
           className={cn(
-            'pointer-events-none absolute top-0.5 left-0.5 rounded-full bg-white shadow-sm transition-transform',
+            'pointer-events-none absolute top-0.5 left-0.5 rounded-full bg-switch-knob shadow-sm transition-transform',
             styles.thumb,
             checked && styles.translate
           )}

@@ -92,7 +92,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
         <input
           type="text"
           placeholder="Search all sessions..."
-          className="w-full rounded-md border border-stroke/20 bg-surface-solid px-3 py-2 text-sm text-text-1 placeholder:text-text-3 focus:border-stroke/50 focus:outline-none focus:ring-2 focus:ring-primary/10 pr-8"
+          className="h-9 w-full rounded-lg border border-token-input-border bg-token-input-background px-3 pr-8 text-[14px] text-token-input-foreground placeholder:text-token-input-placeholder-foreground focus:border-token-focus-border focus:outline-none focus:ring-2 focus:ring-primary/10"
           value={localSearchQuery}
           onChange={(e) => handleSearchChange(e.target.value)}
           aria-label="Search sessions"
@@ -114,7 +114,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
         )}
         {localSearchQuery && !isSearching && (
           <button
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-md text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12] transition-colors"
+            className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-token-text-tertiary transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
             onClick={handleClearSearch}
             aria-label="Clear search"
           >
@@ -125,7 +125,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
       {isGlobalSearch && searchResults.length > 0 && (
         <div
           id="search-results-count"
-          className="mt-1.5 text-xs text-text-3"
+          className="mt-1.5 px-1 text-xs text-token-text-tertiary"
           aria-live="polite"
         >
           Found {searchResults.length} session(s) across all projects

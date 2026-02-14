@@ -1,20 +1,20 @@
-import { useState, useMemo, memo } from 'react'
-import { Check, X, ChevronUp } from 'lucide-react'
+import { useState, useMemo, memo, useCallback } from 'react'
+import { Check, X, ChevronUp, MessageSquarePlus, Plus, GitBranch, Undo2 } from 'lucide-react'
 import { List } from 'react-window'
 import { cn } from '../../lib/utils'
-import { parseDiff, type HunkAction, type DiffHunk, type DiffLine, type FileDiff } from './DiffView.utils'
+import { parseDiff, type HunkAction, type DiffHunk, type DiffLine, type FileDiff, type DiffComment, buildHunkPatch, buildFilePatch } from './DiffView.utils'
 
 // Re-export types and utilities for external use
 // eslint-disable-next-line react-refresh/only-export-components
-export { parseDiff, type FileDiff, type DiffHunk, type DiffLine, type HunkAction }
+export { parseDiff, buildHunkPatch, buildFilePatch, type FileDiff, type DiffHunk, type DiffLine, type HunkAction, type DiffComment }
 
-// 单行高度（px）
+// Single line height (px)
 const DIFF_LINE_HEIGHT = 26
 
-// 虚拟化阈值（超过 100 行启用）
+// Virtualization threshold (enable above 100 lines)
 const VIRTUALIZATION_THRESHOLD = 100
 
-// Unified 模式行组件自定义 props（通过 rowProps 传递）
+// Unified mode row custom props (passed via rowProps)
 interface UnifiedDiffRowCustomProps {
   lines: DiffLine[]
   hunkIndex: number
@@ -22,7 +22,7 @@ interface UnifiedDiffRowCustomProps {
   lineNumberMode: 'dual' | 'single'
 }
 
-// Unified 模式行组件完整 props（包含 react-window 注入的 props）
+// Unified mode row full props (includes react-window injected props)
 interface UnifiedDiffRowProps extends UnifiedDiffRowCustomProps {
   ariaAttributes: {
     'aria-posinset': number
@@ -33,7 +33,7 @@ interface UnifiedDiffRowProps extends UnifiedDiffRowCustomProps {
   style: React.CSSProperties
 }
 
-// Split 模式行组件自定义 props
+// Split mode row custom props
 interface SplitDiffRowCustomProps {
   oldLines: DiffLine[]
   newLines: DiffLine[]
@@ -41,7 +41,7 @@ interface SplitDiffRowCustomProps {
   showSigns: boolean
 }
 
-// Split 模式行组件完整 props
+// Split mode row full props
 interface SplitDiffRowProps extends SplitDiffRowCustomProps {
   ariaAttributes: {
     'aria-posinset': number
@@ -78,6 +78,20 @@ interface DiffViewProps {
   lineNumberMode?: 'dual' | 'single'
   /** Enable inline comment composer */
   enableInlineComments?: boolean
+  /** Callback when a comment is submitted */
+  onComment?: (lineNumber: number, content: string, hunkIndex: number, lineIndex: number) => void
+  /** Existing comments to display */
+  comments?: DiffComment[]
+  /** Enable chunk-level stage/revert buttons */
+  enableChunkActions?: boolean
+  /** Callback to stage a single hunk */
+  onStageHunk?: (hunkIndex: number, patch: string) => void
+  /** Callback to revert a single hunk */
+  onRevertHunk?: (hunkIndex: number, patch: string) => void
+  /** Callback to stage the entire file */
+  onStageFile?: (patch: string) => void
+  /** Callback to revert the entire file */
+  onRevertFile?: (patch: string) => void
 }
 
 export function DiffView({
@@ -95,12 +109,19 @@ export function DiffView({
   showSigns = true,
   lineNumberMode = 'dual',
   enableInlineComments = false,
+  onComment,
+  comments = [],
+  enableChunkActions = false,
+  onStageHunk,
+  onRevertHunk,
+  onStageFile,
+  onRevertFile,
 }: DiffViewProps) {
-  // Treat initialViewMode as truly "initial". If we need a controlled mode later,
-  // add an explicit `viewMode` prop instead of syncing via effects (lint rule).
   const [viewMode, setViewMode] = useState<'unified' | 'split'>(initialViewMode ?? 'unified')
   const [commentTarget, setCommentTarget] = useState<{ hunkIndex: number; lineIndex: number } | null>(null)
   const [commentText, setCommentText] = useState('')
+  const [confirmRevertFile, setConfirmRevertFile] = useState(false)
+  const [confirmRevertHunk, setConfirmRevertHunk] = useState<number | null>(null)
 
   const kindIcon = {
     add: '+',
@@ -120,6 +141,32 @@ export function DiffView({
     diff.hunks.reduce((sum, hunk) => sum + hunk.lines.length, 0),
     [diff.hunks]
   )
+
+  const handleStageFile = useCallback(() => {
+    if (!onStageFile || diff.hunks.length === 0) return
+    const patch = buildFilePatch(diff.path, diff.hunks, diff.oldPath)
+    onStageFile(patch)
+  }, [onStageFile, diff])
+
+  const handleRevertFile = useCallback(() => {
+    if (!onRevertFile || diff.hunks.length === 0) return
+    if (!confirmRevertFile) {
+      setConfirmRevertFile(true)
+      return
+    }
+    const patch = buildFilePatch(diff.path, diff.hunks, diff.oldPath)
+    onRevertFile(patch)
+    setConfirmRevertFile(false)
+  }, [onRevertFile, diff, confirmRevertFile])
+
+  const handleCommentSubmit = useCallback(() => {
+    if (!onComment || !commentTarget || !commentText.trim()) return
+    const line = diff.hunks[commentTarget.hunkIndex]?.lines[commentTarget.lineIndex]
+    const lineNumber = line?.newLineNumber ?? line?.oldLineNumber ?? 0
+    onComment(lineNumber, commentText.trim(), commentTarget.hunkIndex, commentTarget.lineIndex)
+    setCommentTarget(null)
+    setCommentText('')
+  }, [onComment, commentTarget, commentText, diff.hunks])
 
   return (
     <div
@@ -149,6 +196,37 @@ export function DiffView({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Chunk actions: file-level stage/revert */}
+            {enableChunkActions && !collapsed && (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                {onStageFile && (
+                  <button
+                    className="flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-surface-hover/[0.12] text-text-2 hover:bg-green-900/40 hover:text-green-400 transition-colors"
+                    title="Stage file"
+                    onClick={handleStageFile}
+                  >
+                    <GitBranch size={12} />
+                    Stage File
+                  </button>
+                )}
+                {onRevertFile && (
+                  <button
+                    className={cn(
+                      'flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors',
+                      confirmRevertFile
+                        ? 'bg-red-900/50 text-red-300'
+                        : 'bg-surface-hover/[0.12] text-text-2 hover:bg-red-900/40 hover:text-red-400'
+                    )}
+                    title={confirmRevertFile ? 'Click again to confirm revert' : 'Revert file'}
+                    onClick={handleRevertFile}
+                    onBlur={() => setConfirmRevertFile(false)}
+                  >
+                    <Undo2 size={12} />
+                    {confirmRevertFile ? 'Confirm?' : 'Revert File'}
+                  </button>
+                )}
+              </div>
+            )}
             {showViewToggle && (
               <>
                 <button
@@ -206,7 +284,16 @@ export function DiffView({
                 setTarget: setCommentTarget,
                 text: enableInlineComments && viewMode === 'unified' ? commentText : '',
                 setText: setCommentText,
+                onSubmit: handleCommentSubmit,
               }}
+              comments={comments}
+              enableChunkActions={enableChunkActions}
+              filePath={diff.path}
+              oldPath={diff.oldPath}
+              onStageHunk={onStageHunk}
+              onRevertHunk={onRevertHunk}
+              confirmRevertHunk={confirmRevertHunk}
+              setConfirmRevertHunk={setConfirmRevertHunk}
             />
           ) : (
             <SplitDiff
@@ -216,6 +303,13 @@ export function DiffView({
               hunkStates={hunkStates}
               showHunkHeader={showHunkHeader}
               showSigns={showSigns}
+              enableChunkActions={enableChunkActions}
+              filePath={diff.path}
+              oldPath={diff.oldPath}
+              onStageHunk={onStageHunk}
+              onRevertHunk={onRevertHunk}
+              confirmRevertHunk={confirmRevertHunk}
+              setConfirmRevertHunk={setConfirmRevertHunk}
             />
           )}
         </div>
@@ -230,9 +324,17 @@ interface DiffComponentProps {
   onHunkAction?: (hunkIndex: number, action: HunkAction) => void
   hunkStates?: HunkAction[]
   inlineComments?: InlineCommentState
+  comments?: DiffComment[]
   showHunkHeader?: boolean
   showSigns?: boolean
   lineNumberMode?: 'dual' | 'single'
+  enableChunkActions?: boolean
+  filePath?: string
+  oldPath?: string
+  onStageHunk?: (hunkIndex: number, patch: string) => void
+  onRevertHunk?: (hunkIndex: number, patch: string) => void
+  confirmRevertHunk?: number | null
+  setConfirmRevertHunk?: (hunkIndex: number | null) => void
 }
 
 interface InlineCommentState {
@@ -241,6 +343,7 @@ interface InlineCommentState {
   setTarget: (target: { hunkIndex: number; lineIndex: number } | null) => void
   text: string
   setText: (value: string) => void
+  onSubmit: () => void
 }
 
 interface HunkActionsProps {
@@ -286,7 +389,111 @@ function HunkActions({ hunkIndex, hunkState, enableHunkActions, onHunkAction }: 
   )
 }
 
-// 虚拟化行组件（Unified 模式）
+interface ChunkStageActionsProps {
+  hunkIndex: number
+  hunk: DiffHunk
+  filePath: string
+  oldPath?: string
+  onStageHunk?: (hunkIndex: number, patch: string) => void
+  onRevertHunk?: (hunkIndex: number, patch: string) => void
+  confirmRevertHunk?: number | null
+  setConfirmRevertHunk?: (hunkIndex: number | null) => void
+}
+
+function ChunkStageActions({
+  hunkIndex,
+  hunk,
+  filePath,
+  oldPath,
+  onStageHunk,
+  onRevertHunk,
+  confirmRevertHunk,
+  setConfirmRevertHunk,
+}: ChunkStageActionsProps) {
+  const isConfirming = confirmRevertHunk === hunkIndex
+
+  return (
+    <div className="flex items-center gap-1">
+      {onStageHunk && (
+        <button
+          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded bg-surface-hover/[0.12] text-text-2 hover:bg-green-900/40 hover:text-green-400 transition-colors"
+          title="Stage this hunk"
+          onClick={() => {
+            const patch = buildHunkPatch(filePath, hunk, oldPath)
+            onStageHunk(hunkIndex, patch)
+          }}
+        >
+          <GitBranch size={10} />
+          Stage
+        </button>
+      )}
+      {onRevertHunk && (
+        <button
+          className={cn(
+            'flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded transition-colors',
+            isConfirming
+              ? 'bg-red-900/50 text-red-300'
+              : 'bg-surface-hover/[0.12] text-text-2 hover:bg-red-900/40 hover:text-red-400'
+          )}
+          title={isConfirming ? 'Click again to confirm' : 'Revert this hunk'}
+          onClick={() => {
+            if (!isConfirming) {
+              setConfirmRevertHunk?.(hunkIndex)
+              return
+            }
+            const patch = buildHunkPatch(filePath, hunk, oldPath)
+            onRevertHunk(hunkIndex, patch)
+            setConfirmRevertHunk?.(null)
+          }}
+          onBlur={() => {
+            if (isConfirming) setConfirmRevertHunk?.(null)
+          }}
+        >
+          <Undo2 size={10} />
+          {isConfirming ? 'Confirm?' : 'Revert'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Renders inline comment display for a given line */
+function InlineCommentDisplay({ comments, hunkIndex, lineIndex }: {
+  comments: DiffComment[]
+  hunkIndex: number
+  lineIndex: number
+}) {
+  const lineComments = comments.filter(
+    (c) => c.hunkIndex === hunkIndex && c.lineIndex === lineIndex
+  )
+  if (lineComments.length === 0) return null
+
+  return (
+    <>
+      {lineComments.map((comment) => (
+        <div
+          key={comment.id}
+          className="flex bg-surface-hover/[0.04] border-l-2 border-primary/40"
+        >
+          <div className="flex-1 px-4 py-2">
+            <div className="flex items-center gap-2 mb-1">
+              <MessageSquarePlus size={12} className="text-primary/70" />
+              {comment.author && (
+                <span className="text-xs font-semibold text-text-2">{comment.author}</span>
+              )}
+              <span className="text-[10px] text-text-3">
+                {new Date(comment.createdAt).toLocaleString()}
+              </span>
+            </div>
+            <p className="text-xs text-text-1 whitespace-pre-wrap font-sans">{comment.content}</p>
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+// Virtualized row component (Unified mode)
 const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
   index,
   style,
@@ -331,7 +538,7 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
         line.type === 'context' && 'border-transparent'
       )}
     >
-      {/* 行号 */}
+      {/* Line numbers */}
       {lineNumberMode === 'dual' ? (
         <>
           <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30', oldNumberClass)}>
@@ -347,7 +554,7 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
         </div>
       )}
 
-      {/* 符号 */}
+      {/* Sign */}
       {showSigns && (
         <div
           className={cn(
@@ -360,7 +567,7 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
         </div>
       )}
 
-      {/* 内容 */}
+      {/* Content */}
       <div className={cn('flex-1 px-2 whitespace-pre overflow-x-auto', contentClass)}>
         {line.content}
       </div>
@@ -368,7 +575,7 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
   )
 })
 
-// 虚拟化行组件（Split 模式）
+// Virtualized row component (Split mode)
 const VirtualizedSplitLine = memo(function VirtualizedSplitLine({
   index,
   style,
@@ -389,7 +596,7 @@ const VirtualizedSplitLine = memo(function VirtualizedSplitLine({
 
   return (
     <div style={style} className="grid grid-cols-2 min-h-[26px] leading-[26px]">
-      {/* 左侧（旧）*/}
+      {/* Left (old) */}
       <div
         className={cn(
           'flex border-r border-border',
@@ -414,7 +621,7 @@ const VirtualizedSplitLine = memo(function VirtualizedSplitLine({
         </div>
       </div>
 
-      {/* 右侧（新）*/}
+      {/* Right (new) */}
       <div
         className={cn(
           'flex',
@@ -573,21 +780,29 @@ function UnifiedDiff({
   onHunkAction,
   hunkStates = [],
   inlineComments,
+  comments = [],
   showHunkHeader = true,
   showSigns = true,
   lineNumberMode = 'dual',
+  enableChunkActions = false,
+  filePath = '',
+  oldPath,
+  onStageHunk,
+  onRevertHunk,
+  confirmRevertHunk,
+  setConfirmRevertHunk,
 }: DiffComponentProps) {
-  // 计算总行数
+  // Calculate total lines
   const totalLines = useMemo(() =>
     hunks.reduce((sum, hunk) => sum + hunk.lines.length, 0),
     [hunks]
   )
 
-  // 决定是否使用虚拟化
+  // Decide whether to virtualize
   const useVirtualization = totalLines > VIRTUALIZATION_THRESHOLD
   const inlineCommentsEnabled = inlineComments?.enabled ?? false
 
-  // 小 diff：保持原有渲染方式
+  // Small diff: keep original rendering
   if (!useVirtualization) {
     return (
       <div className="font-mono text-xs">
@@ -616,12 +831,26 @@ function UnifiedDiff({
               {showHunkHeader && (
                 <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-border/50 flex items-center justify-between">
                   <span>@@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@</span>
-                  <HunkActions
-                    hunkIndex={hunkIndex}
-                    hunkState={hunkState}
-                    enableHunkActions={enableHunkActions}
-                    onHunkAction={onHunkAction}
-                  />
+                  <div className="flex items-center gap-2">
+                    {enableChunkActions && filePath && (
+                      <ChunkStageActions
+                        hunkIndex={hunkIndex}
+                        hunk={hunk}
+                        filePath={filePath}
+                        oldPath={oldPath}
+                        onStageHunk={onStageHunk}
+                        onRevertHunk={onRevertHunk}
+                        confirmRevertHunk={confirmRevertHunk}
+                        setConfirmRevertHunk={setConfirmRevertHunk}
+                      />
+                    )}
+                    <HunkActions
+                      hunkIndex={hunkIndex}
+                      hunkState={hunkState}
+                      enableHunkActions={enableHunkActions}
+                      onHunkAction={onHunkAction}
+                    />
+                  </div>
                 </div>
               )}
               {/* Lines */}
@@ -658,24 +887,35 @@ function UnifiedDiff({
                   <div key={lineIndex}>
                     <div
                       className={cn(
-                        'flex border-l-2 min-h-[26px] leading-[26px]',
+                        'group/line flex border-l-2 min-h-[26px] leading-[26px]',
                         line.type === 'add' && 'bg-green-50 dark:bg-green-950/30',
                         line.type === 'remove' && 'bg-red-50 dark:bg-red-950/30',
                         line.type === 'add' && 'border-green-500/70',
                         line.type === 'remove' && 'border-red-500/70',
                         line.type === 'context' && 'border-transparent',
-                        inlineCommentsEnabled && 'cursor-pointer',
                         isCommentTarget && 'ring-1 ring-inset ring-stroke/40'
                       )}
-                      onClick={() => {
-                        if (!inlineCommentsEnabled || !inlineComments) return
-                        const isSame =
-                          inlineComments.target?.hunkIndex === hunkIndex &&
-                          inlineComments.target?.lineIndex === lineIndex
-                        inlineComments.setTarget(isSame ? null : { hunkIndex, lineIndex })
-                        inlineComments.setText('')
-                      }}
                     >
+                      {/* Comment add button (hover on line number area) */}
+                      {inlineCommentsEnabled && (
+                        <div
+                          className="w-5 flex-shrink-0 flex items-center justify-center cursor-pointer"
+                          onClick={() => {
+                            if (!inlineComments) return
+                            const isSame =
+                              inlineComments.target?.hunkIndex === hunkIndex &&
+                              inlineComments.target?.lineIndex === lineIndex
+                            inlineComments.setTarget(isSame ? null : { hunkIndex, lineIndex })
+                            inlineComments.setText('')
+                          }}
+                        >
+                          <Plus
+                            size={12}
+                            className="text-primary opacity-0 group-hover/line:opacity-70 hover:!opacity-100 transition-opacity"
+                          />
+                        </div>
+                      )}
+
                       {/* Line numbers */}
                       {lineNumberMode === 'dual' ? (
                         <>
@@ -710,8 +950,18 @@ function UnifiedDiff({
                           : line.content}
                       </div>
                     </div>
+
+                    {/* Existing comments for this line */}
+                    <InlineCommentDisplay
+                      comments={comments}
+                      hunkIndex={hunkIndex}
+                      lineIndex={lineIndex}
+                    />
+
+                    {/* Comment composer */}
                     {isCommentTarget && inlineCommentsEnabled && inlineComments && (
                       <div className="flex bg-transparent border-l-2 border-transparent">
+                        {inlineCommentsEnabled && <div className="w-5 flex-shrink-0" />}
                         <div className={cn('w-9 flex-shrink-0', lineNumberMode === 'dual' && 'border-r border-border/30')} />
                         {lineNumberMode === 'dual' && (
                           <div className="w-9 flex-shrink-0 border-r border-border/30" />
@@ -725,7 +975,7 @@ function UnifiedDiff({
                             <div className="p-3">
                               <textarea
                                 className="w-full min-h-[64px] resize-none bg-transparent text-sm text-text-1 focus:outline-none placeholder:text-text-3/70 font-sans"
-                                placeholder="Request change"
+                                placeholder="Add a comment..."
                                 value={inlineComments.text}
                                 onChange={(event) => inlineComments.setText(event.target.value)}
                                 onKeyDown={(event) => {
@@ -733,7 +983,11 @@ function UnifiedDiff({
                                     inlineComments.setTarget(null)
                                     inlineComments.setText('')
                                   }
+                                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                                    inlineComments.onSubmit()
+                                  }
                                 }}
+                                autoFocus
                               />
                             </div>
                             <div className="flex items-center justify-end gap-2 border-t border-stroke/20 px-3 py-2">
@@ -750,14 +1004,11 @@ function UnifiedDiff({
                                 className={cn(
                                   'rounded-full px-3 py-1 text-sm font-semibold transition-colors',
                                   inlineComments.text.trim()
-                                    ? 'bg-text-1 text-white hover:bg-text-1/90'
+                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                                     : 'bg-surface-hover/[0.2] text-text-2 cursor-not-allowed'
                                 )}
                                 disabled={!inlineComments.text.trim()}
-                                onClick={() => {
-                                  inlineComments.setTarget(null)
-                                  inlineComments.setText('')
-                                }}
+                                onClick={() => inlineComments.onSubmit()}
                               >
                                 Comment
                               </button>
@@ -779,7 +1030,7 @@ function UnifiedDiff({
     )
   }
 
-  // 大 diff：使用虚拟化
+  // Large diff: use virtualization
   return (
     <div className="font-mono text-xs">
       {hunks.map((hunk, hunkIndex) => {
@@ -798,16 +1049,30 @@ function UnifiedDiff({
             {showHunkHeader && (
               <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-border/50 flex items-center justify-between">
                 <span>@@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@</span>
-                <HunkActions
-                  hunkIndex={hunkIndex}
-                  hunkState={hunkState}
-                  enableHunkActions={enableHunkActions}
-                  onHunkAction={onHunkAction}
-                />
+                <div className="flex items-center gap-2">
+                  {enableChunkActions && filePath && (
+                    <ChunkStageActions
+                      hunkIndex={hunkIndex}
+                      hunk={hunk}
+                      filePath={filePath}
+                      oldPath={oldPath}
+                      onStageHunk={onStageHunk}
+                      onRevertHunk={onRevertHunk}
+                      confirmRevertHunk={confirmRevertHunk}
+                      setConfirmRevertHunk={setConfirmRevertHunk}
+                    />
+                  )}
+                  <HunkActions
+                    hunkIndex={hunkIndex}
+                    hunkState={hunkState}
+                    enableHunkActions={enableHunkActions}
+                    onHunkAction={onHunkAction}
+                  />
+                </div>
               </div>
             )}
 
-            {/* 虚拟化行列表 - 直接使用 memo 化的组件，无需 useCallback */}
+            {/* Virtualized line list */}
             <List<UnifiedDiffRowCustomProps>
               defaultHeight={Math.min(hunk.lines.length * DIFF_LINE_HEIGHT, 600)}
               rowCount={hunk.lines.length}
@@ -833,8 +1098,15 @@ function SplitDiff({
   hunkStates = [],
   showHunkHeader = true,
   showSigns = true,
+  enableChunkActions = false,
+  filePath = '',
+  oldPath,
+  onStageHunk,
+  onRevertHunk,
+  confirmRevertHunk,
+  setConfirmRevertHunk,
 }: DiffComponentProps) {
-  // 计算总行数（取最大的一侧）
+  // Calculate total lines (max of either side)
   const totalLines = useMemo(() =>
     hunks.reduce((sum, hunk) => {
       const oldLines = hunk.lines.filter((l) => l.type !== 'add').length
@@ -844,10 +1116,10 @@ function SplitDiff({
     [hunks]
   )
 
-  // 决定是否使用虚拟化
+  // Decide whether to virtualize
   const useVirtualization = totalLines > VIRTUALIZATION_THRESHOLD
 
-  // 小 diff：保持原有渲染方式
+  // Small diff: keep original rendering
   if (!useVirtualization) {
     return (
       <div className="font-mono text-xs grid grid-cols-2">
@@ -914,12 +1186,26 @@ function SplitDiff({
                 {showHunkHeader && (
                   <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-border/50 flex items-center justify-between">
                     <span>+{hunk.newStart},{hunk.newLines}</span>
-                    <HunkActions
-                      hunkIndex={hunkIndex}
-                      hunkState={hunkState}
-                      enableHunkActions={enableHunkActions}
-                      onHunkAction={onHunkAction}
-                    />
+                    <div className="flex items-center gap-2">
+                      {enableChunkActions && filePath && (
+                        <ChunkStageActions
+                          hunkIndex={hunkIndex}
+                          hunk={hunk}
+                          filePath={filePath}
+                          oldPath={oldPath}
+                          onStageHunk={onStageHunk}
+                          onRevertHunk={onRevertHunk}
+                          confirmRevertHunk={confirmRevertHunk}
+                          setConfirmRevertHunk={setConfirmRevertHunk}
+                        />
+                      )}
+                      <HunkActions
+                        hunkIndex={hunkIndex}
+                        hunkState={hunkState}
+                        enableHunkActions={enableHunkActions}
+                        onHunkAction={onHunkAction}
+                      />
+                    </div>
                   </div>
                 )}
                 {hunk.lines
@@ -966,7 +1252,7 @@ function SplitDiff({
     )
   }
 
-  // 大 diff：使用虚拟化
+  // Large diff: use virtualization
   return (
     <div className="font-mono text-xs">
       {hunks.map((hunk, hunkIndex) => {
@@ -984,7 +1270,7 @@ function SplitDiff({
               hunkState === 'reject' && 'opacity-40 line-through'
             )}
           >
-            {/* Headers - 使用 grid 布局 */}
+            {/* Headers - grid layout */}
             {showHunkHeader && (
               <div className="grid grid-cols-2 border-y border-border/50">
                 <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-r border-border">
@@ -992,17 +1278,31 @@ function SplitDiff({
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 flex items-center justify-between">
                   <span>+{hunk.newStart},{hunk.newLines}</span>
-                  <HunkActions
-                    hunkIndex={hunkIndex}
-                    hunkState={hunkState}
-                    enableHunkActions={enableHunkActions}
-                    onHunkAction={onHunkAction}
-                  />
+                  <div className="flex items-center gap-2">
+                    {enableChunkActions && filePath && (
+                      <ChunkStageActions
+                        hunkIndex={hunkIndex}
+                        hunk={hunk}
+                        filePath={filePath}
+                        oldPath={oldPath}
+                        onStageHunk={onStageHunk}
+                        onRevertHunk={onRevertHunk}
+                        confirmRevertHunk={confirmRevertHunk}
+                        setConfirmRevertHunk={setConfirmRevertHunk}
+                      />
+                    )}
+                    <HunkActions
+                      hunkIndex={hunkIndex}
+                      hunkState={hunkState}
+                      enableHunkActions={enableHunkActions}
+                      onHunkAction={onHunkAction}
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* 虚拟化行列表 - 直接使用 memo 化的组件，无需 useCallback */}
+            {/* Virtualized line list */}
             <List<SplitDiffRowCustomProps>
               defaultHeight={Math.min(maxLines * DIFF_LINE_HEIGHT, 600)}
               rowCount={maxLines}

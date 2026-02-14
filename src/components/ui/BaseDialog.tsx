@@ -1,7 +1,6 @@
 import { useRef, useId, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
-import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { cn } from '@/lib/utils'
 
 interface BaseDialogProps {
@@ -43,7 +42,6 @@ export function BaseDialog({
   const titleId = useId()
   const descriptionId = useId()
   const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const prefersReducedMotion = useReducedMotion()
 
   const containerRef = useFocusTrap<HTMLDivElement>({
     isActive: isOpen,
@@ -62,16 +60,15 @@ export function BaseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm p-4 codex-dialog-overlay"
       onClick={handleBackdropClick}
       role="presentation"
     >
       <div
         ref={containerRef}
         className={cn(
-          'bg-background dark:bg-surface-solid rounded-2xl shadow-2xl w-full mx-4 overflow-hidden flex flex-col max-h-[90vh]',
-          maxWidthClasses[maxWidth],
-          !prefersReducedMotion && 'animate-in fade-in zoom-in-95 duration-200'
+          'codex-dialog bg-background dark:bg-surface-solid rounded-2xl shadow-2xl w-full mx-4 overflow-hidden flex flex-col max-h-[90vh]',
+          maxWidthClasses[maxWidth]
         )}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -91,8 +88,8 @@ export function BaseDialog({
           variantClasses[variant]
         )}>
           <div className="flex items-center space-x-3">
-            {titleIcon && <span className="text-white">{titleIcon}</span>}
-            <h2 id={titleId} className="text-lg font-semibold text-white">
+            {titleIcon && <span className="text-text-1">{titleIcon}</span>}
+            <h2 id={titleId} className="text-lg font-semibold text-text-1">
               {title}
             </h2>
           </div>
@@ -100,9 +97,9 @@ export function BaseDialog({
             ref={closeButtonRef}
             onClick={onClose}
             className="p-1 rounded-full hover:bg-white/20 transition-colors"
-            aria-label="关闭"
+            aria-label="Close"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-5 h-5 text-text-1" />
           </button>
         </div>
 

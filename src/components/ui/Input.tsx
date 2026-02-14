@@ -10,9 +10,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const sizeStyles: Record<InputSize, string> = {
-  sm: 'h-7 px-2 text-xs rounded-[var(--radius-sm)]',
-  md: 'h-9 px-3 text-[13px] rounded-[var(--radius-md)]',
-  lg: 'h-11 px-4 text-sm rounded-[var(--radius-lg)]',
+  sm: 'h-7 px-2 text-xs rounded-sm',
+  md: 'h-9 px-3 text-[13px] rounded-md',
+  lg: 'h-11 px-4 text-sm rounded-lg',
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -27,7 +27,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             className={cn(
               'w-full border bg-surface-solid text-text-1 placeholder:text-text-3',
-              'transition-colors focus:outline-none focus:ring-2 focus:ring-ring/20',
+              'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]',
               'disabled:cursor-not-allowed disabled:opacity-50',
               sizeStyles[inputSize],
               'pl-9',
@@ -47,7 +47,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         className={cn(
           'w-full border bg-surface-solid text-text-1 placeholder:text-text-3',
-          'transition-colors focus:outline-none focus:ring-2 focus:ring-ring/20',
+          'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
           sizeStyles[inputSize],
           error

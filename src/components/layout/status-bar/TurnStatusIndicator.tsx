@@ -82,41 +82,41 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
   }
 
   return (
-    <div className="flex items-center gap-2 text-text-2">
+    <div className="flex items-center gap-1.5 text-token-description-foreground">
       {/* Shimmer effect spinner */}
-      <span className="relative flex h-2.5 w-2.5">
-        <span className="absolute inline-flex h-full w-full rounded-full bg-text-3/60 opacity-60 animate-ping" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-text-2/80" />
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-token-text-tertiary/60 opacity-60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-token-description-foreground/80" />
       </span>
 
       {/* Shimmer text effect */}
-      <span className="uppercase tracking-widest text-xs font-medium animate-breathe-text">
+      <span className="uppercase tracking-[0.2em] text-[10px] font-medium opacity-80 animate-breathe-text">
         Thinking
       </span>
 
       {/* Pending approvals badge */}
       {pendingApprovals.length > 0 && (
-        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-surface-hover/[0.16] text-text-2 text-xs font-medium">
+        <span className="flex items-center gap-1 rounded-md bg-token-list-hover-background px-1.5 py-0.5 text-xs font-medium text-token-description-foreground">
           {pendingApprovals.length} pending
         </span>
       )}
 
       {/* Token rate */}
       {tokenRate > 0 && (
-        <span className="flex items-center gap-1 text-xs text-text-3">
+        <span className="flex items-center gap-1 text-xs text-token-text-tertiary">
           <Zap size={10} />
           {tokenRate} tok/s
         </span>
       )}
 
       {/* Elapsed time */}
-      <span className="flex items-center gap-1 text-xs text-text-3">
+      <span className="flex items-center gap-1 text-xs text-token-text-tertiary">
         <Clock size={11} />
         {formatElapsedCompact(elapsedMs)}
       </span>
 
       {/* Interrupt hint */}
-      <span className="text-xs text-text-3/70">esc</span>
+      <span className="text-xs text-token-text-tertiary/70">esc</span>
     </div>
   )
 })

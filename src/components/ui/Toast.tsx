@@ -202,10 +202,36 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const [progress, setProgress] = useState(100)
   const startTimeRef = useRef(0)
   const remainingTimeRef = useRef(toast.duration ?? 5000)
+  const [toastState, setToastState] = useState<'entering' | 'entered' | 'exiting'>('entering')
+  const dismissTimeoutRef = useRef<number | null>(null)
 
   useLayoutEffect(() => {
     onDismissRef.current = onDismiss
   })
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setToastState('entered'), 250)
+    return () => window.clearTimeout(timeout)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (dismissTimeoutRef.current !== null) {
+        window.clearTimeout(dismissTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const requestDismiss = useCallback(() => {
+    if (toastState === 'exiting') return
+    setToastState('exiting')
+    if (dismissTimeoutRef.current !== null) {
+      window.clearTimeout(dismissTimeoutRef.current)
+    }
+    dismissTimeoutRef.current = window.setTimeout(() => {
+      onDismissRef.current()
+    }, 250)
+  }, [toastState])
 
   useEffect(() => {
     const duration = toast.duration ?? 5000
@@ -214,7 +240,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     let animationFrame: number
 
     const updateProgress = () => {
-      if (isPaused) return
+      if (isPaused || toastState === 'exiting') return
 
       const elapsed = Date.now() - startTimeRef.current
       const remaining = Math.max(0, remainingTimeRef.current - elapsed)
@@ -223,7 +249,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       setProgress(newProgress)
 
       if (remaining <= 0) {
-        onDismissRef.current()
+        requestDismiss()
       } else {
         animationFrame = requestAnimationFrame(updateProgress)
       }
@@ -237,7 +263,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame)
     }
-  }, [toast.duration, toast.timestamp, isPaused])
+  }, [toast.duration, toast.timestamp, isPaused, toastState, requestDismiss])
 
   const handleMouseEnter = useCallback(() => {
     const elapsed = Date.now() - startTimeRef.current
@@ -255,50 +281,51 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const IconComponent = TOAST_ICONS[toast.type]
 
   return (
-    <div
-      className={cn(
-        'relative flex min-w-[320px] max-w-[420px] items-start gap-3 rounded-xl border p-4 shadow-xl overflow-hidden',
-        styles.bg,
-        styles.border,
-        'toast-enter'
-      )}
-      role="alert"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <IconComponent className={cn('h-5 w-5 shrink-0 mt-0.5', styles.icon)} />
+    <div className="toast-root" data-state={toastState}>
+      <div
+        className={cn(
+          'alert-root relative flex min-w-[320px] max-w-[420px] items-start gap-3 rounded-xl border p-4 shadow-xl overflow-hidden',
+          styles.bg,
+          styles.border
+        )}
+        role="alert"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <IconComponent className={cn('h-5 w-5 shrink-0 mt-0.5', styles.icon)} />
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-sm text-foreground">{toast.title}</p>
-          {showCount && (
-            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              ×{toast.count}
-            </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-sm text-foreground">{toast.title}</p>
+            {showCount && (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                ×{toast.count}
+              </span>
+            )}
+          </div>
+          {toast.message && (
+            <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{toast.message}</p>
           )}
         </div>
-        {toast.message && (
-          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{toast.message}</p>
+
+        <button
+          type="button"
+          className="shrink-0 p-1 -m-1 text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
+          onClick={requestDismiss}
+          aria-label="Dismiss notification"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {(toast.duration ?? 5000) > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/30">
+            <div
+              className={cn('h-full transition-all duration-100', styles.progress)}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         )}
       </div>
-
-      <button
-        type="button"
-        className="shrink-0 p-1 -m-1 text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
-        onClick={onDismiss}
-        aria-label="Dismiss notification"
-      >
-        <X className="h-4 w-4" />
-      </button>
-
-      {(toast.duration ?? 5000) > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/30">
-          <div
-            className={cn('h-full transition-all duration-100', styles.progress)}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
     </div>
   )
 }

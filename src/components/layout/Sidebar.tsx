@@ -11,24 +11,39 @@
  */
 
 import { useEffect, useCallback, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
-import { Download, MessageSquarePlus, Zap, Layers, Settings, FolderPlus, Filter } from 'lucide-react'
-import { Button } from '../ui/Button'
+import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, Filter, PanelLeftOpen } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
 import { log } from '../../lib/logger'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { useAppStore } from '../../stores/app'
 import { useThreadStore } from '../../stores/thread'
+import { useAutomationsStore } from '../../stores/automations'
 import { useSettingsStore, mergeProjectSettings, getEffectiveWorkingDirectory } from '../../stores/settings'
 import { useToast } from '../ui/Toast'
 import { SessionSearch, GroupedSessionList, SidebarDialogs, useSidebarDialogs } from './sidebar/index'
 import { ImportCodexSessionDialog } from '../LazyComponents'
 import type { CodexSessionSummary } from '../../lib/api'
+import { formatSessionTime } from '../../lib/utils'
+
+function InboxBadge() {
+  const unreadCount = useAutomationsStore((state) =>
+    state.inboxItems.filter((item) => !item.isRead).length
+  )
+  if (unreadCount === 0) return null
+  return (
+    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+      {unreadCount > 99 ? '99+' : unreadCount}
+    </span>
+  )
+}
 
 export function Sidebar() {
   const { setSidebarTab: setActiveTab } = useAppStore()
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
+  const navigate = useNavigate()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const {
     sessions,
@@ -51,6 +66,14 @@ export function Sidebar() {
   }, [fetchSessions, selectedProjectId])
 
   const displaySessions = searchQuery ? searchResults : sessions
+  const displayProjectName = selectedProjectId
+    ? projects.find((p) => p.id === selectedProjectId)?.displayName
+      || projects.find((p) => p.id === selectedProjectId)?.path.split('/').pop()
+      || null
+    : null
+  const selectedSession = selectedSessionId
+    ? displaySessions.find((s) => s.sessionId === selectedSessionId) ?? null
+    : null
 
   const handleSelectSession = useCallback((sessionId: string | null, sessionProjectId?: string) => {
     if (sessionProjectId && sessionProjectId !== selectedProjectId) {
@@ -74,7 +97,10 @@ export function Sidebar() {
   }
 
   const handleNewSession = async () => {
-    if (!selectedProjectId) { showToast('Please select a project first', 'error'); return }
+    if (!selectedProjectId) {
+      await handleAddProject()
+      return
+    }
     const project = projects.find((p) => p.id === selectedProjectId)
     if (!project) return
     const effective = mergeProjectSettings(settings, project.settingsJson)
@@ -148,48 +174,132 @@ export function Sidebar() {
   }, [projects, addProject, selectProject, setActiveTab, settings, startThread, fetchSessions, selectSession, showToast])
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-stroke/10 bg-surface">
-      <nav className="px-2 pt-4 space-y-1">
+    <aside
+      className="sidebar-vibrancy relative flex h-full w-token-sidebar min-w-token-sidebar shrink-0 flex-col overflow-hidden border-r border-token-border"
+      data-tauri-drag-region
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-14 top-0 h-28 w-28 rounded-full bg-sky-300/25 blur-3xl dark:bg-sky-500/12" />
+        <div className="absolute -bottom-20 -left-8 h-36 w-36 rounded-full bg-cyan-300/20 blur-3xl dark:bg-cyan-500/12" />
+      </div>
+
+      <div className="relative z-10 flex h-toolbar items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <span className="h-3.5 w-3.5 rounded-full bg-[#ff5f57]" />
+          <span className="h-3.5 w-3.5 rounded-full bg-[#febc2e]" />
+          <span className="h-3.5 w-3.5 rounded-full bg-[#28c840]" />
+        </div>
+        <button
+          type="button"
+          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-token-border bg-token-surface-tertiary text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+        >
+          <PanelLeftOpen size={14} />
+        </button>
+      </div>
+
+      {selectedSession && (
+        <div className="relative z-10 px-3 pb-2">
+          <div className="flex h-10 items-center justify-between rounded-md px-2 text-[11px] text-token-description-foreground">
+            <div className="min-w-0 truncate pr-2 text-[13px] font-semibold text-token-foreground">
+              {selectedSession.title || displayProjectName || 'Thread'}
+            </div>
+            <div className="shrink-0 text-[11px] text-token-text-tertiary">
+              {formatSessionTime(selectedSession.lastAccessedAt || selectedSession.createdAt)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="relative z-10 h-toolbar-sm flex items-center px-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-token-text-tertiary">
+        Workspace
+      </div>
+
+      <nav className="relative z-10 space-y-0.5 px-2 pb-2">
         <button
           onClick={handleNewSession}
-          disabled={!selectedProjectId}
-          className="flex w-full items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg hover:bg-surface-hover/[0.08] cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
         >
-          <MessageSquarePlus size={20} className="text-text-3" />
-          <span className="text-text-1">New thread</span>
+          <MessageSquarePlus
+            size={19}
+            className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+            strokeWidth={1.8}
+          />
+          <span className="text-[16px] tracking-tight">New thread</span>
         </button>
-        <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg hover:bg-surface-hover/[0.08] cursor-pointer transition-colors justify-between">
-          <div className="flex items-center gap-3">
-            <Zap size={20} className="text-text-3" />
-            <span className="text-text-1">Automations</span>
+        <button
+          type="button"
+          onClick={() => navigate('/inbox?automationMode=create')}
+          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+        >
+          <div className="flex items-center gap-2.5">
+            <Zap
+              size={19}
+              className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+              strokeWidth={1.8}
+            />
+            <span className="text-[16px] tracking-tight">Automations</span>
           </div>
-          <span className="text-[10px] px-1.5 py-0.5 bg-surface-hover/[0.12] rounded text-text-3 font-semibold">1</span>
-        </div>
-        <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg hover:bg-surface-hover/[0.08] cursor-pointer transition-colors">
-          <Layers size={20} className="text-text-3" />
-          <span className="text-text-1">Skills</span>
-        </div>
+          <span className="rounded border border-token-border px-1.5 py-0.5 text-[10px] font-medium text-token-text-tertiary">
+            Beta
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/inbox')}
+          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+        >
+          <div className="flex items-center gap-2.5">
+            <Bell
+              size={19}
+              className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+              strokeWidth={1.8}
+            />
+            <span className="text-[16px] tracking-tight">Inbox</span>
+          </div>
+          <InboxBadge />
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/skills')}
+          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+        >
+          <Layers
+            size={19}
+            className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+            strokeWidth={1.8}
+          />
+          <span className="text-[16px] tracking-tight">Skills</span>
+        </button>
       </nav>
 
-      <div className="pt-6 pb-2 px-4 flex items-center justify-between">
-        <span className="text-[11px] font-bold text-text-3 uppercase tracking-wider">Threads</span>
-        <div className="flex gap-1">
+      <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
+        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-token-text-tertiary">
+          Threads
+        </span>
+        <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
           <IconButton
             onClick={handleAddProject}
             size="sm"
             title="Add project folder"
+            className="h-6 w-6 text-token-text-tertiary hover:bg-token-list-hover-background hover:text-token-foreground"
           >
-            <FolderPlus size={16} />
+            <FolderPlus size={13} strokeWidth={1.5} />
           </IconButton>
-          <IconButton size="sm" title="Filter">
-            <Filter size={16} />
+          <IconButton
+            size="sm"
+            title="Filter"
+            className="h-6 w-6 text-token-text-tertiary hover:bg-token-list-hover-background hover:text-token-foreground"
+          >
+            <Filter size={13} strokeWidth={1.5} />
           </IconButton>
         </div>
       </div>
 
-      <SessionSearch visible={true} />
+      <div className="relative z-10 px-2">
+        <SessionSearch visible={true} />
+      </div>
 
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="relative z-10 flex-1 overflow-y-auto px-2">
         <GroupedSessionList
           sessions={displaySessions}
           selectedSessionId={selectedSessionId}
@@ -198,23 +308,15 @@ export function Sidebar() {
         />
       </div>
 
-      <div className="p-4 border-t border-stroke/10 space-y-2">
-        <Button
-          variant="secondary"
-          className="w-full"
-          onClick={() => setImportDialogOpen(true)}
-          title="Import from Codex CLI"
+      <div className="relative z-10 border-t border-token-border px-2 py-3">
+        <button
+          type="button"
+          onClick={() => navigate('/settings')}
+          className="flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-[15px] text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
         >
-          <Download size={16} />
-          Import
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3"
-        >
-          <Settings size={20} className="text-text-3" />
-          <span>Settings</span>
-        </Button>
+          <Settings size={17} className="text-token-text-tertiary" />
+          <span className="text-[16px] tracking-tight">Settings</span>
+        </button>
       </div>
 
       <SidebarDialogs
@@ -241,6 +343,6 @@ export function Sidebar() {
         onClose={() => setImportDialogOpen(false)}
         onImport={handleImportSession}
       />
-    </div>
+    </aside>
   )
 }

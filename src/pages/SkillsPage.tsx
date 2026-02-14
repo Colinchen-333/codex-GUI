@@ -1,36 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, RefreshCw, Sparkles, Download, Copy, ExternalLink } from 'lucide-react'
+import { Search, RefreshCw, Sparkles, ExternalLink, Copy, Zap } from 'lucide-react'
 import { PageScaffold } from '../components/layout/PageScaffold'
 import { BaseDialog } from '../components/ui/BaseDialog'
+import { CreateAutomationDialog } from '../components/automations'
 import { useToast } from '../components/ui/Toast'
-import { cn } from '../lib/utils'
 import { parseError } from '../lib/errorUtils'
 import { serverApi, type SkillMetadata } from '../lib/api'
 import { useProjectsStore } from '../stores/projects'
-
-type RecommendedSkill = {
-  name: string
-  description: string
-  prompt: string
-}
-
-const RECOMMENDED_SKILLS: RecommendedSkill[] = [
-  {
-    name: 'doc',
-    description: 'Draft and refine documentation with consistent structure.',
-    prompt: 'Create a migration guide for upgrading to the latest release.',
-  },
-  {
-    name: 'playwright',
-    description: 'Automate browser flows and capture screenshots for QA.',
-    prompt: 'Record a login flow and capture screenshots for each step.',
-  },
-  {
-    name: 'openai-docs',
-    description: 'Pull the latest official OpenAI API guidance with citations.',
-    prompt: 'Summarize the newest Responses API usage with code examples.',
-  },
-]
 
 function buildPromptExample(skill: SkillMetadata) {
   return `Use $${skill.name} to help with ${skill.shortDescription || skill.description.toLowerCase()}.`
@@ -46,6 +22,7 @@ export function SkillsPage() {
   const [skills, setSkills] = useState<SkillMetadata[]>([])
   const [errors, setErrors] = useState<string | null>(null)
   const [previewSkill, setPreviewSkill] = useState<SkillMetadata | null>(null)
+  const [automateSkill, setAutomateSkill] = useState<SkillMetadata | null>(null)
 
   const loadSkills = useCallback(async (forceReload = false) => {
     if (!selectedProject) {
@@ -83,160 +60,132 @@ export function SkillsPage() {
     )
   }, [skills, searchQuery])
 
-  const installedNames = useMemo(() => new Set(skills.map((skill) => skill.name)), [skills])
-
   const emptyState = !isLoading && skills.length === 0
   const filteredEmptyState = !isLoading && skills.length > 0 && filteredSkills.length === 0
 
   return (
     <PageScaffold title="Skills" description="Browse installed and recommended skills.">
-      <div className="space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3" />
-            <input
-              type="text"
-              placeholder="Search skills..."
-              className="w-full rounded-md border border-stroke/20 bg-surface-solid py-2 pl-9 pr-3 text-sm text-text-1 placeholder:text-text-3 focus:border-stroke/50 focus:outline-none focus:ring-2 focus:ring-primary/10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search skills"
-            />
-          </div>
-          <button
-            className="inline-flex items-center gap-2 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-xs font-semibold text-text-2 transition-colors hover:bg-surface-hover/[0.1]"
-            onClick={() => void loadSkills(true)}
-          >
-            <RefreshCw size={14} />
-            Refresh
-          </button>
-        </div>
-
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-text-1">Installed</h2>
-            <span className="text-xs text-text-3">{skills.length} skills</span>
+      <div className="skills-page-surface">
+        <div className="skills-page-container py-6">
+          <div className="inbox-toolbar">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3" />
+              <input
+                type="text"
+                placeholder="Search skills..."
+                className="w-full rounded-md border border-stroke/20 bg-surface-solid py-2 pl-9 pr-3 text-sm text-text-1 placeholder:text-text-3 focus:border-stroke/50 focus:outline-none focus:ring-2 focus:ring-primary/10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search skills"
+              />
+            </div>
+            <div className="inbox-toolbar__actions">
+              <button
+                className="inline-flex items-center gap-2 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-xs font-semibold text-text-2 transition-colors hover:bg-surface-hover/[0.1]"
+                onClick={() => void loadSkills(true)}
+              >
+                <RefreshCw size={14} />
+                Refresh
+              </button>
+            </div>
           </div>
 
-          {isLoading && (
-            <div className="rounded-lg border border-stroke/20 bg-surface-solid p-4 text-sm text-text-3">
-              Loading skills...
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-1">Installed</h2>
+              <span className="text-xs text-text-3">{skills.length} skills</span>
             </div>
-          )}
 
-          {errors && (
-            <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-600">
-              {errors}
-            </div>
-          )}
+            {isLoading && (
+              <div className="rounded-lg border border-stroke/20 bg-surface-solid p-4 text-sm text-text-3">
+                Loading skills...
+              </div>
+            )}
 
-          {emptyState && (
-            <div className="rounded-lg border border-dashed border-stroke/30 bg-surface-solid p-6 text-sm text-text-3">
-              {selectedProject ? 'No skills found in this workspace.' : 'Select a workspace to view skills.'}
-            </div>
-          )}
+            {errors && (
+              <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-600">
+                {errors}
+              </div>
+            )}
 
-          {filteredEmptyState && (
-            <div className="rounded-lg border border-dashed border-stroke/30 bg-surface-solid p-6 text-sm text-text-3">
-              No skills match your search.
-            </div>
-          )}
+            {emptyState && (
+              <div className="rounded-lg border border-dashed border-stroke/30 bg-surface-solid p-6 text-sm text-text-3">
+                {selectedProject ? 'No skills found in this workspace.' : 'Select a workspace to view skills.'}
+              </div>
+            )}
 
-          {!isLoading && filteredSkills.length > 0 && (
-            <div className="grid gap-3 md:grid-cols-2">
-              {filteredSkills.map((skill) => (
-                <div
-                  key={skill.path}
-                  className="group rounded-xl border border-stroke/20 bg-surface-solid p-4 shadow-[var(--shadow-1)]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-text-1">{skill.name}</div>
-                      <div className="mt-1 text-xs text-text-3 line-clamp-2">
-                        {skill.shortDescription || skill.description}
+            {filteredEmptyState && (
+              <div className="rounded-lg border border-dashed border-stroke/30 bg-surface-solid p-6 text-sm text-text-3">
+                No skills match your search.
+              </div>
+            )}
+
+            {!isLoading && filteredSkills.length > 0 && (
+              <div className="skills-grid">
+                {filteredSkills.map((skill) => (
+                  <div
+                    key={skill.path}
+                    className="group rounded-2xl border border-stroke/20 bg-surface-solid p-4 shadow-[var(--shadow-1)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-text-1">{skill.name}</div>
+                        <div className="mt-1 text-xs text-text-3 line-clamp-2">
+                          {skill.shortDescription || skill.description}
+                        </div>
                       </div>
+                      <button
+                        className="text-text-3 hover:text-text-1"
+                        onClick={() => setPreviewSkill(skill)}
+                        aria-label="Preview skill"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
                     </div>
-                    <button
-                      className="text-text-3 hover:text-text-1"
-                      onClick={() => setPreviewSkill(skill)}
-                      aria-label="Preview skill"
-                    >
-                      <ExternalLink size={16} />
-                    </button>
+                    <div className="mt-3 flex items-center gap-2 text-[10px] text-text-3">
+                      <span className="rounded-full bg-surface-hover/[0.1] px-2 py-0.5">{skill.scope}</span>
+                      <span className="truncate">{skill.path}</span>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        className="rounded-md border border-stroke/30 bg-surface-solid px-3 py-1.5 text-[11px] font-semibold text-text-2 transition-colors hover:bg-surface-hover/[0.1]"
+                        onClick={() => setPreviewSkill(skill)}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        className="rounded-md border border-stroke/30 bg-surface-solid px-3 py-1.5 text-[11px] font-semibold text-text-2 transition-colors hover:bg-surface-hover/[0.1]"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(`$${skill.name}`)
+                          showToast('Skill mention copied', 'success')
+                        }}
+                      >
+                        Copy mention
+                      </button>
+                      <button
+                        className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
+                        onClick={() => setAutomateSkill(skill)}
+                      >
+                        <Zap size={11} />
+                        Automate
+                      </button>
+                    </div>
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-[10px] text-text-3">
-                    <span className="rounded-full bg-surface-hover/[0.1] px-2 py-0.5">{skill.scope}</span>
-                    <span className="truncate">{skill.path}</span>
-                  </div>
-                  <div className="mt-4 flex items-center gap-2">
-                    <button
-                      className="rounded-md border border-stroke/30 bg-surface-solid px-3 py-1.5 text-[11px] font-semibold text-text-2 transition-colors hover:bg-surface-hover/[0.1]"
-                      onClick={() => setPreviewSkill(skill)}
-                    >
-                      Preview
-                    </button>
-                    <button
-                      className="rounded-md border border-stroke/30 bg-surface-solid px-3 py-1.5 text-[11px] font-semibold text-text-2 transition-colors hover:bg-surface-hover/[0.1]"
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(`$${skill.name}`)
-                        showToast('Skill mention copied', 'success')
-                      }}
-                    >
-                      Copy mention
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
 
-        <section className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-text-1">
-            <Sparkles size={16} className="text-text-3" />
-            Recommended
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {RECOMMENDED_SKILLS.map((skill) => {
-              const installed = installedNames.has(skill.name)
-              return (
-                <div
-                  key={skill.name}
-                  className="rounded-xl border border-stroke/20 bg-surface-solid p-4 shadow-[var(--shadow-1)]"
-                >
-                  <div className="text-sm font-semibold text-text-1">{skill.name}</div>
-                  <p className="mt-1 text-xs text-text-3">{skill.description}</p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <button
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
-                        installed
-                          ? 'bg-emerald-500/10 text-emerald-600'
-                          : 'border border-stroke/30 bg-surface-solid text-text-2 hover:bg-surface-hover/[0.1]'
-                      )}
-                      onClick={() => {
-                        if (installed) return
-                        showToast('Recommended install is not wired yet', 'info')
-                      }}
-                    >
-                      <Download size={12} />
-                      {installed ? 'Installed' : 'Install'}
-                    </button>
-                    <button
-                      className="text-[11px] text-text-3 hover:text-text-1"
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(skill.prompt)
-                        showToast('Prompt copied', 'success')
-                      }}
-                    >
-                      Copy prompt
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-text-1">
+              <Sparkles size={16} className="text-text-3" />
+              Recommended
+            </div>
+            <div className="rounded-lg border border-dashed border-stroke/30 bg-surface-solid p-6 text-sm text-text-3">
+              Recommendations are available when a workspace is connected.
+            </div>
+          </section>
+        </div>
       </div>
 
       <BaseDialog
@@ -274,6 +223,12 @@ export function SkillsPage() {
           </div>
         </div>
       </BaseDialog>
+
+      <CreateAutomationDialog
+        isOpen={!!automateSkill}
+        onClose={() => setAutomateSkill(null)}
+        preselectedSkill={automateSkill}
+      />
     </PageScaffold>
   )
 }

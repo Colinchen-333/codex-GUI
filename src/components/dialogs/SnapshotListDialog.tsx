@@ -1,10 +1,13 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
+import { History, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, selectFocusedThread, selectSnapshots } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
 import { useToast } from '../ui/Toast'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
-import { useDialogKeyboardShortcut } from '../../hooks/useDialogKeyboardShortcut'
+import { BaseDialog } from '../ui/BaseDialog'
+import { Button } from '../ui/Button'
+import { Badge } from '../ui/Badge'
 import type { Snapshot } from '../../lib/api'
 import { logError } from '../../lib/errorUtils'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
@@ -59,17 +62,8 @@ export function SnapshotListDialog({ isOpen, onClose }: SnapshotListDialogProps)
     isOpen: boolean
     snapshot: Snapshot | null
   }>({ isOpen: false, snapshot: null })
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   const project = projects.find((p) => p.id === selectedProjectId)
-
-  // Use keyboard shortcut hook for Escape to close
-  useDialogKeyboardShortcut({
-    isOpen,
-    onConfirm: () => closeButtonRef.current?.click(),
-    onCancel: onClose,
-    requireModifierKey: false,
-  })
 
   useEffect(() => {
     if (isOpen && activeThread) {
@@ -116,114 +110,114 @@ export function SnapshotListDialog({ isOpen, onClose }: SnapshotListDialogProps)
   if (!isOpen) return null
 
   const errorFallback = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
-      <div className="w-full max-w-md rounded-lg bg-background p-6 text-center shadow-xl">
-        <h2 className="text-lg font-semibold">Snapshots unavailable</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong while loading snapshots.
-        </p>
-        <button
-          className="mt-4 rounded bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
-          onClick={onClose}
-        >
+    <BaseDialog
+      isOpen={true}
+      onClose={onClose}
+      title="Snapshots unavailable"
+      description="Something went wrong while loading snapshots."
+      titleIcon={<History size={16} />}
+      footer={
+        <Button variant="primary" size="sm" onClick={onClose}>
           Close
-        </button>
+        </Button>
+      }
+    >
+      <div className="p-6 text-sm text-text-3">
+        Something went wrong while loading snapshots.
       </div>
-    </div>
+    </BaseDialog>
   )
 
   return (
     <ErrorBoundary fallback={errorFallback}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
-        <div className="w-full max-w-lg rounded-lg bg-background shadow-xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <h2 className="text-lg font-semibold">Snapshots</h2>
-            <button
-              className="text-muted-foreground hover:text-foreground"
-              onClick={onClose}
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="max-h-[400px] overflow-y-auto p-4">
-            {!activeThread ? (
-              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                No active session. Start a session to create snapshots.
-              </div>
-            ) : isLoading ? (
-              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                <div className="animate-spin mr-2">⏳</div>
-                Loading snapshots...
-              </div>
+      <BaseDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Snapshots"
+        description="Restore the project to a previous snapshot."
+        titleIcon={<History size={16} />}
+        maxWidth="lg"
+        footer={
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        }
+      >
+        <div className="max-h-[400px] overflow-y-auto p-4">
+          {!activeThread ? (
+            <div className="flex h-32 items-center justify-center text-sm text-text-3">
+              No active session. Start a session to create snapshots.
+            </div>
+          ) : isLoading ? (
+            <div className="flex h-32 items-center justify-center gap-2 text-sm text-text-3">
+              <Loader2 size={16} className="animate-spin" />
+              Loading snapshots...
+            </div>
           ) : snapshots.length === 0 ? (
-            <div className="flex h-32 flex-col items-center justify-center text-sm text-muted-foreground">
-              <div className="text-3xl mb-3">📸</div>
-              <p>No snapshots yet</p>
-              <p className="text-xs mt-1">Snapshots are created automatically before changes are applied</p>
+            <div className="flex h-32 flex-col items-center justify-center text-sm text-text-3">
+              <p className="text-text-2 font-medium">No snapshots yet</p>
+              <p className="text-xs mt-1">
+                Snapshots are created automatically before changes are applied.
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
               {snapshots.map((snapshot) => {
-                const metadata = snapshot.metadataJson ? JSON.parse(snapshot.metadataJson) : {}
+                let metadata: Record<string, unknown> = {}
+                if (snapshot.metadataJson) {
+                  try {
+                    metadata = JSON.parse(snapshot.metadataJson) as Record<string, unknown>
+                  } catch {
+                    metadata = {}
+                  }
+                }
+
+                const description =
+                  typeof metadata.description === 'string' ? metadata.description : null
+                const filesChanged =
+                  typeof metadata.filesChanged === 'number' ? metadata.filesChanged : null
+
+                const reverting = isReverting === snapshot.id
 
                 return (
                   <div
                     key={snapshot.id}
                     className={cn(
-                      'flex items-center justify-between rounded-lg border border-border p-3 transition-colors',
-                      'hover:bg-secondary/30'
+                      'flex items-center justify-between gap-3 rounded-lg border border-stroke/20 p-3 transition-colors',
+                      'bg-surface-hover/[0.04] hover:bg-surface-hover/[0.08]'
                     )}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
+                        <span className="text-sm font-medium text-text-1">
                           {formatSnapshotTime(snapshot.createdAt)}
                         </span>
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                          {getSnapshotTypeLabel(snapshot.snapshotType)}
-                        </span>
+                        <Badge variant="secondary">{getSnapshotTypeLabel(snapshot.snapshotType)}</Badge>
                       </div>
-                      {metadata.description && (
-                        <p className="mt-1 text-xs text-muted-foreground truncate">
-                          {metadata.description}
-                        </p>
+                      {description && (
+                        <p className="mt-1 text-xs text-text-3 truncate">{description}</p>
                       )}
-                      {metadata.filesChanged && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {metadata.filesChanged} file(s) backed up
+                      {filesChanged !== null && (
+                        <p className="mt-1 text-xs text-text-3">
+                          {filesChanged} file(s) backed up
                         </p>
                       )}
                     </div>
-                    <button
-                      className={cn(
-                        'ml-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                        'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                        'disabled:opacity-50'
-                      )}
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => handleRevertClick(snapshot)}
-                      disabled={isReverting === snapshot.id}
+                      disabled={reverting}
+                      className="gap-2"
                     >
-                      {isReverting === snapshot.id ? 'Reverting...' : 'Revert'}
-                    </button>
+                      {reverting && <Loader2 size={14} className="animate-spin" />}
+                      {reverting ? 'Reverting...' : 'Revert'}
+                    </Button>
                   </div>
                 )
               })}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end border-t border-border px-6 py-4">
-          <button
-            ref={closeButtonRef}
-            className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
-            onClick={onClose}
-          >
-            Close
-          </button>
         </div>
 
         {/* Revert Confirmation Dialog */}
@@ -237,8 +231,7 @@ export function SnapshotListDialog({ isOpen, onClose }: SnapshotListDialogProps)
           onConfirm={handleRevertConfirm}
           onCancel={handleRevertCancel}
         />
-      </div>
-      </div>
+      </BaseDialog>
     </ErrorBoundary>
   )
 }

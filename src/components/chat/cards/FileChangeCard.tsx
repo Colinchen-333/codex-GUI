@@ -13,7 +13,7 @@
  * - UI rendering logic is kept in this component
  */
 import { memo, useMemo, useState } from 'react'
-import { FileCode } from 'lucide-react'
+import { Check, FileCode } from 'lucide-react'
 import { BaseCard, CardActions } from './BaseCard'
 import { DiffView, parseDiff, type FileDiff } from '../../ui/DiffView'
 import { formatTimestamp, shallowContentEqual } from '../utils'
@@ -84,11 +84,11 @@ const AppliedStatus = memo(function AppliedStatus({
   onRevert,
 }: AppliedStatusProps) {
   return (
-    <div className="bg-green-50/40 dark:bg-green-900/10 p-3 border-t border-green-200/50 dark:border-green-900/30">
+    <div className="bg-status-success-muted p-3 border-t border-status-success/20">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-medium text-green-700 dark:text-green-400">
-          <div className="h-4 w-4 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-            <span className="text-[10px]">✓</span>
+        <div className="flex items-center gap-2 text-xs font-semibold text-status-success">
+          <div className="h-4 w-4 rounded-full bg-status-success/15 flex items-center justify-center">
+            <Check size={12} className="text-status-success" aria-hidden="true" />
           </div>
           <span>Changes applied</span>
         </div>

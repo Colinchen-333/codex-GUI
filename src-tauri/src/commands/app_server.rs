@@ -2,8 +2,10 @@
 
 use serde::Serialize;
 use tauri::State;
+use tokio::process::Command;
 
 use crate::app_server::ipc_bridge::{AccountInfo, TurnStartResponse};
+use crate::app_server::AppServerProcess;
 use crate::state::AppState;
 use crate::Result;
 
@@ -15,6 +17,23 @@ pub struct ServerStatus {
     pub version: Option<String>,
 }
 
+async fn get_codex_cli_version() -> Option<String> {
+    let codex_path = AppServerProcess::find_codex_binary().ok()?;
+    let output = Command::new(codex_path).arg("--version").output().await.ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if !stdout.is_empty() {
+        return Some(stdout);
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if !stderr.is_empty() {
+        return Some(stderr);
+    }
+    None
+}
+
 /// Get the app server status
 #[tauri::command]
 pub async fn get_server_status(state: State<'_, AppState>) -> Result<ServerStatus> {
@@ -24,7 +43,7 @@ pub async fn get_server_status(state: State<'_, AppState>) -> Result<ServerStatu
 
     Ok(ServerStatus {
         is_running,
-        version: None, // TODO: Get version from app-server
+        version: get_codex_cli_version().await,
     })
 }
 

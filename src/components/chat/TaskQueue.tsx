@@ -31,30 +31,30 @@ const StatusIcon = ({ status, size = 'md' }: { status: TaskItem['status']; size?
   switch (status) {
     case 'completed':
       return (
-        <CheckCircle2 className={cn(sizeClass, 'text-green-500 flex-shrink-0')} />
+        <CheckCircle2 className={cn(sizeClass, 'text-status-success flex-shrink-0')} />
       )
     case 'in_progress':
       return (
-        <Loader2 className={cn(sizeClass, 'text-blue-500 flex-shrink-0 animate-spin')} />
+        <Loader2 className={cn(sizeClass, 'text-primary flex-shrink-0 animate-spin')} />
       )
     case 'failed':
       return (
-        <XCircle className={cn(sizeClass, 'text-red-500 flex-shrink-0')} />
+        <XCircle className={cn(sizeClass, 'text-status-error flex-shrink-0')} />
       )
     case 'pending':
     default:
       return (
-        <Clock className={cn(sizeClass, 'text-muted-foreground flex-shrink-0')} />
+        <Clock className={cn(sizeClass, 'text-text-3 flex-shrink-0')} />
       )
   }
 }
 
 // Status label mapping
 const statusLabels: Record<TaskItem['status'], string> = {
-  completed: '已完成',
-  in_progress: '进行中',
-  failed: '失败',
-  pending: '等待中',
+  completed: 'Completed',
+  in_progress: 'Running',
+  failed: 'Failed',
+  pending: 'Pending',
 }
 
 // Parse tasks JSON safely
@@ -113,8 +113,8 @@ export function TaskQueue({
       {/* Header with statistics */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-foreground">任务队列</span>
-          <span className="text-muted-foreground">({stats.total})</span>
+          <span className="font-medium text-text-1">Task Queue</span>
+          <span className="text-text-3">({stats.total})</span>
         </div>
 
         {/* Global controls */}
@@ -127,7 +127,7 @@ export function TaskQueue({
                   'px-2 py-1 text-xs rounded hover:bg-destructive/20 hover:text-destructive transition-colors'
                 )}
               >
-                取消全部
+                Cancel all
               </button>
             )}
             {(status === 'failed' || status === 'interrupted') && onRetryAll && (
@@ -137,7 +137,7 @@ export function TaskQueue({
                   'px-2 py-1 text-xs rounded hover:bg-primary/20 hover:text-primary transition-colors'
                 )}
               >
-                重试全部
+                Retry all
               </button>
             )}
           </div>
@@ -155,10 +155,10 @@ export function TaskQueue({
               key={index}
               className={cn(
                 'group flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors',
-                'hover:bg-secondary/50',
-                task.status === 'in_progress' && 'bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/30 dark:border-blue-800/30',
-                task.status === 'completed' && 'bg-green-50/30 dark:bg-green-950/10',
-                task.status === 'failed' && 'bg-red-50/30 dark:bg-red-950/10'
+                'bg-surface-solid hover:bg-surface-hover/[0.06] border border-transparent',
+                task.status === 'in_progress' && 'border-primary/20 bg-primary/10',
+                task.status === 'completed' && 'border-status-success/20 bg-status-success-muted',
+                task.status === 'failed' && 'border-status-error/20 bg-status-error-muted'
               )}
             >
               {/* Status icon */}
@@ -167,14 +167,14 @@ export function TaskQueue({
               {/* Task content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-foreground truncate">{task.content}</span>
+                  <span className="text-sm text-text-1 truncate">{task.content}</span>
                   <span
                     className={cn(
                       'text-xs px-1.5 py-0.5 rounded',
-                      'bg-muted text-muted-foreground',
-                      task.status === 'in_progress' && 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
-                      task.status === 'completed' && 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400',
-                      task.status === 'failed' && 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'
+                      'bg-surface-hover/[0.08] text-text-3',
+                      task.status === 'in_progress' && 'bg-primary/15 text-primary',
+                      task.status === 'completed' && 'bg-status-success/15 text-status-success',
+                      task.status === 'failed' && 'bg-status-error/15 text-status-error'
                     )}
                   >
                     <span className={cn(task.status === 'in_progress' && 'animate-breathe-text')}>
@@ -193,7 +193,7 @@ export function TaskQueue({
                       className={cn(
                         'p-1 rounded hover:bg-destructive/20 hover:text-destructive transition-colors'
                       )}
-                      title="取消任务"
+                      title="Cancel task"
                       aria-label="Cancel task"
                     >
                       <X size={14} />
@@ -205,7 +205,7 @@ export function TaskQueue({
                       className={cn(
                         'p-1 rounded hover:bg-primary/20 hover:text-primary transition-colors'
                       )}
-                      title="重试任务"
+                      title="Retry task"
                       aria-label="Retry task"
                     >
                       <RotateCcw size={14} />
@@ -219,20 +219,20 @@ export function TaskQueue({
 
         {/* Show remaining count */}
         {hasMoreTasks && (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground text-center">
-            还有 {remainingCount} 个任务...
+          <div className="px-2 py-1.5 text-sm text-text-3 text-center">
+            And {remainingCount} more…
           </div>
         )}
       </div>
 
       {/* Summary footer */}
-      <div className="flex items-center justify-between px-1 pt-1 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between px-1 pt-1 text-xs text-text-3">
         <div className="flex items-center gap-3">
-          <span>已完成: {stats.completed}</span>
-          <span>进行中: {stats.inProgress}</span>
-          <span>等待中: {stats.pending}</span>
+          <span>Completed: {stats.completed}</span>
+          <span>Running: {stats.inProgress}</span>
+          <span>Pending: {stats.pending}</span>
           {stats.failed > 0 && (
-            <span className="text-red-500">失败: {stats.failed}</span>
+            <span className="text-status-error">Failed: {stats.failed}</span>
           )}
         </div>
         {stats.total > 0 && (
@@ -271,10 +271,10 @@ export function TaskQueueCompact({
           key={index}
           className={cn(
             'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs',
-            'bg-muted/50',
-            task.status === 'in_progress' && 'bg-blue-100 dark:bg-blue-900/50 border border-blue-300/50',
-            task.status === 'completed' && 'bg-green-100 dark:bg-green-900/50',
-            task.status === 'failed' && 'bg-red-100 dark:bg-red-900/50'
+            'bg-surface-hover/[0.06] border border-transparent',
+            task.status === 'in_progress' && 'bg-primary/10 border-primary/20',
+            task.status === 'completed' && 'bg-status-success-muted border-status-success/20',
+            task.status === 'failed' && 'bg-status-error-muted border-status-error/20'
           )}
           title={task.content}
         >
@@ -283,7 +283,7 @@ export function TaskQueueCompact({
         </div>
       ))}
       {tasks.length > maxTasks && (
-        <span className="text-xs text-muted-foreground">+{tasks.length - maxTasks}</span>
+        <span className="text-xs text-text-3">+{tasks.length - maxTasks}</span>
       )}
     </div>
   )

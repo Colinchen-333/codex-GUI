@@ -175,7 +175,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="sidebar-vibrancy relative flex h-full w-token-sidebar min-w-token-sidebar shrink-0 flex-col overflow-hidden border-r border-token-border"
+      className="sidebar-vibrancy relative flex h-full w-token-sidebar min-w-token-sidebar shrink-0 flex-col overflow-hidden border-r border-stroke/20"
       data-tauri-drag-region
     >
       <div className="pointer-events-none absolute inset-0">
@@ -191,7 +191,7 @@ export function Sidebar() {
         </div>
         <button
           type="button"
-          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-token-border bg-token-surface-tertiary text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
         >
           <PanelLeftOpen size={14} />
         </button>
@@ -199,29 +199,29 @@ export function Sidebar() {
 
       {selectedSession && (
         <div className="relative z-10 px-3 pb-2">
-          <div className="flex h-10 items-center justify-between rounded-md px-2 text-[11px] text-token-description-foreground">
-            <div className="min-w-0 truncate pr-2 text-[13px] font-semibold text-token-foreground">
+          <div className="flex h-10 items-center justify-between rounded-md px-2 text-[11px] text-text-2">
+            <div className="min-w-0 truncate pr-2 text-[13px] font-semibold text-text-1">
               {selectedSession.title || displayProjectName || 'Thread'}
             </div>
-            <div className="shrink-0 text-[11px] text-token-text-tertiary">
+            <div className="shrink-0 text-[11px] text-text-3">
               {formatSessionTime(selectedSession.lastAccessedAt || selectedSession.createdAt)}
             </div>
           </div>
         </div>
       )}
 
-      <div className="relative z-10 h-toolbar-sm flex items-center px-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-token-text-tertiary">
+      <div className="relative z-10 h-toolbar-sm flex items-center px-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-text-3">
         Workspace
       </div>
 
       <nav className="relative z-10 space-y-0.5 px-2 pb-2">
         <button
           onClick={handleNewSession}
-          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
         >
           <MessageSquarePlus
             size={19}
-            className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+            className="text-text-2 transition-colors group-hover:text-text-1"
             strokeWidth={1.8}
           />
           <span className="text-[16px] tracking-tight">New thread</span>
@@ -229,29 +229,29 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => navigate('/inbox?automationMode=create')}
-          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
         >
           <div className="flex items-center gap-2.5">
             <Zap
               size={19}
-              className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+              className="text-text-2 transition-colors group-hover:text-text-1"
               strokeWidth={1.8}
             />
             <span className="text-[16px] tracking-tight">Automations</span>
           </div>
-          <span className="rounded border border-token-border px-1.5 py-0.5 text-[10px] font-medium text-token-text-tertiary">
+          <span className="rounded border border-stroke/20 px-1.5 py-0.5 text-[10px] font-medium text-text-3">
             Beta
           </span>
         </button>
         <button
           type="button"
           onClick={() => navigate('/inbox')}
-          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
         >
           <div className="flex items-center gap-2.5">
             <Bell
               size={19}
-              className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+              className="text-text-2 transition-colors group-hover:text-text-1"
               strokeWidth={1.8}
             />
             <span className="text-[16px] tracking-tight">Inbox</span>
@@ -261,11 +261,11 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => navigate('/skills')}
-          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
         >
           <Layers
             size={19}
-            className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+            className="text-text-2 transition-colors group-hover:text-text-1"
             strokeWidth={1.8}
           />
           <span className="text-[16px] tracking-tight">Skills</span>
@@ -273,7 +273,7 @@ export function Sidebar() {
       </nav>
 
       <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
-        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-token-text-tertiary">
+        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
           Threads
         </span>
         <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
@@ -281,14 +281,14 @@ export function Sidebar() {
             onClick={handleAddProject}
             size="sm"
             title="Add project folder"
-            className="h-6 w-6 text-token-text-tertiary hover:bg-token-list-hover-background hover:text-token-foreground"
+            className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
           >
             <FolderPlus size={13} strokeWidth={1.5} />
           </IconButton>
           <IconButton
             size="sm"
             title="Filter"
-            className="h-6 w-6 text-token-text-tertiary hover:bg-token-list-hover-background hover:text-token-foreground"
+            className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
           >
             <Filter size={13} strokeWidth={1.5} />
           </IconButton>
@@ -308,13 +308,13 @@ export function Sidebar() {
         />
       </div>
 
-      <div className="relative z-10 border-t border-token-border px-2 py-3">
+      <div className="relative z-10 border-t border-stroke/20 px-2 py-3">
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-[15px] text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+          className="flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-[15px] text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
         >
-          <Settings size={17} className="text-token-text-tertiary" />
+          <Settings size={17} className="text-text-3" />
           <span className="text-[16px] tracking-tight">Settings</span>
         </button>
       </div>

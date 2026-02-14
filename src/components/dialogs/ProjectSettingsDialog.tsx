@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Settings } from 'lucide-react'
 import { projectApi } from '../../lib/api'
 import { useProjectsStore } from '../../stores/projects'
 import { useModelsStore } from '../../stores/models'
@@ -11,6 +11,9 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { logError } from '../../lib/errorUtils'
 import { useToast } from '../ui/Toast'
 import { useDialogKeyboardShortcut } from '../../hooks/useDialogKeyboardShortcut'
+import { BaseDialog } from '../ui/BaseDialog'
+import { Button } from '../ui/Button'
+import { Input } from '../ui/Input'
 
 interface ProjectSettingsDialogProps {
   isOpen: boolean
@@ -56,7 +59,6 @@ export function ProjectSettingsDialog({
         saveButtonRef.current?.click()
       }
     },
-    onCancel: onClose,
     requireModifierKey: true, // Require Cmd/Ctrl key since there are inputs
   })
 
@@ -140,29 +142,34 @@ export function ProjectSettingsDialog({
     }
   }
 
-  if (!isOpen || !project) return null
+  if (!project) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-text-1">Project Settings</h2>
-            <p className="text-sm text-text-3 truncate max-w-[300px]">
-              {project.displayName || project.path}
-            </p>
-          </div>
-          <button
-            className="text-text-3 hover:text-text-1"
-            onClick={onClose}
+    <BaseDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Project Settings"
+      description={`Project-specific overrides for ${project.displayName || project.path}.`}
+      titleIcon={<Settings size={16} />}
+      maxWidth="lg"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            ref={saveButtonRef}
+            variant="primary"
+            onClick={handleSave}
+            disabled={isSaving}
           >
-            ✕
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </>
+      }
+    >
+      <div className="p-6 space-y-6">
           {/* Model Override */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -272,7 +279,7 @@ export function ProjectSettingsDialog({
                 </button>
               )}
             </div>
-            <input
+            <Input
               type="text"
               value={settings.cwd || ''}
               onChange={(e) =>
@@ -282,7 +289,6 @@ export function ProjectSettingsDialog({
                 }))
               }
               placeholder={project.path}
-              className="w-full rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             <p className="text-xs text-text-3 mt-1">
               Leave empty to use project root
@@ -313,63 +319,42 @@ export function ProjectSettingsDialog({
               ))}
             </div>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={newEnvKey}
                 onChange={(e) => setNewEnvKey(e.target.value)}
                 placeholder="KEY"
-                className="w-32 rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm font-mono text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-32 font-mono"
               />
-              <input
+              <Input
                 type="text"
                 value={newEnvValue}
                 onChange={(e) => setNewEnvValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddEnvVar()}
                 placeholder="value"
-                className="flex-1 rounded-lg border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <button
+              <Button
                 onClick={handleAddEnvVar}
                 disabled={!newEnvKey.trim()}
-                className="rounded-lg border border-stroke/30 bg-surface-hover/[0.12] px-4 py-2 text-sm font-medium text-text-1 hover:bg-surface-hover/[0.18] disabled:opacity-50"
+                variant="secondary"
               >
                 Add
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-stroke/20 px-6 py-4">
-          <button
-            className="rounded-lg border border-stroke/30 bg-surface-hover/[0.1] px-4 py-2 text-sm font-medium text-text-2 hover:text-text-1"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button
-            ref={saveButtonRef}
-            className="rounded-lg bg-surface-selected/[0.2] px-4 py-2 text-sm font-medium text-text-1 hover:bg-surface-selected/[0.28] disabled:opacity-50 flex items-center gap-2"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isSaving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-
-        {/* Clear Setting Confirmation Dialog */}
-        <ConfirmDialog
-          isOpen={clearSettingConfirm.isOpen}
-          title="Clear Setting"
-          message={`Are you sure you want to clear the "${clearSettingConfirm.settingName}" setting and use the default value?`}
-          confirmText="Clear"
-          cancelText="Cancel"
-          variant="warning"
-          onConfirm={confirmClearSetting}
-          onCancel={() => setClearSettingConfirm({ isOpen: false, settingKey: null, settingName: '' })}
-        />
       </div>
-    </div>
+
+      {/* Clear Setting Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={clearSettingConfirm.isOpen}
+        title="Clear Setting"
+        message={`Are you sure you want to clear the "${clearSettingConfirm.settingName}" setting and use the default value?`}
+        confirmText="Clear"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={confirmClearSetting}
+        onCancel={() => setClearSettingConfirm({ isOpen: false, settingKey: null, settingName: '' })}
+      />
+    </BaseDialog>
   )
 }

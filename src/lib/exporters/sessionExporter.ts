@@ -77,7 +77,7 @@ function formatItemAsMarkdown(item: RawThreadItem): string {
       }
       const exitCode = content?.exitCode as number | undefined
       if (exitCode !== undefined) {
-        const status = exitCode === 0 ? '✓ Success' : `✗ Exit ${exitCode}`
+        const status = exitCode === 0 ? 'Success' : `Exit ${exitCode}`
         markdown += `*${status}*\n\n`
       }
       break

@@ -22,7 +22,7 @@ export function Skeleton({ className, animate = true, shape = 'text' }: Skeleton
   return (
     <div
       className={cn(
-        'bg-secondary/50',
+        'bg-surface-hover/[0.12]',
         shapeStyles[shape],
         animate && 'loading-shimmer',
         className
@@ -75,8 +75,8 @@ export function DialogSkeleton({ title = 'Loading...', className }: DialogSkelet
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-lg font-semibold text-muted-foreground">{title}</h2>
+        <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
+          <h2 className="text-lg font-semibold text-text-2">{title}</h2>
           <Skeleton className="h-6 w-6 rounded" />
         </div>
 
@@ -106,7 +106,7 @@ export function DialogSkeleton({ title = 'Loading...', className }: DialogSkelet
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+        <div className="flex justify-end gap-3 border-t border-stroke/20 px-6 py-4">
           <Skeleton className="h-10 w-24 rounded-lg" />
         </div>
       </div>
@@ -119,7 +119,7 @@ export function DialogSkeleton({ title = 'Loading...', className }: DialogSkelet
  */
 export function SettingsDialogSkeleton() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm p-8">
       <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-2xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-200">
         {/* Sidebar skeleton */}
         <div className="w-60 bg-surface-solid/80 p-6 border-r border-stroke/20 flex flex-col gap-1">
@@ -160,7 +160,7 @@ export function SettingsDialogSkeleton() {
  */
 export function ListDialogSkeleton({ title = 'Loading...' }: { title?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
@@ -186,7 +186,7 @@ export function ListDialogSkeleton({ title = 'Loading...' }: { title?: string })
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end border-t border-border px-6 py-4">
+        <div className="flex justify-end border-t border-stroke/20 px-6 py-4">
           <Skeleton className="h-10 w-20 rounded-lg" />
         </div>
       </div>
@@ -202,9 +202,9 @@ export function FormDialogSkeleton({ title = 'Loading...' }: { title?: string })
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
       <div className="w-full max-w-lg rounded-lg bg-background shadow-xl animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-muted-foreground">{title}</h2>
+            <h2 className="text-lg font-semibold text-text-2">{title}</h2>
             <Skeleton className="h-4 w-48 mt-1" />
           </div>
           <Skeleton className="h-6 w-6 rounded" />
@@ -221,7 +221,7 @@ export function FormDialogSkeleton({ title = 'Loading...' }: { title?: string })
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+        <div className="flex justify-end gap-3 border-t border-stroke/20 px-6 py-4">
           <Skeleton className="h-10 w-20 rounded-lg" />
           <Skeleton className="h-10 w-20 rounded-lg" />
         </div>

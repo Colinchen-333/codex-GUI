@@ -17,13 +17,19 @@ async function invokeWithTimeout<T>(
   args?: Record<string, unknown>,
   timeoutMs: number = 30000
 ): Promise<T> {
+  // Avoid leaving dangling timers around on successful invocations.
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       reject(new Error(`Request timeout after ${timeoutMs}ms: ${command}`))
     }, timeoutMs)
   })
 
-  return Promise.race([invoke<T>(command, args), timeoutPromise])
+  try {
+    return await Promise.race([invoke<T>(command, args), timeoutPromise])
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
 }
 
 function isTauriAvailable(): boolean {

@@ -299,7 +299,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
             <p className="font-medium text-sm text-text-1">{toast.title}</p>
             {showCount && (
               <span className="shrink-0 rounded-full bg-surface-hover/[0.08] px-2 py-0.5 text-[10px] font-medium text-text-3">
-                ×{toast.count}
+                x{toast.count}
               </span>
             )}
           </div>

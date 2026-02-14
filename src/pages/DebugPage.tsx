@@ -13,9 +13,10 @@ import { PageScaffold } from '../components/layout/PageScaffold'
 import { Button } from '../components/ui/Button'
 import { cn } from '../lib/utils'
 import { APP_NAME, APP_VERSION } from '../lib/appMeta'
-import { serverApi, type ServerStatus } from '../lib/api'
+import { serverApi, systemApi, type AppPaths, type ServerStatus } from '../lib/api'
 import { logger, type LogEntry } from '../lib/logger'
 import { isTauriAvailable } from '../lib/tauri'
+import { useToast } from '../components/ui/Toast'
 
 type DebugSectionId = 'engine' | 'storage' | 'logs'
 
@@ -61,9 +62,11 @@ function formatLogLine(entry: LogEntry): string {
 }
 
 export function DebugPage() {
+  const { toast } = useToast()
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>([])
+  const [appPaths, setAppPaths] = useState<AppPaths>({ appDataDir: null, logDir: null })
   const [storageInfo, setStorageInfo] = useState(() => {
     const bytes = computeLocalStorageBytes()
     return {
@@ -96,8 +99,12 @@ export function DebugPage() {
   const refresh = useCallback(async () => {
     setIsRefreshing(true)
     try {
-      const [status] = await Promise.all([serverApi.getStatus()])
+      const [status, paths] = await Promise.all([
+        serverApi.getStatus(),
+        isTauriAvailable() ? systemApi.getAppPaths() : Promise.resolve({ appDataDir: null, logDir: null }),
+      ])
       setServerStatus(status)
+      setAppPaths(paths)
       setLogs(logger.getLogs().slice(-400))
       const bytes = computeLocalStorageBytes()
       setStorageInfo({
@@ -129,6 +136,40 @@ export function DebugPage() {
     setLogs([])
   }
 
+  const copyToClipboard = useCallback(async (text: string, successTitle: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const el = document.createElement('textarea')
+        el.value = text
+        el.setAttribute('readonly', 'true')
+        el.style.position = 'fixed'
+        el.style.left = '-9999px'
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      }
+      toast.success(successTitle)
+    } catch (e) {
+      toast.error('Copy failed', { message: String(e) })
+    }
+  }, [toast])
+
+  const copyReport = useCallback(() => {
+    const report = {
+      app: { name: APP_NAME, version: APP_VERSION, mode: import.meta.env.MODE },
+      engine: serverStatus,
+      runtime: runtimeInfo,
+      paths: appPaths,
+      storage: storageInfo,
+      logs: logger.getLogs().slice(-400).map(formatLogLine),
+      capturedAt: new Date().toISOString(),
+    }
+    void copyToClipboard(JSON.stringify(report, null, 2), 'Copied diagnostics report')
+  }, [appPaths, copyToClipboard, runtimeInfo, serverStatus, storageInfo])
+
   const engineLabel = serverStatus?.isRunning ? 'Running' : 'Stopped'
   const engineColor = serverStatus?.isRunning ? 'text-status-success' : 'text-status-error'
 
@@ -140,6 +181,9 @@ export function DebugPage() {
             {APP_NAME} <span className="font-mono text-text-2">{APP_VERSION}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={copyReport} className="gap-2">
+              Copy Report
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -207,6 +251,30 @@ export function DebugPage() {
               {section.expanded && section.id === 'storage' && (
                 <div className="border-t border-stroke/10 px-4 py-3">
                   <div className="space-y-2 text-sm">
+                    {appPaths.appDataDir && (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-text-3">appDataDir</span>
+                        <button
+                          type="button"
+                          className="font-mono text-xs text-text-2 hover:text-text-1 truncate"
+                          onClick={() => void copyToClipboard(appPaths.appDataDir ?? '', 'Copied appDataDir')}
+                        >
+                          {appPaths.appDataDir}
+                        </button>
+                      </div>
+                    )}
+                    {appPaths.logDir && (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-text-3">logDir</span>
+                        <button
+                          type="button"
+                          className="font-mono text-xs text-text-2 hover:text-text-1 truncate"
+                          onClick={() => void copyToClipboard(appPaths.logDir ?? '', 'Copied logDir')}
+                        >
+                          {appPaths.logDir}
+                        </button>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="text-text-3">localStorage</span>
                       <span className="font-mono text-text-2">
@@ -227,16 +295,27 @@ export function DebugPage() {
                       <Cpu size={14} />
                       <span>{logs.length} entries (in-memory)</span>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearLogs}
-                      className="gap-2"
-                      disabled={logs.length === 0}
-                    >
-                      <Trash2 size={14} />
-                      Clear
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void copyToClipboard(logs.map(formatLogLine).join('\n'), 'Copied log snapshot')}
+                        className="gap-2"
+                        disabled={logs.length === 0}
+                      >
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClearLogs}
+                        className="gap-2"
+                        disabled={logs.length === 0}
+                      >
+                        <Trash2 size={14} />
+                        Clear
+                      </Button>
+                    </div>
                   </div>
                   <div className="rounded-lg bg-surface-hover/[0.05] p-3 font-mono text-xs text-text-3 max-h-[260px] overflow-y-auto space-y-1">
                     {logs.length === 0 ? (

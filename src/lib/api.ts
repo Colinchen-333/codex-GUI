@@ -224,6 +224,11 @@ export interface LoginResponse {
   authUrl: string | null
 }
 
+export interface AppPaths {
+  appDataDir: string | null
+  logDir: string | null
+}
+
 export interface ReasoningEffortOption {
   reasoningEffort: string
   description: string
@@ -737,6 +742,7 @@ export const systemApi = {
   startKeepAwake: () => invoke<void>('start_keep_awake'),
   stopKeepAwake: () => invoke<void>('stop_keep_awake'),
   isKeepAwakeActive: () => invokeOrFallback<boolean>(false, 'is_keep_awake_active'),
+  getAppPaths: () => invokeOrFallback<AppPaths>({ appDataDir: null, logDir: null }, 'get_app_paths'),
 }
 
 // ==================== Codex CLI Import Types ====================

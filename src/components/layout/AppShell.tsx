@@ -34,11 +34,11 @@ export function AppShell() {
   }, [])
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-token-bg-primary">
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
       <HostNavigationListener />
       <KeyboardShortcuts />
       <Sidebar />
-      <div className="relative flex flex-1 flex-col overflow-hidden bg-token-bg-primary">
+      <div className="relative flex flex-1 flex-col overflow-hidden bg-background">
         <AsyncErrorBoundary
           onError={(error) => {
             logError(error, {

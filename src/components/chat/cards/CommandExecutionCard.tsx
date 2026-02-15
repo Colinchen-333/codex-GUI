@@ -75,7 +75,7 @@ const ApprovalUI = memo(function ApprovalUI({
       {/* Explanation Mode */}
       {approvalMode === 'explain' && (
         <div className="animate-in fade-in duration-100">
-          <div className="mb-3 text-sm font-medium text-yellow-600 dark:text-yellow-400">
+          <div className="mb-3 text-sm font-medium text-status-warning">
             Command Explanation:
           </div>
           {isExplaining ? (
@@ -194,7 +194,7 @@ const ApprovalUI = memo(function ApprovalUI({
           {showAdvanced && proposedExecpolicyAmendment && (
             <div className="mt-2 flex gap-2 animate-in slide-in-from-top-2 duration-100">
               <button
-                className="flex-1 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-[11px] font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                className="flex-1 rounded-lg border border-status-success/30 bg-status-success-muted px-3 py-2 text-[11px] font-medium text-status-success hover:bg-status-success-muted/80 transition-colors"
                 onClick={() => onApprove('acceptWithExecpolicyAmendment')}
               >
                 Always Allow (Persistent)
@@ -353,7 +353,7 @@ export const CommandExecutionCard = memo(
         expandable
         defaultExpanded
         iconAnimated={content.isRunning}
-        iconActiveBgClass="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+        iconActiveBgClass="bg-status-info-muted text-status-info"
       >
         {/* Working directory */}
         <div className="text-[11px] text-text-3 font-mono mb-3">
@@ -381,7 +381,7 @@ export const CommandExecutionCard = memo(
             className="mb-0"
           >
             {content.isRunning && (
-              <span className="ml-2 text-[9px] normal-case text-blue-500 animate-pulse inline-block mb-1">
+              <span className="ml-2 text-[9px] normal-case text-status-info animate-pulse inline-block mb-1">
                 streaming...
               </span>
             )}
@@ -406,7 +406,7 @@ export const CommandExecutionCard = memo(
                 className="mt-1 text-[10px] text-text-3 hover:text-text-1 transition-colors flex items-center gap-1"
                 onClick={() => setShowFullOutput(true)}
               >
-                <span className="text-yellow-600 dark:text-yellow-400">...</span>+{omittedLines}{' '}
+                <span className="text-status-warning">...</span>+{omittedLines}{' '}
                 lines hidden
                 <span className="text-text-2 hover:underline">Show all</span>
               </button>
@@ -424,7 +424,7 @@ export const CommandExecutionCard = memo(
 
         {/* Stderr if different from output */}
         {content.stderr && content.stderr !== content.output && (
-          <CardSection title="Stderr" titleColor="text-red-600 dark:text-red-400" className="mt-3">
+          <CardSection title="Stderr" titleColor="text-status-error" className="mt-3">
             <CardOutput error maxHeight="max-h-40">
               {content.stderr}
             </CardOutput>

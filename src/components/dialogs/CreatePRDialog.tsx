@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { GitPullRequest, X, Check, ExternalLink, AlertTriangle, Copy, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { copyTextToClipboard } from '../../lib/clipboard'
 import { useProjectsStore } from '../../stores/projects'
 import { projectApi, type GitBranch } from '../../lib/api'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
@@ -89,14 +90,12 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
     }
   }, [selectedProject])
 
-  // Initialize form when dialog opens - this is an intentional side effect
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isOpen) {
       void initialize()
     }
   }, [isOpen, initialize])
-  /* eslint-enable react-hooks/set-state-in-effect */
+  // Initialize form when dialog opens.
 
   const handleCreatePR = async () => {
     if (!selectedProject?.path || !title.trim()) return
@@ -130,7 +129,8 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
   const handleCopyUrl = async () => {
     if (!prUrl) return
     try {
-      await navigator.clipboard.writeText(prUrl)
+      const ok = await copyTextToClipboard(prUrl)
+      if (!ok) throw new Error('Clipboard unavailable')
       setCopied(true)
       toast.success('URL copied')
       setTimeout(() => setCopied(false), 2000)

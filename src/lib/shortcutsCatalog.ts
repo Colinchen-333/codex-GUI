@@ -15,6 +15,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['Cmd', 'Shift', 'K'], description: 'Focus input' },
       { keys: ['Cmd', 'N'], description: 'New session' },
       { keys: ['Cmd', 'O'], description: 'Open project' },
+      { keys: ['Cmd', 'B'], description: 'Toggle sidebar' },
       { keys: ['Cmd', 'J'], description: 'Toggle terminal' },
       { keys: ['Cmd', 'L'], description: 'Clear session' },
       { keys: ['Cmd', '/'], description: 'Toggle review pane' },

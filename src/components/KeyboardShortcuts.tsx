@@ -223,6 +223,15 @@ export function KeyboardShortcuts() {
           dispatchAppEvent(APP_EVENTS.TOGGLE_TERMINAL)
         },
       },
+      // Toggle sidebar (Cmd/Ctrl + B) - aligns with common editor behavior
+      {
+        key: 'b',
+        meta: true,
+        description: 'Toggle sidebar',
+        handler: () => {
+          useAppStore.getState().toggleSidebarCollapsed()
+        },
+      },
       // Clear session (Cmd/Ctrl + L)
       {
         key: 'l',

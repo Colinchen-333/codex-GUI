@@ -17,6 +17,7 @@ import { serverApi, systemApi, type AppPaths, type LogTailResponse, type ServerS
 import { copyTextToClipboard } from '../lib/clipboard'
 import { logger, type LogEntry } from '../lib/logger'
 import { isTauriAvailable } from '../lib/tauri'
+import { buildDiagnosticsReportJson } from '../lib/diagnostics'
 import { useToast } from '../components/ui/Toast'
 
 type DebugSectionId = 'engine' | 'storage' | 'logs'
@@ -153,18 +154,10 @@ export function DebugPage() {
   }, [toast])
 
   const copyReport = useCallback(() => {
-    const report = {
-      app: { name: APP_NAME, version: APP_VERSION, mode: import.meta.env.MODE },
-      engine: serverStatus,
-      runtime: runtimeInfo,
-      paths: appPaths,
-      storage: storageInfo,
-      logs: logger.getLogs().slice(-400).map(formatLogLine),
-      fileLogs: fileLogs ? { file: fileLogs.file, truncated: fileLogs.truncated } : null,
-      capturedAt: new Date().toISOString(),
-    }
-    void copyToClipboard(JSON.stringify(report, null, 2), 'Copied diagnostics report')
-  }, [appPaths, copyToClipboard, fileLogs, runtimeInfo, serverStatus, storageInfo])
+    void buildDiagnosticsReportJson({ includeFileLogs: !!fileLogs })
+      .then((json) => copyToClipboard(json, 'Copied diagnostics report'))
+      .catch((e) => toast.error('Failed to build diagnostics report', { message: String(e) }))
+  }, [copyToClipboard, fileLogs, toast])
 
   const loadFileLogs = useCallback(async () => {
     if (!isTauriAvailable()) return

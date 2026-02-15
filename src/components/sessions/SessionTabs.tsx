@@ -125,7 +125,7 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
 
   const activeSession = sessions.find(s => s.sessionId === focusedThreadId)
   const activeThreadState = focusedThreadId ? threads[focusedThreadId] : null
-  const sessionTitle = activeSession?.title || activeThreadState?.thread?.cwd?.split('/').pop() || 'New thread'
+  const sessionTitle = activeSession?.title || activeThreadState?.thread?.cwd?.split('/').pop() || 'New session'
   const activeProjectName = useMemo(() => {
     const cwd = activeThreadState?.thread?.cwd
     if (!cwd) return null

@@ -737,8 +737,21 @@ export function DiffPage() {
               className="w-full rounded-xl border border-stroke/10 bg-surface-solid px-3 py-2 text-xs text-text-2 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none"
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setFilterQuery('')
+                  ;(e.currentTarget as HTMLInputElement).blur()
+                }
+              }}
               ref={filterInputRef}
             />
+            <div className="mt-2 text-[11px] text-text-3">
+              Hotkeys:{' '}
+              <span className="font-mono">/</span> filter, <span className="font-mono">j</span>/<span className="font-mono">k</span> navigate,{' '}
+              <span className="font-mono">s</span> stage, <span className="font-mono">o</span> open, <span className="font-mono">c</span> copy,{' '}
+              <span className="font-mono">r</span> refresh
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
 	            {flattened.map(({ node, depth }) => {

@@ -26,6 +26,11 @@ export interface AppState {
   // Escape pending state (for double-escape interrupt like CLI)
   escapePending: boolean
   setEscapePending: (pending: boolean) => void
+
+  // Cross-component scroll requests (handled by ChatView)
+  scrollToItemId: string | null
+  setScrollToItemId: (itemId: string) => void
+  clearScrollToItemId: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -53,4 +58,9 @@ export const useAppStore = create<AppState>((set) => ({
   // Escape pending state (for double-escape interrupt like CLI)
   escapePending: false,
   setEscapePending: (pending) => set({ escapePending: pending }),
+
+  // Cross-component scroll requests (handled by ChatView)
+  scrollToItemId: null,
+  setScrollToItemId: (itemId) => set({ scrollToItemId: itemId }),
+  clearScrollToItemId: () => set({ scrollToItemId: null }),
 }))

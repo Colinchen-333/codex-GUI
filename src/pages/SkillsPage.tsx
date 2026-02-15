@@ -103,7 +103,7 @@ export function SkillsPage() {
             )}
 
             {errors && (
-              <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-600">
+              <div className="rounded-lg border border-status-error/30 bg-status-error-muted p-4 text-xs text-status-error">
                 {errors}
               </div>
             )}

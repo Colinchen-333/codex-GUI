@@ -218,7 +218,7 @@ export const FileChangeCard = memo(
         status={content.needsApproval ? 'pending' : undefined}
         borderColor={
           content.needsApproval
-            ? 'border-l-4 border-l-blue-500 border-y-border/50 border-r-border/50'
+            ? 'border-l-4 border-l-status-warning border-y-stroke/20 border-r-stroke/20'
             : undefined
         }
         headerActions={headerActions}
@@ -228,7 +228,7 @@ export const FileChangeCard = memo(
         contentPaddingClass="p-0"
       >
         {/* Diff content */}
-        <div className="divide-y divide-border/30">
+        <div className="divide-y divide-stroke/10">
           {fileDiffs.map((diff, i) => (
             <DiffView
               key={i}

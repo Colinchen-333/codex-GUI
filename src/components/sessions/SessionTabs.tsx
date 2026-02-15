@@ -1,10 +1,12 @@
 import { useState, memo, useMemo, useCallback, useRef, useEffect } from 'react'
 import { X, Plus, MessageSquare, Loader2, MoreHorizontal, Play, ChevronDown, GitCommit, PanelRightClose, PanelRightOpen, SquareTerminal, FolderOpen, Code2, Square } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { useAppStore } from '../../stores/app'
 import { useThreadStore, type SingleThreadState } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { CloseSessionDialog } from './CloseSessionDialog'
+import { PendingApprovalDotButton } from './PendingApprovalDotButton'
 import { TaskProgressCompact } from '../chat/TaskProgress'
 import { Dropdown } from '../ui/Dropdown'
 import type { SessionStatus } from '../../lib/api'
@@ -312,6 +314,7 @@ const SessionTab = memo(function SessionTab({
   sessionStatus
 }: SessionTabProps) {
   const { thread, turnStatus, pendingApprovals } = threadState
+  const setScrollToItemId = useAppStore((state) => state.setScrollToItemId)
 
   const project = useProjectsStore((state) =>
     state.projects.find(p => thread.cwd?.startsWith(p.path))
@@ -339,6 +342,24 @@ const SessionTab = memo(function SessionTab({
   const handleClick = useCallback(() => {
     onClick()
   }, [onClick])
+
+  const nextPendingApproval = useMemo(() => {
+    if (pendingApprovals.length === 0) return null
+    let earliest = pendingApprovals[0]
+    for (let i = 1; i < pendingApprovals.length; i++) {
+      const candidate = pendingApprovals[i]
+      if (candidate.createdAt < earliest.createdAt) {
+        earliest = candidate
+      }
+    }
+    return earliest
+  }, [pendingApprovals])
+
+  const handleJumpToPendingApproval = useCallback(() => {
+    if (!nextPendingApproval) return
+    setScrollToItemId(nextPendingApproval.itemId)
+    handleClick()
+  }, [nextPendingApproval, setScrollToItemId, handleClick])
 
   const handleClose = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -374,10 +395,11 @@ const SessionTab = memo(function SessionTab({
         {isRunning ? (
           <Loader2 size={12} className="animate-spin text-status-info" />
         ) : hasPendingApprovals ? (
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-warning opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-status-warning" />
-          </span>
+          <PendingApprovalDotButton
+            count={pendingApprovals.length}
+            disabled={isLoading}
+            onJump={handleJumpToPendingApproval}
+          />
         ) : (
           <MessageSquare size={12} />
         )}
@@ -418,10 +440,22 @@ const SessionTab = memo(function SessionTab({
     prevProps.isSwitching === nextProps.isSwitching &&
     prevProps.isGloballyLoading === nextProps.isGloballyLoading &&
     prevProps.threadState.turnStatus === nextProps.threadState.turnStatus &&
-    prevProps.threadState.pendingApprovals.length === nextProps.threadState.pendingApprovals.length &&
+    getPendingApprovalsKey(prevProps.threadState.pendingApprovals) === getPendingApprovalsKey(nextProps.threadState.pendingApprovals) &&
     prevProps.threadState.thread.cwd === nextProps.threadState.thread.cwd &&
     prevProps.sessionTitle === nextProps.sessionTitle &&
     prevProps.sessionTasksJson === nextProps.sessionTasksJson &&
     prevProps.sessionStatus === nextProps.sessionStatus
   )
 })
+
+function getPendingApprovalsKey(approvals: { createdAt: number, itemId: string }[]) {
+  if (approvals.length === 0) return '0'
+  let earliest = approvals[0]
+  for (let i = 1; i < approvals.length; i++) {
+    const candidate = approvals[i]
+    if (candidate.createdAt < earliest.createdAt) {
+      earliest = candidate
+    }
+  }
+  return `${approvals.length}:${earliest.createdAt}:${earliest.itemId}`
+}

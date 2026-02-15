@@ -10,6 +10,16 @@ interface KeyboardShortcutsDialogProps {
   onClose: () => void
 }
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+
+function normalizeKeyLabel(key: string): string {
+  if (isMac) return key
+  if (key === 'Cmd' || key === '⌘') return 'Ctrl'
+  if (key === '⌥') return 'Alt'
+  if (key === '⇧') return 'Shift'
+  return key
+}
+
 function Keycap({ children }: { children: string }) {
   return (
     <kbd
@@ -19,7 +29,7 @@ function Keycap({ children }: { children: string }) {
         'text-[11px] font-mono font-medium text-text-1'
       )}
     >
-      {children}
+      {normalizeKeyLabel(children)}
     </kbd>
   )
 }

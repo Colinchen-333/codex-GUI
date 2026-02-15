@@ -12,7 +12,7 @@
  * - Business logic is extracted to useFileChangeApproval hook
  * - UI rendering logic is kept in this component
  */
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, FileCode } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { copyTextToClipboard } from '../../../lib/clipboard'
@@ -23,6 +23,7 @@ import { formatTimestamp, shallowContentEqual } from '../utils'
 import { useFileChangeApproval } from '../../../hooks/useFileChangeApproval'
 import { IconButton } from '../../ui/IconButton'
 import { useToast } from '../../ui/useToast'
+import { useThreadStore, selectFocusedThread, type ThreadState } from '../../../stores/thread'
 import type { MessageItemProps, FileChangeContentType } from '../types'
 
 // -----------------------------------------------------------------------------
@@ -32,8 +33,13 @@ import type { MessageItemProps, FileChangeContentType } from '../types'
 interface ApprovalActionsProps {
   reason?: string
   isApplying: boolean
-  onApply: (decision: 'accept' | 'acceptForSession') => void
-  onDecline: () => void
+  isDeclining: boolean
+  onApply: (decision: 'accept' | 'acceptForSession') => void | Promise<void>
+  onDecline: () => void | Promise<void>
+  onExplain: () => void | Promise<void>
+  isExplaining: boolean
+  explanation: string
+  onSubmitFeedback: (feedback: string) => void | Promise<void>
 }
 
 /**
@@ -42,34 +48,199 @@ interface ApprovalActionsProps {
 const ApprovalActions = memo(function ApprovalActions({
   reason,
   isApplying,
+  isDeclining,
   onApply,
   onDecline,
+  onExplain,
+  isExplaining,
+  explanation,
+  onSubmitFeedback,
 }: ApprovalActionsProps) {
+  const [approvalMode, setApprovalMode] = useState<'select' | 'explain' | 'feedback'>('select')
+  const [feedbackText, setFeedbackText] = useState('')
+  const feedbackInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (approvalMode !== 'feedback') return
+    feedbackInputRef.current?.focus()
+  }, [approvalMode])
+
+  const isEditableTarget = (target: EventTarget | null): boolean => {
+    if (!target) return false
+    if (!(target instanceof HTMLElement)) return false
+    const tag = target.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+    return target.isContentEditable
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isEditableTarget(e.target)) return
+    const key = e.key.toLowerCase()
+
+    if (key === 'escape' && approvalMode !== 'select') {
+      e.preventDefault()
+      setApprovalMode('select')
+      return
+    }
+
+    if (approvalMode !== 'select') return
+
+    if (key === 'y') {
+      e.preventDefault()
+      if (isApplying || isDeclining) return
+      void onApply('accept')
+      return
+    }
+    if (key === 'a') {
+      e.preventDefault()
+      if (isApplying || isDeclining) return
+      void onApply('acceptForSession')
+      return
+    }
+    if (key === 'n') {
+      e.preventDefault()
+      if (isApplying || isDeclining) return
+      void onDecline()
+      return
+    }
+    if (key === 'x') {
+      e.preventDefault()
+      setApprovalMode('explain')
+      void onExplain()
+      return
+    }
+    if (key === 'e') {
+      e.preventDefault()
+      setApprovalMode('feedback')
+      return
+    }
+  }
+
+  const handleFeedbackSubmit = async () => {
+    if (isApplying || isDeclining) return
+    const text = feedbackText.trim()
+    try {
+      await onDecline()
+      if (text) await onSubmitFeedback(text)
+    } finally {
+      setFeedbackText('')
+      setApprovalMode('select')
+    }
+  }
+
   return (
-    <div>
+    <div
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      aria-label="File change approval options"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+    >
       {reason && <div className="mb-3 text-xs text-text-3">Reason: {reason}</div>}
-      <CardActions>
-        <button
-          className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)] disabled:opacity-50"
-          onClick={() => onApply('accept')}
-          disabled={isApplying}
-        >
-          {isApplying ? 'Applying...' : 'Apply Changes'}
-        </button>
-        <button
-          className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors disabled:opacity-50"
-          onClick={() => onApply('acceptForSession')}
-          disabled={isApplying}
-        >
-          Allow for Session
-        </button>
-        <button
-          className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors"
-          onClick={onDecline}
-        >
-          Decline
-        </button>
-      </CardActions>
+
+      {approvalMode === 'explain' && (
+        <div className="animate-in fade-in duration-100">
+          <div className="mb-3 text-sm font-medium text-status-warning">Change Explanation:</div>
+          {isExplaining ? (
+            <div className="text-sm text-text-3 italic">Generating explanation...</div>
+          ) : (
+            <div className="text-sm text-text-3">{explanation}</div>
+          )}
+          <button
+            className="mt-3 text-xs text-text-3 hover:text-text-1 transition-colors"
+            onClick={() => setApprovalMode('select')}
+          >
+            &larr; Back to options
+          </button>
+        </div>
+      )}
+
+      {approvalMode === 'feedback' && (
+        <div className="animate-in fade-in duration-100">
+          <div className="mb-2 text-sm text-text-2">Give the model feedback (Enter to submit):</div>
+          <div className="flex gap-2">
+            <input
+              ref={feedbackInputRef}
+              type="text"
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void handleFeedbackSubmit()}
+              placeholder="Explain why you’re declining or what to change…"
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
+              autoFocus
+              disabled={isApplying || isDeclining}
+            />
+            <button
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-1)]"
+              onClick={() => void handleFeedbackSubmit()}
+              disabled={isApplying || isDeclining}
+            >
+              Submit
+            </button>
+          </div>
+          <div className="mt-2 text-xs text-text-3">Default: Decline and continue without feedback</div>
+          <button
+            className="mt-2 text-xs text-text-3 hover:text-text-1 transition-colors"
+            onClick={() => setApprovalMode('select')}
+          >
+            &larr; Back to options
+          </button>
+        </div>
+      )}
+
+      {approvalMode === 'select' && (
+        <>
+          <CardActions>
+            <button
+              className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)] disabled:opacity-50"
+              onClick={() => void onApply('accept')}
+              disabled={isApplying || isDeclining}
+              title="Keyboard: Y"
+            >
+              {isApplying ? 'Applying...' : 'Apply Changes'} (y)
+            </button>
+            <button
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors disabled:opacity-50"
+              onClick={() => void onApply('acceptForSession')}
+              disabled={isApplying || isDeclining}
+              title="Keyboard: A"
+            >
+              Allow for Session (a)
+            </button>
+            <button
+              className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors disabled:opacity-50"
+              onClick={() => void onDecline()}
+              disabled={isApplying || isDeclining}
+              title="Keyboard: N"
+            >
+              Decline (n)
+            </button>
+          </CardActions>
+
+          <div className="mt-2 flex gap-2">
+            <button
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-[11px] font-medium text-text-2 hover:bg-surface-hover/[0.08] transition-colors"
+              onClick={() => {
+                setApprovalMode('explain')
+                void onExplain()
+              }}
+              title="Keyboard: X"
+              disabled={isApplying || isDeclining}
+            >
+              Explain (x)
+            </button>
+            <button
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-[11px] font-medium text-text-2 hover:bg-surface-hover/[0.08] transition-colors"
+              onClick={() => {
+                setApprovalMode('feedback')
+              }}
+              title="Keyboard: E"
+              disabled={isApplying || isDeclining}
+            >
+              Edit/Feedback (e)
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 })
@@ -129,9 +300,13 @@ export const FileChangeCard = memo(
     const content = item.content as FileChangeContentType
     const [expandedFiles, setExpandedFiles] = useState<Set<number>>(new Set())
     const { toast } = useToast()
+    const sendMessage = useThreadStore((state: ThreadState) => state.sendMessage)
+    const activeThread = useThreadStore(selectFocusedThread)?.thread ?? null
+    const [explanation, setExplanation] = useState('')
+    const [isExplaining, setIsExplaining] = useState(false)
 
     // Use the file change approval hook for all business logic
-    const { isApplying, isReverting, handleApplyChanges, handleRevert, handleDecline } =
+    const { isApplying, isReverting, isDeclining, handleApplyChanges, handleRevert, handleDecline } =
       useFileChangeApproval({
         itemId: item.id,
         content,
@@ -211,6 +386,30 @@ export const FileChangeCard = memo(
       else toast.error('Copy failed')
     }
 
+    const handleExplain = async () => {
+      if (!activeThread || isExplaining) return
+      setIsExplaining(true)
+      setExplanation('')
+      try {
+        const snippet = patchText.length > 5000 ? `${patchText.slice(0, 5000)}\n\n... (truncated)` : patchText
+        await sendMessage(
+          `Please explain what these proposed changes do, and call out any potential risks.\n\nFiles:\n${summaryText}\n\nDiff:\n\`\`\`diff\n${snippet}\n\`\`\``
+        )
+        setExplanation('Explanation request sent. Check the response above.')
+      } catch {
+        setExplanation('Unable to generate explanation.')
+      } finally {
+        setIsExplaining(false)
+      }
+    }
+
+    const handleSubmitFeedback = async (feedback: string) => {
+      if (!activeThread) return
+      await sendMessage(
+        `Feedback on the proposed changes:\n\n${feedback}`
+      )
+    }
+
     // Build header actions with file stats and timestamp
     const headerActions = (
       <div className="flex items-center gap-2">
@@ -282,8 +481,13 @@ export const FileChangeCard = memo(
       <ApprovalActions
         reason={content.reason}
         isApplying={isApplying}
+        isDeclining={isDeclining}
         onApply={handleApplyChanges}
         onDecline={handleDecline}
+        onExplain={handleExplain}
+        isExplaining={isExplaining}
+        explanation={explanation}
+        onSubmitFeedback={handleSubmitFeedback}
       />
     ) : undefined
 

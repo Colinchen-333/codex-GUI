@@ -14,6 +14,7 @@ import { Button } from '../components/ui/Button'
 import { cn } from '../lib/utils'
 import { APP_NAME, APP_VERSION } from '../lib/appMeta'
 import { serverApi, systemApi, type AppPaths, type LogTailResponse, type ServerStatus } from '../lib/api'
+import { copyTextToClipboard } from '../lib/clipboard'
 import { logger, type LogEntry } from '../lib/logger'
 import { isTauriAvailable } from '../lib/tauri'
 import { useToast } from '../components/ui/Toast'
@@ -140,20 +141,12 @@ export function DebugPage() {
 
   const copyToClipboard = useCallback(async (text: string, successTitle: string) => {
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
+      const ok = await copyTextToClipboard(text)
+      if (ok) {
+        toast.success(successTitle)
       } else {
-        const el = document.createElement('textarea')
-        el.value = text
-        el.setAttribute('readonly', 'true')
-        el.style.position = 'fixed'
-        el.style.left = '-9999px'
-        document.body.appendChild(el)
-        el.select()
-        document.execCommand('copy')
-        document.body.removeChild(el)
+        toast.error('Copy failed')
       }
-      toast.success(successTitle)
     } catch (e) {
       toast.error('Copy failed', { message: String(e) })
     }

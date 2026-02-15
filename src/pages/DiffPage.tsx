@@ -28,6 +28,7 @@ import { openInVSCode } from '../lib/hostActions'
 import { isTauriAvailable } from '../lib/tauri'
 import { dispatchAppEvent, APP_EVENTS } from '../lib/appEvents'
 import { IconButton } from '../components/ui/IconButton'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 
 type LoadState = 'idle' | 'loading' | 'error' | 'not-git' | 'empty'
 type DiffMode = 'unstaged' | 'staged'
@@ -198,6 +199,7 @@ export function DiffPage() {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set())
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const filterInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchDiff = useCallback(async () => {
     if (!selectedProject) {
@@ -392,6 +394,52 @@ export function DiffPage() {
     if (selectedPath && visibleDiffs.some((diff) => diff.path === selectedPath)) return selectedPath
     return visibleDiffs[0]?.path ?? null
   }, [selectedPath, visibleDiffs])
+
+  const focusFilter = useCallback(() => {
+    filterInputRef.current?.focus()
+    filterInputRef.current?.select()
+  }, [])
+
+  const copySelectedPath = useCallback(async () => {
+    if (!resolvedSelectedPath) {
+      showToast('No file selected', 'info')
+      return
+    }
+    await copyPath(resolvedSelectedPath)
+  }, [copyPath, resolvedSelectedPath, showToast])
+
+  const openSelected = useCallback(async () => {
+    if (resolvedSelectedPath) {
+      await handleOpenFileInVSCode(resolvedSelectedPath)
+      return
+    }
+    await handleOpenInVSCode()
+  }, [handleOpenFileInVSCode, handleOpenInVSCode, resolvedSelectedPath])
+
+  const toggleStageSelected = useCallback(async () => {
+    if (!resolvedSelectedPath) {
+      showToast('No file selected', 'info')
+      return
+    }
+    await stageOrUnstageFile(resolvedSelectedPath)
+  }, [resolvedSelectedPath, showToast, stageOrUnstageFile])
+
+  const refresh = useCallback(() => {
+    void fetchDiff()
+  }, [fetchDiff])
+
+  useKeyboardShortcuts(
+    useMemo(
+      () => [
+        { key: '/', description: 'Focus filter', handler: focusFilter },
+        { key: 'r', description: 'Refresh diff', handler: refresh },
+        { key: 'c', description: 'Copy selected path', handler: () => void copySelectedPath() },
+        { key: 'o', description: 'Open selected file in VS Code', handler: () => void openSelected() },
+        { key: 's', description: 'Stage/unstage selected file', handler: () => void toggleStageSelected() },
+      ],
+      [copySelectedPath, focusFilter, openSelected, refresh, toggleStageSelected]
+    )
+  )
 
   const expandedFromSelected = useMemo(() => {
     if (!resolvedSelectedPath) return new Set<string>()
@@ -650,6 +698,7 @@ export function DiffPage() {
               className="w-full rounded-xl border border-stroke/10 bg-surface-solid px-3 py-2 text-xs text-text-2 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none"
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
+              ref={filterInputRef}
             />
           </div>
           <div className="flex-1 overflow-y-auto p-2">

@@ -178,7 +178,7 @@ export const GitInfoIndicator = memo(function GitInfoIndicator({
   // Error state
   if (error) {
     return (
-      <div className="flex items-center gap-1.5 text-rose-400/80 cursor-help" title={`Git Error: ${error}`}>
+      <div className="flex items-center gap-1.5 text-status-error/80 cursor-help" title={`Git Error: ${error}`}>
         <AlertCircle size={12} />
         <span className="text-xs max-w-[80px] truncate">Git Error</span>
       </div>

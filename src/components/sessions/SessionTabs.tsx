@@ -372,11 +372,11 @@ const SessionTab = memo(function SessionTab({
       {/* Status icon */}
       <span className={cn('flex-shrink-0', isLoading && 'opacity-40')}>
         {isRunning ? (
-          <Loader2 size={12} className="animate-spin text-blue-500" />
+          <Loader2 size={12} className="animate-spin text-status-info" />
         ) : hasPendingApprovals ? (
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-warning opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-status-warning" />
           </span>
         ) : (
           <MessageSquare size={12} />

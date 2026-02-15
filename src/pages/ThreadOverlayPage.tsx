@@ -10,18 +10,18 @@ export function ThreadOverlayPage() {
       <div className="h-full flex flex-col">
         <div className="draggable h-toolbar-sm relative flex items-center px-3 border-b border-stroke/20">
           <div className="text-text-3/25 pointer-events-none absolute inset-x-0 flex justify-center text-base font-medium">
-            Thread Overlay
+            Session Overlay (Placeholder)
           </div>
           
           <div className="max-w-[70%] truncate text-sm font-medium text-text-1">
-            {conversationId ? `Thread ${conversationId.slice(0, 8)}...` : 'Thread'}
+            {conversationId ? `Session ${conversationId.slice(0, 8)}...` : 'Session'}
           </div>
 
           <div className="ml-auto flex items-center gap-0">
             <IconButton
               variant="ghost"
               size="sm"
-              aria-label="Pin thread"
+              aria-label="Pin session"
             >
               <Pin size={14} />
             </IconButton>
@@ -46,10 +46,10 @@ export function ThreadOverlayPage() {
           <div className="mx-auto w-full max-w-[var(--thread-composer-max-width)]">
             <div className="rounded-xl border border-stroke/20 bg-surface-solid p-6 text-center">
               <p className="text-sm text-text-3">
-                Thread content will be displayed here.
+                Placeholder: session overlay is not implemented yet.
               </p>
               <p className="mt-2 text-xs text-text-3/70">
-                Conversation ID: {conversationId ?? 'None'}
+                Session ID: {conversationId ?? 'None'}
               </p>
             </div>
           </div>
@@ -59,8 +59,9 @@ export function ThreadOverlayPage() {
           <div className="mx-auto w-full max-w-[var(--thread-composer-max-width)]">
             <input
               type="text"
-              placeholder="Type a message..."
-              aria-label="Message input"
+              placeholder="Message input (disabled)"
+              aria-label="Message input (disabled)"
+              disabled
               className="text-text-1 border-stroke rounded-xl border px-3 py-2 text-base shadow-sm outline-none w-full bg-surface-solid"
             />
           </div>

@@ -103,7 +103,7 @@ export const GitSettings = memo(function GitSettings() {
       {/* Branch Naming */}
       <SettingsSection
         title="Branch Naming"
-        description="Configure how branches are named for new threads."
+        description="Configure how branches are named for new sessions."
       >
         <SettingsCard>
           <SettingsList>

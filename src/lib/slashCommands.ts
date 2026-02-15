@@ -109,7 +109,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     name: 'agent',
-    description: 'Switch the active agent thread',
+    description: 'Switch the active agent session',
     category: 'workflow',
     icon: 'bot',
     experimental: true,
@@ -134,7 +134,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     name: 'rename',
-    description: 'Rename the current thread',
+    description: 'Rename the current session',
     category: 'general',
     icon: 'pencil',
   },

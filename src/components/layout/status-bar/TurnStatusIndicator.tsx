@@ -8,6 +8,7 @@ import { memo, useEffect, useState, useRef } from 'react'
 import { Clock, Zap } from 'lucide-react'
 import { useThreadStore } from '../../../stores/thread'
 import { selectTurnStatus, selectTurnTiming, selectPendingApprovals } from '../../../stores/thread/selectors'
+import { useAppStore } from '../../../stores/app'
 
 // Format elapsed time compactly like CLI: "0s", "1m 30s", "1h 05m 30s"
 function formatElapsedCompact(ms: number): string {
@@ -25,6 +26,7 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
   const turnStatus = useThreadStore(selectTurnStatus)
   const turnTiming = useThreadStore(selectTurnTiming)
   const pendingApprovals = useThreadStore(selectPendingApprovals)
+  const setScrollToItemId = useAppStore((s) => s.setScrollToItemId)
 
   const [elapsedMs, setElapsedMs] = useState(0)
   const [tokenRate, setTokenRate] = useState(0)
@@ -96,9 +98,15 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
 
       {/* Pending approvals badge */}
       {pendingApprovals.length > 0 && (
-        <span className="flex items-center gap-1 rounded-md bg-surface-hover/[0.08] px-1.5 py-0.5 text-xs font-semibold text-text-2">
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded-md bg-surface-hover/[0.08] px-1.5 py-0.5 text-xs font-semibold text-text-2 hover:bg-surface-hover/[0.12] transition-colors"
+          onClick={() => setScrollToItemId(pendingApprovals[0].itemId)}
+          title="Jump to pending approval"
+          aria-label="Jump to pending approval"
+        >
           {pendingApprovals.length} pending
-        </span>
+        </button>
       )}
 
       {/* Token rate */}

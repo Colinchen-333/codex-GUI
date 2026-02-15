@@ -13,10 +13,10 @@ const variantStyles: Record<BadgeVariant, string> = {
   default: 'bg-primary/15 text-primary border-transparent',
   secondary: 'bg-surface-solid text-text-2 border-stroke/20',
   outline: 'bg-transparent text-text-2 border-stroke/30',
-  success: 'bg-green-500/15 text-green-500 border-transparent',
-  warning: 'bg-yellow-500/15 text-yellow-600 border-transparent',
-  error: 'bg-red-500/15 text-red-500 border-transparent',
-  purple: 'bg-purple-500/15 text-purple-500 border-transparent',
+  success: 'bg-status-success-muted text-status-success border-transparent',
+  warning: 'bg-status-warning-muted text-status-warning border-transparent',
+  error: 'bg-status-error-muted text-status-error border-transparent',
+  purple: 'bg-status-info-muted text-status-info border-transparent',
 }
 
 const sizeStyles: Record<BadgeSize, string> = {
@@ -55,10 +55,10 @@ interface TagProps extends HTMLAttributes<HTMLSpanElement> {
 const tagVariantStyles: Record<TagVariant, string> = {
   default: 'bg-surface-solid text-text-2 border-stroke/20',
   primary: 'bg-primary/10 text-primary border-primary/20',
-  purple: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  green: 'bg-green-500/10 text-green-500 border-green-500/20',
-  yellow: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-  red: 'bg-red-500/10 text-red-500 border-red-500/20',
+  purple: 'bg-status-info-muted text-status-info border-status-info/30',
+  green: 'bg-status-success-muted text-status-success border-status-success/30',
+  yellow: 'bg-status-warning-muted text-status-warning border-status-warning/30',
+  red: 'bg-status-error-muted text-status-error border-status-error/30',
 }
 
 export const Tag = forwardRef<HTMLSpanElement, TagProps>(

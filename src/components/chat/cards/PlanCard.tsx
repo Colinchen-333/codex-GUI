@@ -23,7 +23,7 @@ export function PlanCard({ item }: MessageItemProps) {
       case 'in_progress':
         return <Loader2 size={14} className="text-text-2 animate-spin" />
       case 'failed':
-        return <XCircle size={14} className="text-red-500" />
+        return <XCircle size={14} className="text-status-error" />
       default:
         return <Circle size={14} className="text-text-3/70" />
     }
@@ -92,7 +92,7 @@ export function PlanCard({ item }: MessageItemProps) {
                     'text-sm leading-relaxed text-text-1',
                     step.status === 'completed' && 'line-through text-text-3',
                     step.status === 'in_progress' && 'text-text-1 font-medium',
-                    step.status === 'failed' && 'text-red-700 dark:text-red-300',
+                    step.status === 'failed' && 'text-status-error',
                     step.status === 'pending' && 'text-text-2'
                   )}
                 >
@@ -107,8 +107,8 @@ export function PlanCard({ item }: MessageItemProps) {
           <div className="flex items-center justify-between border-t border-stroke/10 px-5 py-2.5 text-[13px]">
             <div className="flex items-center gap-2 text-text-2">
               <span>{diffSummary.filesChanged} files changed</span>
-              <span className="text-emerald-600">+{diffSummary.additions}</span>
-              <span className="text-red-500">-{diffSummary.deletions}</span>
+              <span className="text-status-success">+{diffSummary.additions}</span>
+              <span className="text-status-error">-{diffSummary.deletions}</span>
             </div>
             <Link
               to="/diff"

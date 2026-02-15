@@ -28,6 +28,8 @@ import { ImportCodexSessionDialog } from '../LazyComponents'
 import type { CodexSessionSummary } from '../../lib/api'
 import { formatSessionTime } from '../../lib/utils'
 
+type OpenProjectSettingsEventDetail = { projectId?: string | null }
+
 function InboxBadge() {
   const unreadCount = useAutomationsStore((state) =>
     state.inboxItems.filter((item) => !item.isRead).length
@@ -60,6 +62,27 @@ export function Sidebar() {
   const settings = useSettingsStore((state) => state.settings)
   const { showToast } = useToast()
   const dialogs = useSidebarDialogs()
+  const handleOpenProjectSettings = dialogs.handleOpenProjectSettings
+
+  useEffect(() => {
+    const onOpenImport = () => setImportDialogOpen(true)
+    window.addEventListener('codex:open-import-codex-sessions', onOpenImport)
+    return () => window.removeEventListener('codex:open-import-codex-sessions', onOpenImport)
+  }, [])
+
+  useEffect(() => {
+    const onOpenProjectSettings = (event: Event) => {
+      const custom = event as CustomEvent<OpenProjectSettingsEventDetail>
+      const projectId = custom.detail?.projectId ?? selectedProjectId
+      if (!projectId) {
+        showToast('No project selected', 'error')
+        return
+      }
+      handleOpenProjectSettings(projectId)
+    }
+    window.addEventListener('codex:open-project-settings', onOpenProjectSettings)
+    return () => window.removeEventListener('codex:open-project-settings', onOpenProjectSettings)
+  }, [handleOpenProjectSettings, selectedProjectId, showToast])
 
   useEffect(() => {
     if (selectedProjectId) void fetchSessions(selectedProjectId)
@@ -219,13 +242,13 @@ export function Sidebar() {
           onClick={handleNewSession}
           className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
         >
-          <MessageSquarePlus
-            size={19}
-            className="text-text-2 transition-colors group-hover:text-text-1"
-            strokeWidth={1.8}
-          />
-          <span className="text-[16px] tracking-tight">New thread</span>
-        </button>
+            <MessageSquarePlus
+              size={19}
+              className="text-text-2 transition-colors group-hover:text-text-1"
+              strokeWidth={1.8}
+            />
+            <span className="text-[16px] tracking-tight">New session</span>
+          </button>
         <button
           type="button"
           onClick={() => navigate('/inbox?automationMode=create')}
@@ -272,11 +295,11 @@ export function Sidebar() {
         </button>
       </nav>
 
-      <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
-        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
-          Threads
-        </span>
-        <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
+        <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
+          <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
+            Sessions
+          </span>
+          <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
           <IconButton
             onClick={handleAddProject}
             size="sm"

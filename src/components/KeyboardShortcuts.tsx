@@ -244,16 +244,16 @@ export function KeyboardShortcuts() {
           dispatchAppEvent(APP_EVENTS.TOGGLE_TERMINAL)
         },
       },
-      // Clear thread (Cmd/Ctrl + L)
+      // Clear session (Cmd/Ctrl + L)
       {
         key: 'l',
         meta: true,
-        description: 'Clear thread',
+        description: 'Clear session',
         handler: () => {
           const { focusedThreadId, clearThread } = useThreadStore.getState()
           if (focusedThreadId) {
             clearThread()
-            showToast('Thread cleared', 'info')
+            showToast('Session cleared', 'info')
           }
           useAppStore.getState().triggerFocusInput()
         },

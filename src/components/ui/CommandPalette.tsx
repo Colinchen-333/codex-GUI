@@ -252,7 +252,7 @@ export function CommandPalette({
     },
     {
       id: 'clear-thread',
-      label: 'Clear Thread',
+      label: 'Clear Session',
       icon: <TextCursorInput size={16} />,
       shortcut: ['⌘', 'L'],
       action: () => {

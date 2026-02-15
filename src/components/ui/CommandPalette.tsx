@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Command } from 'cmdk'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -6,6 +6,7 @@ import {
   Settings,
   MessageSquare,
   GitBranch,
+  History,
   Inbox,
   Sparkles,
   Plus,
@@ -25,6 +26,7 @@ import { useAppStore } from '../../stores/app'
 import { useThreadStore } from '../../stores/thread'
 import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
 import { useToast } from './useToast'
+import { useSessionsStore } from '../../stores/sessions'
 
 interface CommandItem {
   id: string
@@ -56,6 +58,16 @@ export function CommandPalette({
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
+  const sessions = useSessionsStore((state) => state.sessions)
+  const threads = useThreadStore((state) => state.threads)
+
+  const sessionTitleById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const session of sessions) {
+      if (session.title) map.set(session.sessionId, session.title)
+    }
+    return map
+  }, [sessions])
 
   const handleClose = useCallback(() => {
     setSearch('')
@@ -75,6 +87,13 @@ export function CommandPalette({
       shortcut: ['⌘', 'N'],
       action: () => onNewThread?.(),
       group: 'Actions',
+    },
+    {
+      id: 'open-snapshots',
+      label: 'Open Snapshots',
+      icon: <History size={16} />,
+      action: () => useAppStore.getState().setSnapshotsOpen(true),
+      group: 'Navigation',
     },
     {
       id: 'go-home',
@@ -182,6 +201,17 @@ export function CommandPalette({
       },
       group: 'Approvals',
     },
+    ...Object.values(threads).slice(0, 12).map((threadState) => {
+      const threadId = threadState.thread.id
+      const title = sessionTitleById.get(threadId) || threadState.thread.cwd?.split('/').pop() || threadId.slice(0, 8)
+      return {
+        id: `switch-session:${threadId}`,
+        label: `Switch to: ${title}`,
+        icon: <MessageSquare size={16} />,
+        action: () => useThreadStore.getState().switchThread(threadId),
+        group: 'Sessions',
+      }
+    }),
     {
       id: 'keyboard-shortcuts',
       label: 'Keyboard Shortcuts',

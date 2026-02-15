@@ -7,6 +7,7 @@ import { useThreadStore, type SingleThreadState } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { openInTerminal, openInVSCode, revealInFinder } from '../../lib/hostActions'
+import { APP_EVENTS } from '../../lib/appEvents'
 import { CloseSessionDialog } from './CloseSessionDialog'
 import { PendingApprovalDotButton } from './PendingApprovalDotButton'
 import { ExportDialog } from './ExportDialog'
@@ -58,6 +59,20 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
       }
     }
   }, [])
+
+  useEffect(() => {
+    const handleOpenExport = () => {
+      const threadId = useThreadStore.getState().focusedThreadId
+      if (!threadId) {
+        toast.error('No active session')
+        return
+      }
+      setThreadToExport(threadId)
+      setExportDialogOpen(true)
+    }
+    window.addEventListener(APP_EVENTS.OPEN_EXPORT_SESSION, handleOpenExport)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_EXPORT_SESSION, handleOpenExport)
+  }, [toast])
 
   useEffect(() => {
     focusedThreadIdRef.current = focusedThreadId

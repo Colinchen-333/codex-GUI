@@ -23,6 +23,7 @@ import {
   GitCommit,
   Download,
   Info,
+  Upload,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
@@ -115,6 +116,13 @@ export function CommandPalette({
       label: 'Import Codex CLI Session',
       icon: <Download size={16} />,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_IMPORT_CODEX_SESSIONS),
+      group: 'Actions',
+    },
+    {
+      id: 'export-session',
+      label: 'Export Session',
+      icon: <Upload size={16} />,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_EXPORT_SESSION),
       group: 'Actions',
     },
     {

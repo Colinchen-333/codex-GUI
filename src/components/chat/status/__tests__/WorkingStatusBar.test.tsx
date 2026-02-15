@@ -15,27 +15,58 @@ vi.mock('../../../../stores/app', () => ({
 }))
 
 vi.mock('../../../../stores/thread', () => {
-  const state = {
-    threads: {
-      't-1': {
-        thread: { id: 't-1' },
-        turnStatus: 'running',
-        turnTiming: { startedAt: Date.now() - 1000, completedAt: null },
-        pendingApprovals: [
-          {
-            itemId: 'item-123',
-            threadId: 't-1',
-            type: 'command' as const,
-            data: {} as unknown,
-            requestId: 1,
-            createdAt: Date.now(),
-          },
-        ],
-        items: {},
-        itemOrder: [],
-        tokenUsage: { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalTokens: 0, modelContextWindow: null },
+  type ThreadSnapshot = {
+    thread: { id: string }
+    turnStatus: string
+    turnTiming: { startedAt: number | null; completedAt: number | null }
+    pendingApprovals: Array<{
+      itemId: string
+      threadId: string
+      type: 'command' | 'fileChange'
+      data: unknown
+      requestId: number
+      createdAt: number
+    }>
+    items: Record<string, unknown>
+    itemOrder: string[]
+    tokenUsage: {
+      inputTokens: number
+      cachedInputTokens: number
+      outputTokens: number
+      totalTokens: number
+      modelContextWindow: number | null
+    }
+  }
+
+  const threads: Record<string, ThreadSnapshot> = {
+    't-1': {
+      thread: { id: 't-1' },
+      turnStatus: 'running',
+      turnTiming: { startedAt: Date.now() - 1000, completedAt: null },
+      pendingApprovals: [
+        {
+          itemId: 'item-123',
+          threadId: 't-1',
+          type: 'command',
+          data: {} as unknown,
+          requestId: 1,
+          createdAt: Date.now(),
+        },
+      ],
+      items: {},
+      itemOrder: [],
+      tokenUsage: {
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        modelContextWindow: null,
       },
     },
+  }
+
+  const state = {
+    threads,
     focusedThreadId: 't-1',
   }
 
@@ -45,7 +76,7 @@ vi.mock('../../../../stores/thread', () => {
   }
   useThreadStore.getState = () => state
 
-  const selectFocusedThread = (s: typeof state) => s.threads[s.focusedThreadId]
+  const selectFocusedThread = (s: typeof state) => s.threads[s.focusedThreadId] ?? null
 
   return { useThreadStore, selectFocusedThread }
 })

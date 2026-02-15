@@ -2,13 +2,17 @@
  * McpToolCard - Shows external MCP tool calls
  */
 import { useState } from 'react'
-import { Wrench, ChevronDown, ChevronRight } from 'lucide-react'
+import { Copy, Wrench, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { copyTextToClipboard } from '../../../lib/clipboard'
 import { formatTimestamp } from '../utils'
 import type { MessageItemProps, McpToolContentType } from '../types'
+import { IconButton } from '../../ui/IconButton'
+import { useToast } from '../../ui/useToast'
 
 export function McpToolCard({ item }: MessageItemProps) {
   const content = item.content as McpToolContentType
+  const { toast } = useToast()
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Compute JSON strings inline - React Compiler will optimize this
@@ -18,6 +22,13 @@ export function McpToolCard({ item }: MessageItemProps) {
     content.result && typeof content.result !== 'string'
       ? JSON.stringify(content.result, null, 2)
       : null
+  const resultText = typeof content.result === 'string' ? content.result : (resultJson ?? '')
+
+  const copy = async (label: string, text: string) => {
+    const ok = await copyTextToClipboard(text)
+    if (ok) toast.success(`Copied ${label}`)
+    else toast.error('Copy failed')
+  }
 
   return (
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
@@ -100,8 +111,19 @@ export function McpToolCard({ item }: MessageItemProps) {
             {/* Arguments */}
             {argumentsJson && (
               <div>
-                <div className="mb-1 text-[11px] font-medium text-text-3 uppercase tracking-wider">
-                  Arguments
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-medium text-text-3 uppercase tracking-wider">
+                    Arguments
+                  </div>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void copy('arguments', argumentsJson)}
+                    title="Copy arguments"
+                    aria-label="Copy arguments"
+                  >
+                    <Copy size={14} />
+                  </IconButton>
                 </div>
                 <pre className="max-h-40 overflow-auto rounded-lg bg-surface-hover/[0.08] p-3 font-mono text-xs text-text-2 border border-stroke/20">
                   {argumentsJson}
@@ -112,8 +134,20 @@ export function McpToolCard({ item }: MessageItemProps) {
             {/* Result */}
             {content.result !== undefined && content.result !== null && (
               <div>
-                <div className="mb-1 text-[11px] font-medium text-status-success uppercase tracking-wider">
-                  Result
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-medium text-status-success uppercase tracking-wider">
+                    Result
+                  </div>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void copy('result', resultText)}
+                    disabled={!resultText}
+                    title="Copy result"
+                    aria-label="Copy result"
+                  >
+                    <Copy size={14} />
+                  </IconButton>
                 </div>
                 <pre className="max-h-60 overflow-auto rounded-lg bg-status-success-muted p-3 font-mono text-xs text-text-1 border border-stroke/20">
                   {typeof content.result === 'string' ? content.result : resultJson}
@@ -124,8 +158,19 @@ export function McpToolCard({ item }: MessageItemProps) {
             {/* Error */}
             {content.error && (
               <div>
-                <div className="mb-1 text-[11px] font-medium text-status-error uppercase tracking-wider">
-                  Error
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-medium text-status-error uppercase tracking-wider">
+                    Error
+                  </div>
+                  <IconButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void copy('error', content.error)}
+                    title="Copy error"
+                    aria-label="Copy error"
+                  >
+                    <Copy size={14} />
+                  </IconButton>
                 </div>
                 <pre className="max-h-40 overflow-auto rounded-lg bg-status-error-muted p-3 font-mono text-xs text-text-1 border border-stroke/20">
                   {content.error}

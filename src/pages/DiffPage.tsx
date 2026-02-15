@@ -186,6 +186,7 @@ export function DiffPage() {
   const { showToast } = useToast()
   const { selectedProjectId, projects } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
+  const tauriAvailable = isTauriAvailable()
 
   const [diffMode, setDiffMode] = useState<DiffMode>('unstaged')
   const [loadState, setLoadState] = useState<LoadState>('idle')
@@ -253,10 +254,10 @@ export function DiffPage() {
   }, [fetchDiff])
 
   const requireTauri = useCallback((): boolean => {
-    if (isTauriAvailable()) return true
+    if (tauriAvailable) return true
     showToast('Unavailable in web mode', 'error')
     return false
-  }, [showToast])
+  }, [showToast, tauriAvailable])
 
   const handleCopyDiff = useCallback(async () => {
     if (!diffText) return
@@ -756,16 +757,18 @@ export function DiffPage() {
             <Copy size={14} />
           </button>
           <button
-            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
+            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1 disabled:opacity-50 disabled:pointer-events-none"
             onClick={() => void handleOpenInVSCode()}
+            disabled={!tauriAvailable}
             title="Open in VS Code"
           >
             <Code2 size={14} />
           </button>
           <button
-            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
+            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1 disabled:opacity-50 disabled:pointer-events-none"
             onClick={() => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG)}
-            title="Commit"
+            disabled={!tauriAvailable}
+            title={tauriAvailable ? 'Commit' : 'Unavailable in web mode'}
           >
             <GitCommit size={14} />
           </button>
@@ -778,19 +781,21 @@ export function DiffPage() {
         <div className="flex items-center justify-center border-t border-stroke/10 bg-surface-solid px-6 py-3 text-xs">
           <div className="flex items-center rounded-full border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden">
             <button
-              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1]"
+              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1] disabled:opacity-50 disabled:pointer-events-none"
               onClick={() => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG)}
+              disabled={!tauriAvailable}
             >
               <GitCommit size={14} />
               Commit
             </button>
             <div className="h-4 w-px bg-stroke/20" />
             <button
-              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1]"
+              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1] disabled:opacity-50 disabled:pointer-events-none"
               onClick={() => {
                 if (diffMode === 'staged') void handleUnstageAll()
                 else void handleStageAll()
               }}
+              disabled={!tauriAvailable}
             >
               {diffMode === 'staged' ? <RotateCcw size={14} /> : <Plus size={14} />}
               {diffMode === 'staged' ? 'Unstage all' : 'Stage all'}

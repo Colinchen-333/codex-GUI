@@ -263,6 +263,22 @@ export function KeyboardShortcuts() {
         description: 'Jump to next approval',
         handler: jumpToNextApproval,
       },
+      // Go to Diff (Cmd/Ctrl + Shift + D)
+      {
+        key: 'd',
+        meta: true,
+        shift: true,
+        description: 'Go to Diff',
+        handler: () => navigate('/diff'),
+      },
+      // Browse Files (Cmd/Ctrl + Shift + F)
+      {
+        key: 'f',
+        meta: true,
+        shift: true,
+        description: 'Browse files',
+        handler: () => navigate('/file-preview'),
+      },
       // Help - Show keyboard shortcuts
       {
         key: '?',

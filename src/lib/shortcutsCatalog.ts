@@ -51,6 +51,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['Cmd', '1'], description: 'Switch to Projects tab' },
       { keys: ['Cmd', '2'], description: 'Switch to Sessions tab' },
+      { keys: ['Cmd', 'Shift', 'D'], description: 'Go to Diff' },
+      { keys: ['Cmd', 'Shift', 'F'], description: 'Browse files' },
       { keys: ['Cmd', ']'], description: 'Next session' },
       { keys: ['Cmd', '['], description: 'Previous session' },
       { keys: ['Cmd', 'Shift', '['], description: 'First session' },

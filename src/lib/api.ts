@@ -342,6 +342,8 @@ export interface GitRemoteInfo {
   behind: number
 }
 
+export type GhCliStatus = 'ready' | 'not-installed' | 'not-authenticated'
+
 export interface WorktreeInfo {
   path: string
   branch: string
@@ -437,7 +439,7 @@ export const projectApi = {
     ),
   // PR operations
   checkGhCli: (projectPath: string) =>
-    invokeOrFallback<boolean>(false, 'check_gh_cli', { projectPath }),
+    invokeOrFallback<GhCliStatus>('not-installed', 'check_gh_cli', { projectPath }),
   getCurrentBranch: (projectPath: string) =>
     invoke<string>('get_current_branch', { projectPath }),
   createPullRequest: (

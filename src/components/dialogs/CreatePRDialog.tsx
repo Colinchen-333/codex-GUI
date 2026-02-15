@@ -71,7 +71,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
     setIsDraft(false)
 
     try {
-      const [ghReady, branchList, currentBranch] = await Promise.all([
+      const [ghCliStatus, branchList, currentBranch] = await Promise.all([
         projectApi.checkGhCli(selectedProject.path),
         projectApi.getGitBranches(selectedProject.path),
         projectApi.getCurrentBranch(selectedProject.path),
@@ -86,13 +86,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
       const defaultBase = mainBranch?.name || masterBranch?.name || branchList.find((b) => !b.isCurrent)?.name || ''
       setBaseBranch(defaultBase)
 
-      if (!ghReady) {
-        // Distinguish not-installed vs not-authenticated
-        // If we got false, it could be either - check more specifically
-        setGhStatus('not-installed')
-      } else {
-        setGhStatus('ready')
-      }
+      setGhStatus(ghCliStatus)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initialize')
       setGhStatus('not-installed')
@@ -314,7 +308,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
                 </p>
                 <p className="text-[11px] text-text-3 mt-0.5">
                   {ghStatus === 'not-installed'
-                    ? 'Install with: brew install gh && gh auth login'
+                    ? 'Install GitHub CLI, then run: gh auth login'
                     : 'Run: gh auth login'}
                 </p>
               </div>

@@ -547,10 +547,11 @@
 
 @layer base {
   * {
-    @apply border-border;
+    /* Default border color should follow our semantic stroke token. */
+    @apply border-stroke/20;
   }
   body {
-    @apply text-foreground select-none cursor-default;
+    @apply text-text-1 select-none cursor-default;
     background: transparent;
     margin: 0;
     min-height: 100vh;
@@ -571,7 +572,8 @@
   }
   
   ::selection {
-    @apply bg-primary/20 text-foreground;
+    /* Avoid shadcn text/border tokens; keep selection readable across themes. */
+    @apply bg-surface-selected text-text-1;
   }
 }
 

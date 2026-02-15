@@ -20,8 +20,8 @@ export function WebSearchCard({ item }: MessageItemProps) {
           </div>
           <div className="flex items-center gap-2">
             {content.isSearching && (
-              <span className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span className="flex items-center gap-1 text-[10px] text-status-info">
+                <span className="h-1.5 w-1.5 rounded-full bg-status-info animate-pulse" />
                 Searching...
               </span>
             )}

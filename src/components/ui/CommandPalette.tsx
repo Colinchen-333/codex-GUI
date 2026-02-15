@@ -86,6 +86,7 @@ export function CommandPalette({
   const sessionSearchResults = useSessionsStore((state) => state.searchResults)
   const isSessionSearching = useSessionsStore((state) => state.isSearching)
   const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
+  const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
   const projects = useProjectsStore((state) => state.projects)
   const threads = useThreadStore((state) => state.threads)
   const focusedThreadId = useThreadStore((state) => state.focusedThreadId)
@@ -441,6 +442,7 @@ export function CommandPalette({
       id: 'open-commit-dialog',
       label: 'Commit Changes',
       icon: <GitCommit size={16} />,
+      disabled: !tauriAvailable || !selectedProjectId,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG),
       group: 'Actions',
     },
@@ -448,6 +450,7 @@ export function CommandPalette({
       id: 'create-pr',
       label: 'Create Pull Request',
       icon: <GitPullRequest size={16} />,
+      disabled: !tauriAvailable || !selectedProjectId,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_CREATE_PR_DIALOG),
       group: 'Actions',
     },

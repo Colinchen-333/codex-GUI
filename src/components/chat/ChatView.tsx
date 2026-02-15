@@ -83,6 +83,8 @@ export function ChatView() {
 
   const escapePending = useAppStore((state: AppState) => state.escapePending)
   const escapeToastShownRef = useRef(false)
+  const scrollToItemId = useAppStore((state: AppState) => state.scrollToItemId)
+  const clearScrollToItemId = useAppStore((state: AppState) => state.clearScrollToItemId)
 
   useEffect(() => {
     if (escapePending && !escapeToastShownRef.current) {
@@ -93,6 +95,18 @@ export function ChatView() {
       escapeToastShownRef.current = false
     }
   }, [escapePending, showToast])
+
+  // Cross-component scroll requests (for example: jumping to pending approvals)
+  useEffect(() => {
+    if (!scrollToItemId || !focusedThread) return
+    const index = focusedThread.itemOrder.indexOf(scrollToItemId)
+    if (index < 0) return
+    const rafId = window.requestAnimationFrame(() => {
+      virtualListRef.current?.scrollToItem(index, 'start')
+      clearScrollToItemId()
+    })
+    return () => window.cancelAnimationFrame(rafId)
+  }, [scrollToItemId, focusedThread, clearScrollToItemId])
 
   // Handle review target selection from dialog
   // P0 Fix: Added proper error handling and use activeThread from hook to avoid stale closure

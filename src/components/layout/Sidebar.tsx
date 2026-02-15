@@ -13,7 +13,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
-import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, Filter, PanelLeftOpen } from 'lucide-react'
+import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftOpen } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
 import { log } from '../../lib/logger'
 import { APP_EVENTS } from '../../lib/appEvents'
@@ -215,7 +215,10 @@ export function Sidebar() {
         </div>
         <button
           type="button"
-          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
+          disabled
+          title="Collapse sidebar (Soon)"
+          aria-label="Collapse sidebar (Soon)"
+          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <PanelLeftOpen size={14} />
         </button>
@@ -297,10 +300,10 @@ export function Sidebar() {
       </nav>
 
         <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
-          <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
-            Sessions
-          </span>
-          <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
+        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
+          Sessions
+        </span>
+        <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
           <IconButton
             onClick={handleAddProject}
             size="sm"
@@ -308,13 +311,6 @@ export function Sidebar() {
             className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
           >
             <FolderPlus size={13} strokeWidth={1.5} />
-          </IconButton>
-          <IconButton
-            size="sm"
-            title="Filter"
-            className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
-          >
-            <Filter size={13} strokeWidth={1.5} />
           </IconButton>
         </div>
       </div>

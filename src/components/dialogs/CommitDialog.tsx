@@ -32,6 +32,8 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
   const projectGitInfo = selectedProjectId ? gitInfo[selectedProjectId] : null
   const { toast } = useToast()
   const tauriAvailable = isTauriAvailable()
+  const isMac =
+    typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
 
   const [commitMessage, setCommitMessage] = useState('')
   const [files, setFiles] = useState<GitFileStatus[]>([])
@@ -69,6 +71,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
   const stagedFiles = files.filter((f) => f.isStaged)
   const unstagedFiles = files.filter((f) => !f.isStaged)
   const selectedCount = selectedFiles.size
+  const primaryActionLabel = remoteInfo?.remote ? 'Commit & Push' : 'Commit'
 
   const fetchStatus = useCallback(async () => {
     if (!selectedProject?.path) return
@@ -106,6 +109,33 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
     }
   }, [isOpen, fetchStatus, tauriAvailable])
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.isComposing) return
+      if (step !== 'review') return
+      if (selectedCount === 0) return
+      if (isCommitting) return
+
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+      if (!modifier) return
+      if (e.key !== 'Enter') return
+
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (remoteInfo?.remote) {
+        void handleCommitAndPush()
+      } else {
+        void handleCommit()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleCommit, handleCommitAndPush, isCommitting, isMac, isOpen, remoteInfo?.remote, selectedCount, step])
+
   const handleToggleFile = (file: GitFileStatus) => {
     const key = `${file.isStaged ? 'staged' : 'unstaged'}:${file.path}`
     setSelectedFiles((prev) => {
@@ -136,8 +166,11 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
     })
   }
 
-  const handleCommit = async () => {
-    if (!selectedProject?.path || selectedCount === 0) return
+  const handleCommit = useCallback(async () => {
+    if (!selectedProject?.path || selectedFiles.size === 0) return
+
+    const stagedFiles = files.filter((f) => f.isStaged)
+    const unstagedFiles = files.filter((f) => !f.isStaged)
 
     setIsCommitting(true)
     setError(null)
@@ -178,9 +211,9 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
     } finally {
       setIsCommitting(false)
     }
-  }
+  }, [commitMessage, files, selectedFiles, selectedProject?.path, toast])
 
-  const handlePush = async () => {
+  const handlePush = useCallback(async () => {
     if (!selectedProject?.path || !remoteInfo?.remote || !remoteInfo?.branch) return
 
     setIsPushing(true)
@@ -206,10 +239,13 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
     } finally {
       setIsPushing(false)
     }
-  }
+  }, [remoteInfo?.branch, remoteInfo?.remote, selectedProject?.path, toast])
 
-  const handleCommitAndPush = async () => {
-    if (!selectedProject?.path || selectedCount === 0) return
+  const handleCommitAndPush = useCallback(async () => {
+    if (!selectedProject?.path || selectedFiles.size === 0) return
+
+    const stagedFiles = files.filter((f) => f.isStaged)
+    const unstagedFiles = files.filter((f) => !f.isStaged)
 
     setIsCommitting(true)
     setError(null)
@@ -270,7 +306,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
       setIsCommitting(false)
       setIsPushing(false)
     }
-  }
+  }, [commitMessage, files, remoteInfo?.branch, remoteInfo?.remote, selectedFiles, selectedProject?.path, toast])
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -567,27 +603,37 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2 p-5">
-              <Button
-                onClick={handleCommit}
-                disabled={selectedCount === 0 || isCommitting}
-                loading={isCommitting}
-                variant="secondary"
-                className="flex-1"
-              >
-                <GitCommitIcon size={14} />
-                Commit ({selectedCount})
-              </Button>
-              <Button
-                onClick={handleCommitAndPush}
-                disabled={selectedCount === 0 || isCommitting || !remoteInfo?.remote}
-                loading={isCommitting}
-                variant="primary"
-                className="flex-1"
-              >
-                <Upload size={14} />
-                Commit & Push
-              </Button>
+            <div className="p-5 pt-3">
+              <div className="mb-2 flex items-center justify-between text-[11px] text-text-3">
+                <span>
+                  <span className="font-mono">{isMac ? 'Cmd' : 'Ctrl'}+Enter</span> to {primaryActionLabel}
+                </span>
+                <span>
+                  <span className="font-mono">Esc</span> to close
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleCommit}
+                  disabled={selectedCount === 0 || isCommitting}
+                  loading={isCommitting}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  <GitCommitIcon size={14} />
+                  Commit ({selectedCount})
+                </Button>
+                <Button
+                  onClick={handleCommitAndPush}
+                  disabled={selectedCount === 0 || isCommitting || !remoteInfo?.remote}
+                  loading={isCommitting}
+                  variant="primary"
+                  className="flex-1"
+                >
+                  <Upload size={14} />
+                  Commit & Push
+                </Button>
+              </div>
             </div>
           </>
         )}

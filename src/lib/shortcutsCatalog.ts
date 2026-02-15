@@ -36,6 +36,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Git',
+    shortcuts: [
+      { keys: ['Cmd', 'Enter'], description: 'Run primary action (Commit dialog)' },
+    ],
+  },
+  {
     title: 'Navigation',
     shortcuts: [
       { keys: ['Cmd', '1'], description: 'Switch to Projects tab' },

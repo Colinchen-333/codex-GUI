@@ -16,7 +16,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, FileCode } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { copyTextToClipboard } from '../../../lib/clipboard'
-import { classifyRisk, getRiskBadgeStyles } from '../../../lib/safety-utils'
+import { classifyRisk, getRiskBadgeStyles, type RiskLevel } from '../../../lib/safety-utils'
 import { BaseCard, CardActions } from './BaseCard'
 import { DiffView, parseDiff, type FileDiff } from '../../ui/DiffView'
 import { formatTimestamp, shallowContentEqual } from '../utils'
@@ -337,7 +337,7 @@ export const FileChangeCard = memo(
       }).join('\n')
     }, [content.changes])
 
-    const riskSummary = useMemo(() => {
+    const riskSummary = useMemo((): { high: number; medium: number; low: number; overall: RiskLevel } => {
       let high = 0
       let medium = 0
       let low = 0
@@ -347,7 +347,7 @@ export const FileChangeCard = memo(
         else if (risk === 'medium') medium += 1
         else low += 1
       }
-      const overall = high > 0 ? 'high' : medium > 0 ? 'medium' : 'low'
+      const overall: RiskLevel = high > 0 ? 'high' : medium > 0 ? 'medium' : 'low'
       return { high, medium, low, overall }
     }, [content.changes])
 

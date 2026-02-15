@@ -5,6 +5,8 @@ export const APP_EVENTS = {
   OPEN_IMPORT_CODEX_SESSIONS: 'codex:open-import-codex-sessions',
   OPEN_PROJECT_SETTINGS: 'codex:open-project-settings',
   OPEN_EXPORT_SESSION: 'codex:open-export-session',
+  OPEN_RENAME_SESSION: 'codex:open-rename-session',
+  OPEN_CLOSE_SESSION: 'codex:open-close-session',
 } as const
 
 export type AppEventName = (typeof APP_EVENTS)[keyof typeof APP_EVENTS]

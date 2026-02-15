@@ -24,6 +24,9 @@ import {
   Download,
   Info,
   Upload,
+  Pencil,
+  X,
+  Square,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
@@ -123,6 +126,33 @@ export function CommandPalette({
       label: 'Export Session',
       icon: <Upload size={16} />,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_EXPORT_SESSION),
+      group: 'Actions',
+    },
+    {
+      id: 'rename-session',
+      label: 'Rename Session',
+      icon: <Pencil size={16} />,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_RENAME_SESSION),
+      group: 'Actions',
+    },
+    {
+      id: 'close-session',
+      label: 'Close Session',
+      icon: <X size={16} />,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_CLOSE_SESSION),
+      group: 'Actions',
+    },
+    {
+      id: 'stop-session',
+      label: 'Stop Session',
+      icon: <Square size={16} />,
+      action: async () => {
+        try {
+          await useThreadStore.getState().interrupt()
+        } catch {
+          toast.error('Failed to stop session')
+        }
+      },
       group: 'Actions',
     },
     {

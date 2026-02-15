@@ -75,6 +75,34 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   }, [toast])
 
   useEffect(() => {
+    const handleOpenRename = () => {
+      const threadId = useThreadStore.getState().focusedThreadId
+      if (!threadId) {
+        toast.error('No active session')
+        return
+      }
+      setThreadToRename(threadId)
+      setRenameDialogOpen(true)
+    }
+    window.addEventListener(APP_EVENTS.OPEN_RENAME_SESSION, handleOpenRename)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_RENAME_SESSION, handleOpenRename)
+  }, [toast])
+
+  useEffect(() => {
+    const handleOpenClose = () => {
+      const threadId = useThreadStore.getState().focusedThreadId
+      if (!threadId) {
+        toast.error('No active session')
+        return
+      }
+      setThreadToClose(threadId)
+      setCloseDialogOpen(true)
+    }
+    window.addEventListener(APP_EVENTS.OPEN_CLOSE_SESSION, handleOpenClose)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_CLOSE_SESSION, handleOpenClose)
+  }, [toast])
+
+  useEffect(() => {
     focusedThreadIdRef.current = focusedThreadId
   }, [focusedThreadId])
 

@@ -216,7 +216,7 @@ const ApprovalUI = memo(function ApprovalUI({
               disabled={isApproving}
               title="Keyboard: A"
             >
-              Always (a)
+              Allow for session (a)
             </button>
             <button
               className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors"
@@ -226,6 +226,10 @@ const ApprovalUI = memo(function ApprovalUI({
             >
               No (n)
             </button>
+          </div>
+
+          <div className="mt-2 text-[11px] text-text-3">
+            Hotkeys: <span className="font-mono">y</span> accept, <span className="font-mono">a</span> allow for session, <span className="font-mono">n</span> decline, <span className="font-mono">x</span> explain, <span className="font-mono">e</span> feedback
           </div>
 
           {/* Secondary Actions */}

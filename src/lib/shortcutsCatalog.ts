@@ -49,11 +49,10 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Approval Actions',
     shortcuts: [
-      { keys: ['Y'], description: 'Accept action' },
-      { keys: ['N'], description: 'Decline action' },
-      { keys: ['A'], description: 'Accept all for session' },
+      { keys: ['Y'], description: 'Accept action (approval prompt)' },
+      { keys: ['N'], description: 'Decline action (approval prompt)' },
+      { keys: ['A'], description: 'Allow for session (approval prompt)' },
       { keys: ['Cmd', 'Shift', 'A'], description: 'Jump to next approval' },
     ],
   },
 ]
-

@@ -30,6 +30,10 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['/'], description: 'Focus file filter (Diff page)' },
       { keys: ['R'], description: 'Refresh diff (Diff page)' },
+      { keys: ['J'], description: 'Next file (Diff page)' },
+      { keys: ['K'], description: 'Previous file (Diff page)' },
+      { keys: ['G'], description: 'First file (Diff page)' },
+      { keys: ['Shift', 'G'], description: 'Last file (Diff page)' },
       { keys: ['S'], description: 'Stage/unstage selected file (Diff page)' },
       { keys: ['O'], description: 'Open selected file in VS Code (Diff page)' },
       { keys: ['C'], description: 'Copy selected path (Diff page)' },

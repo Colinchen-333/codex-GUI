@@ -428,16 +428,51 @@ export function DiffPage() {
     void fetchDiff()
   }, [fetchDiff])
 
+  const selectRelativeFile = useCallback((delta: number) => {
+    if (visibleDiffs.length === 0) return
+    const current = resolvedSelectedPath
+    const currentIndex = current ? visibleDiffs.findIndex((d) => d.path === current) : -1
+    const startIndex = currentIndex >= 0 ? currentIndex : 0
+    const nextIndex = (startIndex + delta + visibleDiffs.length) % visibleDiffs.length
+    const nextPath = visibleDiffs[nextIndex]?.path
+    if (nextPath) {
+      setSelectedPath(nextPath)
+    }
+  }, [resolvedSelectedPath, visibleDiffs])
+
+  const selectFirstFile = useCallback(() => {
+    const first = visibleDiffs[0]?.path
+    if (first) setSelectedPath(first)
+  }, [visibleDiffs])
+
+  const selectLastFile = useCallback(() => {
+    const last = visibleDiffs[visibleDiffs.length - 1]?.path
+    if (last) setSelectedPath(last)
+  }, [visibleDiffs])
+
   useKeyboardShortcuts(
     useMemo(
       () => [
         { key: '/', description: 'Focus filter', handler: focusFilter },
         { key: 'r', description: 'Refresh diff', handler: refresh },
+        { key: 'j', description: 'Next file', handler: () => selectRelativeFile(1) },
+        { key: 'k', description: 'Previous file', handler: () => selectRelativeFile(-1) },
+        { key: 'g', description: 'First file', handler: selectFirstFile },
+        { key: 'g', shift: true, description: 'Last file', handler: selectLastFile },
         { key: 'c', description: 'Copy selected path', handler: () => void copySelectedPath() },
         { key: 'o', description: 'Open selected file in VS Code', handler: () => void openSelected() },
         { key: 's', description: 'Stage/unstage selected file', handler: () => void toggleStageSelected() },
       ],
-      [copySelectedPath, focusFilter, openSelected, refresh, toggleStageSelected]
+      [
+        copySelectedPath,
+        focusFilter,
+        openSelected,
+        refresh,
+        selectFirstFile,
+        selectLastFile,
+        selectRelativeFile,
+        toggleStageSelected,
+      ]
     )
   )
 

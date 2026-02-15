@@ -59,6 +59,7 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   const updateSession = useSessionsStore((state) => state.updateSession)
   const projects = useProjectsStore((state) => state.projects)
   const { toast } = useToast()
+  const tauriAvailable = isTauriAvailable()
 
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [threadToClose, setThreadToClose] = useState<string | null>(null)
@@ -396,30 +397,30 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
                     <ChevronDown size={12} />
                   </Dropdown.Trigger>
                   <Dropdown.Content side="bottom" align="end" sideOffset={4}>
-                    <Dropdown.Item onClick={() => void handleRevealInFinder()}>
+                    <Dropdown.Item onClick={() => void handleRevealInFinder()} disabled={!tauriAvailable}>
                       <FolderOpen size={14} className="text-text-3" />
                       Reveal in Finder
                     </Dropdown.Item>
-                    <Dropdown.Item onClick={() => void handleOpenInTerminal()}>
+                    <Dropdown.Item onClick={() => void handleOpenInTerminal()} disabled={!tauriAvailable}>
                       <SquareTerminal size={14} className="text-text-3" />
                       Open in Terminal
                     </Dropdown.Item>
-                    <Dropdown.Item onClick={() => void handleOpenInVSCode()}>
+                    <Dropdown.Item onClick={() => void handleOpenInVSCode()} disabled={!tauriAvailable}>
                       <Code2 size={14} className="text-text-3" />
                       Open in VS Code
                     </Dropdown.Item>
                     {activeWorktreePath && (
                       <>
                         <Dropdown.Separator />
-                        <Dropdown.Item onClick={() => void handleRevealWorktreeInFinder()}>
+                        <Dropdown.Item onClick={() => void handleRevealWorktreeInFinder()} disabled={!tauriAvailable}>
                           <FolderOpen size={14} className="text-text-3" />
                           Reveal worktree in Finder
                         </Dropdown.Item>
-                        <Dropdown.Item onClick={() => void handleOpenWorktreeInTerminal()}>
+                        <Dropdown.Item onClick={() => void handleOpenWorktreeInTerminal()} disabled={!tauriAvailable}>
                           <SquareTerminal size={14} className="text-text-3" />
                           Open worktree in Terminal
                         </Dropdown.Item>
-                        <Dropdown.Item onClick={() => void handleOpenWorktreeInVSCode()}>
+                        <Dropdown.Item onClick={() => void handleOpenWorktreeInVSCode()} disabled={!tauriAvailable}>
                           <Code2 size={14} className="text-text-3" />
                           Open worktree in VS Code
                         </Dropdown.Item>
@@ -430,7 +431,9 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
 
                 <button
                   onClick={onOpenCommitDialog}
+                  disabled={!tauriAvailable}
                   className="inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke/30 bg-surface-solid px-3 text-[12px] font-semibold text-text-1 transition-colors hover:bg-surface-hover/[0.08]"
+                  title={tauriAvailable ? undefined : 'Unavailable in web mode'}
                 >
                   <GitCommit size={12} />
                   Commit

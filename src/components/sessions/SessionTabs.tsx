@@ -1,14 +1,18 @@
 import { useState, memo, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, MessageSquare, Loader2, MoreHorizontal, Play, ChevronDown, GitCommit, PanelRightClose, PanelRightOpen, SquareTerminal, FolderOpen, Code2, Square } from 'lucide-react'
+import { X, Plus, MessageSquare, Loader2, MoreHorizontal, Play, ChevronDown, GitCommit, PanelRightClose, PanelRightOpen, SquareTerminal, FolderOpen, Code2, Square, Download, Pencil, Copy } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { copyTextToClipboard } from '../../lib/clipboard'
 import { useAppStore } from '../../stores/app'
 import { useThreadStore, type SingleThreadState } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { CloseSessionDialog } from './CloseSessionDialog'
 import { PendingApprovalDotButton } from './PendingApprovalDotButton'
+import { ExportDialog } from './ExportDialog'
 import { TaskProgressCompact } from '../chat/TaskProgress'
 import { Dropdown } from '../ui/Dropdown'
+import { RenameDialog } from '../ui/RenameDialog'
+import { useToast } from '../ui/useToast'
 import type { SessionStatus } from '../../lib/api'
 
 interface SessionTabsProps {
@@ -28,12 +32,18 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   const maxSessions = useThreadStore((state) => state.maxSessions)
   const isLoading = useThreadStore((state) => state.isLoading)
   const sessions = useSessionsStore((state) => state.sessions)
+  const updateSession = useSessionsStore((state) => state.updateSession)
   const projects = useProjectsStore((state) => state.projects)
+  const { toast } = useToast()
 
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [threadToClose, setThreadToClose] = useState<string | null>(null)
   const [switchingTabId, setSwitchingTabId] = useState<string | null>(null)
   const switchingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [threadToExport, setThreadToExport] = useState<string | null>(null)
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [threadToRename, setThreadToRename] = useState<string | null>(null)
 
   // Clear timeout on unmount
   useEffect(() => {
@@ -137,6 +147,29 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
     void useThreadStore.getState().interrupt()
   }, [])
 
+  const handleExportSession = useCallback(() => {
+    if (!focusedThreadId) return
+    setThreadToExport(focusedThreadId)
+    setExportDialogOpen(true)
+  }, [focusedThreadId])
+
+  const handleCopySessionId = useCallback(async () => {
+    if (!focusedThreadId) return
+    try {
+      const ok = await copyTextToClipboard(focusedThreadId)
+      if (!ok) throw new Error('Clipboard unavailable')
+      toast.success('Session ID copied')
+    } catch {
+      toast.error('Failed to copy session ID')
+    }
+  }, [focusedThreadId, toast])
+
+  const handleOpenRename = useCallback(() => {
+    if (!focusedThreadId) return
+    setThreadToRename(focusedThreadId)
+    setRenameDialogOpen(true)
+  }, [focusedThreadId])
+
   // Don't render if no threads
   if (threadEntries.length === 0) {
     return null
@@ -151,9 +184,29 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
             {activeProjectName && (
               <span className="truncate text-[14px] font-semibold text-text-3">{activeProjectName}</span>
             )}
-            <button className="text-text-3 transition-colors hover:text-text-1">
-              <MoreHorizontal size={15} />
-            </button>
+            <Dropdown.Root>
+              <Dropdown.Trigger
+                className="text-text-3 transition-colors hover:text-text-1"
+                aria-label="Session menu"
+                title="Session menu"
+              >
+                <MoreHorizontal size={15} />
+              </Dropdown.Trigger>
+              <Dropdown.Content side="bottom" align="start" sideOffset={6}>
+                <Dropdown.Item onClick={handleOpenRename} disabled={!focusedThreadId}>
+                  <Pencil size={14} className="text-text-3" />
+                  Rename session
+                </Dropdown.Item>
+                <Dropdown.Item onClick={handleExportSession} disabled={!focusedThreadId}>
+                  <Download size={14} className="text-text-3" />
+                  Export session
+                </Dropdown.Item>
+                <Dropdown.Item onClick={() => void handleCopySessionId()} disabled={!focusedThreadId}>
+                  <Copy size={14} className="text-text-3" />
+                  Copy session id
+                </Dropdown.Item>
+              </Dropdown.Content>
+            </Dropdown.Root>
           </div>
 
           <div className="flex items-center gap-2">
@@ -283,6 +336,34 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
         onClose={() => {
           setCloseDialogOpen(false)
           setThreadToClose(null)
+        }}
+      />
+
+      <ExportDialog
+        isOpen={exportDialogOpen}
+        threadId={threadToExport}
+        onClose={() => {
+          setExportDialogOpen(false)
+          setThreadToExport(null)
+        }}
+      />
+
+      <RenameDialog
+        isOpen={renameDialogOpen}
+        title="Rename session"
+        currentName={activeSession?.title || sessionTitle}
+        onCancel={() => {
+          setRenameDialogOpen(false)
+          setThreadToRename(null)
+        }}
+        onConfirm={(newName) => {
+          const targetId = threadToRename
+          setRenameDialogOpen(false)
+          setThreadToRename(null)
+          if (!targetId) return
+          void updateSession(targetId, { title: newName })
+            .then(() => toast.success('Session renamed'))
+            .catch(() => toast.error('Failed to rename session'))
         }}
       />
     </>

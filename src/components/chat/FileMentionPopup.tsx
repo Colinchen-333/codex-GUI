@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { File, Folder, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { projectApi, type FileEntry } from '../../lib/api'
+import { isTauriAvailable } from '../../lib/tauri'
 import { usePopupNavigation } from '../../hooks/usePopupNavigation'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { useToast } from '../ui/useToast'
@@ -59,6 +60,14 @@ export function FileMentionPopup({
     const currentProjectPath = projectPathRef.current
     if (!currentProjectPath) return
 
+    if (!isTauriAvailable()) {
+      setFiles([])
+      setError('Unavailable in web mode')
+      setIsLoading(false)
+      setIsRetrying(false)
+      return
+    }
+
     requestIdRef.current += 1
     const requestId = requestIdRef.current
     const pathAtRequest = currentProjectPath
@@ -113,6 +122,14 @@ export function FileMentionPopup({
   useEffect(() => {
     if (!isVisible) return
 
+    if (!isTauriAvailable()) {
+      setFiles([])
+      setError('Unavailable in web mode')
+      setIsLoading(false)
+      setIsRetrying(false)
+      return
+    }
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
     }
@@ -164,18 +181,20 @@ export function FileMentionPopup({
                   <h3 className="font-medium text-sm text-text-1">Unable to load files</h3>
                   <p className="text-xs text-text-3 mt-1">{error}</p>
                 </div>
-                <button
-                  onClick={handleRetry}
-                  disabled={isRetrying}
-                  className={cn(
-                    'shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                    'bg-surface-hover/[0.18] text-text-1 hover:bg-surface-hover/[0.24]',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
-                  )}
-                >
-                  <RefreshCw className={cn('w-3 h-3', isRetrying && 'animate-spin')} />
-                  {isRetrying ? 'Retrying...' : 'Retry'}
-                </button>
+                {error !== 'Unavailable in web mode' && (
+                  <button
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className={cn(
+                      'shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                      'bg-surface-hover/[0.18] text-text-1 hover:bg-surface-hover/[0.24]',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
+                    <RefreshCw className={cn('w-3 h-3', isRetrying && 'animate-spin')} />
+                    {isRetrying ? 'Retrying...' : 'Retry'}
+                  </button>
+                )}
               </div>
             </div>
           ) : files.length === 0 && !isLoading ? (

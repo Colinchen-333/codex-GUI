@@ -47,12 +47,14 @@ import { serverApi, systemApi } from '../../lib/api'
 import { useToast } from './useToast'
 import { useSessionsStore } from '../../stores/sessions'
 import { getEffectiveWorkingDirectory, mergeProjectSettings, useSettingsStore } from '../../stores/settings'
+import { cn } from '../../lib/utils'
 
 interface CommandItem {
   id: string
   label: string
   icon: React.ReactNode
   shortcut?: string[]
+  disabled?: boolean
   action: () => void
   group: string
 }
@@ -80,6 +82,7 @@ export function CommandPalette({
   const { toast } = useToast()
   const sessions = useSessionsStore((state) => state.sessions)
   const sessionSearchResults = useSessionsStore((state) => state.searchResults)
+  const isSessionSearching = useSessionsStore((state) => state.isSearching)
   const projects = useProjectsStore((state) => state.projects)
   const threads = useThreadStore((state) => state.threads)
   const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
@@ -123,6 +126,21 @@ export function CommandPalette({
     handleClose()
   }, [handleClose])
 
+  const getProjectLabel = useCallback(
+    (projectId: string | null | undefined): string => {
+      if (!projectId) return 'Project'
+      const project = projects.find((p) => p.id === projectId)
+      return project?.displayName || project?.path.split('/').pop() || projectId
+    },
+    [projects]
+  )
+
+  const getWorktreeSuffix = useCallback((session: { mode?: string; worktreeBranch?: string | null }): string => {
+    if (session.mode !== 'worktree') return ''
+    const branch = session.worktreeBranch?.trim()
+    return ` \u00b7 ${branch || 'worktree'}`
+  }, [])
+
   useEffect(() => {
     const q = search.trim()
     if (q.length < 2) {
@@ -134,6 +152,8 @@ export function CommandPalette({
     }, 200)
     return () => clearTimeout(timerId)
   }, [search])
+
+  const q = search.trim()
 
   const commands: CommandItem[] = [
     {
@@ -539,15 +559,41 @@ export function CommandPalette({
       },
       group: 'Approvals',
     },
+    ...(q.length >= 2
+      ? [
+          ...(isSessionSearching
+            ? [
+                {
+                  id: 'session-search-loading',
+                  label: `Searching "${q}"...`,
+                  icon: <Search size={16} />,
+                  disabled: true,
+                  action: () => {},
+                  group: 'Session Search',
+                } satisfies CommandItem,
+              ]
+            : sessionSearchResults.length === 0
+              ? [
+                  {
+                    id: 'session-search-empty',
+                    label: `No sessions found for "${q}"`,
+                    icon: <Search size={16} />,
+                    disabled: true,
+                    action: () => {},
+                    group: 'Session Search',
+                  } satisfies CommandItem,
+                ]
+              : []),
+        ]
+      : []),
     ...(sessionSearchResults.length > 0
       ? sessionSearchResults.slice(0, 10).map((session) => {
-            const projectName = projects.find((p) => p.id === session.projectId)?.displayName
-              || projects.find((p) => p.id === session.projectId)?.path.split('/').pop()
-              || 'Project'
+            const projectName = getProjectLabel(session.projectId)
             const title = session.title || session.firstMessage || `Session ${session.sessionId.slice(0, 8)}`
+            const worktreeSuffix = getWorktreeSuffix(session)
             return {
               id: `search-session:${session.sessionId}`,
-              label: `${title} (${projectName})`,
+              label: `${title} (${projectName}${worktreeSuffix})`,
               icon: <MessageSquare size={16} />,
               action: () => {
                 const projectsStore = useProjectsStore.getState()
@@ -586,9 +632,11 @@ export function CommandPalette({
     }),
     ...recentSessions.map((session) => {
       const title = session.title || `Session ${session.sessionId.slice(0, 8)}`
+      const projectName = getProjectLabel(session.projectId)
+      const worktreeSuffix = getWorktreeSuffix(session)
       return {
         id: `select-session:${session.sessionId}`,
-        label: `Switch to: ${title}`,
+        label: `Switch to: ${title} (${projectName}${worktreeSuffix})`,
         icon: <MessageSquare size={16} />,
         action: () => {
           const projectsStore = useProjectsStore.getState()
@@ -676,8 +724,12 @@ export function CommandPalette({
                   <Command.Item
                     key={command.id}
                     value={command.label}
-                    onSelect={() => handleAction(command.action)}
-                    className="justify-between"
+                    disabled={command.disabled}
+                    onSelect={() => {
+                      if (command.disabled) return
+                      handleAction(command.action)
+                    }}
+                    className={cn('justify-between', command.disabled && 'opacity-60 cursor-not-allowed')}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-text-3">{command.icon}</span>

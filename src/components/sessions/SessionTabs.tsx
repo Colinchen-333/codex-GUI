@@ -6,6 +6,7 @@ import { useAppStore } from '../../stores/app'
 import { useThreadStore, type SingleThreadState } from '../../stores/thread'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
+import { openInTerminal, openInVSCode, revealInFinder } from '../../lib/hostActions'
 import { CloseSessionDialog } from './CloseSessionDialog'
 import { PendingApprovalDotButton } from './PendingApprovalDotButton'
 import { ExportDialog } from './ExportDialog'
@@ -141,32 +142,29 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   const handleRevealInFinder = useCallback(async () => {
     if (!projectCwd) return
     try {
-      const { open } = await import('@tauri-apps/plugin-shell')
-      await open(projectCwd)
+      await revealInFinder(projectCwd)
     } catch (err) {
-      console.error('Failed to reveal in Finder:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to reveal in Finder')
     }
-  }, [projectCwd])
+  }, [projectCwd, toast])
 
   const handleOpenInTerminal = useCallback(async () => {
     if (!projectCwd) return
     try {
-      const { Command } = await import('@tauri-apps/plugin-shell')
-      await Command.create('open', ['-a', 'Terminal', projectCwd]).execute()
+      await openInTerminal(projectCwd)
     } catch (err) {
-      console.error('Failed to open in Terminal:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to open in Terminal')
     }
-  }, [projectCwd])
+  }, [projectCwd, toast])
 
   const handleOpenInVSCode = useCallback(async () => {
     if (!projectCwd) return
     try {
-      const { Command } = await import('@tauri-apps/plugin-shell')
-      await Command.create('code', [projectCwd]).execute()
+      await openInVSCode(projectCwd)
     } catch (err) {
-      console.error('Failed to open in VS Code:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to open in VS Code')
     }
-  }, [projectCwd])
+  }, [projectCwd, toast])
 
   const handleStop = useCallback(() => {
     void useThreadStore.getState().interrupt()

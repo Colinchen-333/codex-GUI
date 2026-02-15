@@ -31,6 +31,7 @@ import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
 import { APP_EVENTS, dispatchAppEvent } from '../../lib/appEvents'
+import { openInTerminal, openInVSCode, revealInFinder } from '../../lib/hostActions'
 import { useToast } from './useToast'
 import { useSessionsStore } from '../../stores/sessions'
 
@@ -133,10 +134,9 @@ export function CommandPalette({
           return
         }
         try {
-          const { open } = await import('@tauri-apps/plugin-shell')
-          await open(focusedCwd)
-        } catch {
-          toast.error('Failed to reveal in Finder')
+          await revealInFinder(focusedCwd)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to reveal in Finder')
         }
       },
       group: 'Actions',
@@ -151,10 +151,9 @@ export function CommandPalette({
           return
         }
         try {
-          const { Command } = await import('@tauri-apps/plugin-shell')
-          await Command.create('open', ['-a', 'Terminal', focusedCwd]).execute()
-        } catch {
-          toast.error('Failed to open in Terminal')
+          await openInTerminal(focusedCwd)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to open in Terminal')
         }
       },
       group: 'Actions',
@@ -169,10 +168,9 @@ export function CommandPalette({
           return
         }
         try {
-          const { Command } = await import('@tauri-apps/plugin-shell')
-          await Command.create('code', [focusedCwd]).execute()
-        } catch {
-          toast.error('Failed to open in VS Code')
+          await openInVSCode(focusedCwd)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to open in VS Code')
         }
       },
       group: 'Actions',

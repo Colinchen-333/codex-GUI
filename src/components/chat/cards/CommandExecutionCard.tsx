@@ -34,6 +34,7 @@ interface ApprovalUIProps {
   onExplain: () => Promise<void>
   isExplaining: boolean
   explanation: string
+  isApproving: boolean
 }
 
 /**
@@ -45,6 +46,7 @@ const ApprovalUI = memo(function ApprovalUI({
   onExplain,
   isExplaining,
   explanation,
+  isApproving,
 }: ApprovalUIProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [approvalMode, setApprovalMode] = useState<'select' | 'explain' | 'feedback'>('select')
@@ -59,9 +61,15 @@ const ApprovalUI = memo(function ApprovalUI({
     }))
   )
 
+  useEffect(() => {
+    if (approvalMode !== 'feedback') return
+    feedbackInputRef.current?.focus()
+  }, [approvalMode])
+
   // Handle feedback submission
   const handleFeedbackSubmit = async () => {
     if (!activeThread) return
+    if (isApproving) return
     try {
       await onApprove('decline')
       if (feedbackText.trim()) {
@@ -95,16 +103,19 @@ const ApprovalUI = memo(function ApprovalUI({
 
     if (key === 'y') {
       e.preventDefault()
+      if (isApproving) return
       void onApprove('accept')
       return
     }
     if (key === 'a') {
       e.preventDefault()
+      if (isApproving) return
       void onApprove('acceptForSession')
       return
     }
     if (key === 'n') {
       e.preventDefault()
+      if (isApproving) return
       void onApprove('decline')
       return
     }
@@ -117,7 +128,6 @@ const ApprovalUI = memo(function ApprovalUI({
     if (key === 'e') {
       e.preventDefault()
       setApprovalMode('feedback')
-      setTimeout(() => feedbackInputRef.current?.focus(), 100)
       return
     }
   }
@@ -163,14 +173,16 @@ const ApprovalUI = memo(function ApprovalUI({
               onChange={(e) => setFeedbackText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleFeedbackSubmit()}
               placeholder="Explain why you’re declining or how to fix it…"
-              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/15"
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
               autoFocus
+              disabled={isApproving}
             />
             <button
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-1)]"
               onClick={handleFeedbackSubmit}
+              disabled={isApproving}
             >
-              Submit
+              {isApproving ? 'Working...' : 'Submit'}
             </button>
           </div>
           <div className="mt-2 text-xs text-text-3">
@@ -193,6 +205,7 @@ const ApprovalUI = memo(function ApprovalUI({
             <button
               className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)]"
               onClick={() => onApprove('accept')}
+              disabled={isApproving}
               title="Keyboard: Y"
             >
               Yes (y)
@@ -200,6 +213,7 @@ const ApprovalUI = memo(function ApprovalUI({
             <button
               className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => onApprove('acceptForSession')}
+              disabled={isApproving}
               title="Keyboard: A"
             >
               Always (a)
@@ -207,6 +221,7 @@ const ApprovalUI = memo(function ApprovalUI({
             <button
               className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors"
               onClick={() => onApprove('decline')}
+              disabled={isApproving}
               title="Keyboard: N"
             >
               No (n)
@@ -221,6 +236,7 @@ const ApprovalUI = memo(function ApprovalUI({
                 setApprovalMode('explain')
                 void onExplain()
               }}
+              disabled={isApproving}
               title="Keyboard: X"
             >
               Explain (x)
@@ -229,8 +245,8 @@ const ApprovalUI = memo(function ApprovalUI({
               className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-[11px] font-medium text-text-2 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => {
                 setApprovalMode('feedback')
-                setTimeout(() => feedbackInputRef.current?.focus(), 100)
               }}
+              disabled={isApproving}
               title="Keyboard: E"
             >
               Edit/Feedback (e)
@@ -253,6 +269,7 @@ const ApprovalUI = memo(function ApprovalUI({
               <button
                 className="flex-1 rounded-lg border border-status-success/30 bg-status-success-muted px-3 py-2 text-[11px] font-medium text-status-success hover:bg-status-success-muted/80 transition-colors"
                 onClick={() => onApprove('acceptWithExecpolicyAmendment')}
+                disabled={isApproving}
               >
                 Always Allow (Persistent)
               </button>
@@ -290,6 +307,7 @@ export const CommandExecutionCard = memo(
     const [showFullOutput, setShowFullOutput] = useState(false)
     const [explanation, setExplanation] = useState('')
     const [isExplaining, setIsExplaining] = useState(false)
+    const [isApproving, setIsApproving] = useState(false)
     const isApprovingRef = useRef(false)
     const isExplainingRef = useRef(false)
     const outputRef = useRef<HTMLPreElement>(null)
@@ -347,12 +365,14 @@ export const CommandExecutionCard = memo(
     ) => {
       if (isApprovingRef.current || !activeThread) return
       isApprovingRef.current = true
+      setIsApproving(true)
       try {
         await respondToApproval(item.id, decision, {
           execpolicyAmendment: content.proposedExecpolicyAmendment,
         })
       } finally {
         isApprovingRef.current = false
+        setIsApproving(false)
       }
     }
 
@@ -561,6 +581,7 @@ export const CommandExecutionCard = memo(
             onExplain={handleExplain}
             isExplaining={isExplaining}
             explanation={explanation}
+            isApproving={isApproving}
           />
         )}
       </BaseCard>

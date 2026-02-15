@@ -223,6 +223,10 @@ const ApprovalActions = memo(function ApprovalActions({
             </button>
           </CardActions>
 
+          <div className="mt-2 text-[11px] text-text-3">
+            Hotkeys: <span className="font-mono">y</span> apply, <span className="font-mono">a</span> allow for session, <span className="font-mono">n</span> decline, <span className="font-mono">d</span> toggle diffs, <span className="font-mono">x</span> explain, <span className="font-mono">e</span> feedback
+          </div>
+
           <div className="mt-2 flex gap-2">
             <button
               className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-[11px] font-medium text-text-2 hover:bg-surface-hover/[0.08] transition-colors"

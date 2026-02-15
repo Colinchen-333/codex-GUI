@@ -17,6 +17,9 @@ export interface AppState {
   // Sidebar state
   sidebarTab: SidebarTab
   setSidebarTab: (tab: SidebarTab) => void
+  sidebarCollapsed: boolean
+  setSidebarCollapsed: (collapsed: boolean) => void
+  toggleSidebarCollapsed: () => void
 
   // Input focus
   shouldFocusInput: boolean
@@ -49,6 +52,9 @@ export const useAppStore = create<AppState>((set) => ({
   // Sidebar state
   sidebarTab: 'projects',
   setSidebarTab: (tab) => set({ sidebarTab: tab }),
+  sidebarCollapsed: false,
+  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  toggleSidebarCollapsed: () => set((prev) => ({ sidebarCollapsed: !prev.sidebarCollapsed })),
 
   // Input focus
   shouldFocusInput: false,

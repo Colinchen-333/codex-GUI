@@ -13,7 +13,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
-import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftOpen } from 'lucide-react'
+import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftClose } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
 import { log } from '../../lib/logger'
 import { APP_EVENTS } from '../../lib/appEvents'
@@ -45,6 +45,7 @@ function InboxBadge() {
 
 export function Sidebar() {
   const { setSidebarTab: setActiveTab } = useAppStore()
+  const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed)
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
   const navigate = useNavigate()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
@@ -215,12 +216,12 @@ export function Sidebar() {
         </div>
         <button
           type="button"
-          disabled
-          title="Collapse sidebar (Soon)"
-          aria-label="Collapse sidebar (Soon)"
-          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={toggleSidebarCollapsed}
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
         >
-          <PanelLeftOpen size={14} />
+          <PanelLeftClose size={14} />
         </button>
       </div>
 

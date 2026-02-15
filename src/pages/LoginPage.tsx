@@ -121,7 +121,7 @@ export function LoginPage() {
                   error={!!error}
                 />
                 {error && (
-                  <p className="mt-2 text-xs text-red-500">{error}</p>
+                  <p className="mt-2 text-xs text-status-error">{error}</p>
                 )}
               </div>
 

@@ -1,5 +1,7 @@
 import { lazy, Suspense, type ComponentType, type ReactNode } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { ErrorBoundary } from './ui/ErrorBoundary'
+import { Button } from './ui/Button'
 import {
   DialogSkeleton,
   ListDialogSkeleton,
@@ -98,20 +100,19 @@ export const LazyCreatePRDialog = lazy(
  */
 function LazyErrorFallback({ onRetry }: { onRetry?: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
-      <div className="w-full max-w-md rounded-lg bg-background shadow-xl p-6 text-center">
-        <div className="text-4xl mb-4">!</div>
-        <h3 className="text-lg font-semibold mb-2">Failed to load component</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-lg bg-surface-solid shadow-xl border border-stroke/20 p-6 text-center">
+        <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-status-error-muted">
+          <AlertTriangle size={18} className="text-status-error" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2 text-text-1">Failed to load component</h3>
         <p className="text-sm text-text-3 mb-4">
           There was an error loading this dialog. Please try again.
         </p>
         {onRetry && (
-          <button
-            onClick={onRetry}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          <Button variant="primary" size="md" onClick={onRetry}>
             Retry
-          </button>
+          </Button>
         )}
       </div>
     </div>

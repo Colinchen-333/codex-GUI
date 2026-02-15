@@ -55,9 +55,11 @@ const helpSections: HelpSection[] = [
     items: [
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + Enter', description: 'Send message / Submit input' },
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + K', description: 'Open command palette' },
+      { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + Shift + K', description: 'Focus input' },
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + ,', description: 'Open Settings' },
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + N', description: 'Start a new session' },
-      { icon: <Keyboard size={18} className="text-text-2" />, label: 'Escape', description: 'Close dialogs / Cancel action' },
+      { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + ] / Cmd + [', description: 'Next / previous session' },
+      { icon: <Keyboard size={18} className="text-text-2" />, label: 'Escape', description: 'Stop generation (double-press) / Close dialogs' },
     ],
   },
   {
@@ -172,4 +174,3 @@ export function HelpDialog({ isOpen, onClose }: HelpDialogProps) {
     </BaseDialog>
   )
 }
-

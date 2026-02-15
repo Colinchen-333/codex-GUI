@@ -451,7 +451,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
 
       const message = prompt.trim()
       if (!message) {
-        showToast('Enter a prompt to start the thread', 'info')
+        showToast('Enter a prompt to start the session', 'info')
         return
       }
 
@@ -475,7 +475,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
       } catch (error) {
         const parsed = parseError(error)
         setLocalError(parsed)
-        showToast(`Failed to start thread: ${parsed}`, 'error')
+        showToast(`Failed to start session: ${parsed}`, 'error')
       }
     },
     [
@@ -618,7 +618,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                       ? 'cursor-not-allowed bg-surface-hover/[0.08] text-text-3'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90'
                   )}
-                  title="Start thread"
+                  title="Start session"
                 >
                   <ArrowUp size={16} />
                 </button>

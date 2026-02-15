@@ -76,7 +76,7 @@ export const LazyImportCodexSessionDialog = lazy(
 )
 
 /**
- * NewThreadDialog - Create new thread with mode selection (Local/Worktree/Cloud)
+ * NewThreadDialog - Create new session with mode selection (Local/Worktree/Cloud)
  * Estimated size: ~5KB
  */
 export const LazyNewThreadDialog = lazy(
@@ -240,7 +240,7 @@ interface NewThreadDialogProps extends DialogProps {
 
 export const NewThreadDialog = withLazyLoading<NewThreadDialogProps>(
   LazyNewThreadDialog as ComponentType<NewThreadDialogProps>,
-  <DialogSkeleton title="New Thread" />
+  <DialogSkeleton title="New Session" />
 )
 
 /**

@@ -103,17 +103,17 @@ function SessionRowInner({
   const projectPath = getProjectPath(session.projectId)
   const contextMenuItems: ContextMenuItem[] = [
     {
-      label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+      label: session.isFavorite ? 'Unpin session' : 'Pin session',
       icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
       onClick: () => onToggleFavorite(session.sessionId, session.isFavorite),
     },
     {
-      label: 'Rename thread',
+      label: 'Rename session',
       icon: <Pencil size={14} />,
       onClick: () => onRename(session.sessionId, displayName),
     },
     {
-      label: 'Archive thread',
+      label: 'Archive session',
       icon: <Archive size={14} />,
       onClick: () => onArchive(session.sessionId, displayName),
     },
@@ -361,18 +361,18 @@ export const SessionList = memo(function SessionList({
           const projectPath = getProjectPath(session.projectId)
           const contextMenuItems: ContextMenuItem[] = [
             {
-              label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+              label: session.isFavorite ? 'Unpin session' : 'Pin session',
               icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
               onClick: () =>
                 onToggleFavorite(session.sessionId, session.isFavorite),
             },
             {
-              label: 'Rename thread',
+              label: 'Rename session',
               icon: <Pencil size={14} />,
               onClick: () => onRename(session.sessionId, displayName),
             },
             {
-              label: 'Archive thread',
+              label: 'Archive session',
               icon: <Archive size={14} />,
               onClick: () => onArchive(session.sessionId, displayName),
             },

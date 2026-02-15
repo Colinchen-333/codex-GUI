@@ -40,6 +40,7 @@ interface ApprovalActionsProps {
   isExplaining: boolean
   explanation: string
   onSubmitFeedback: (feedback: string) => void | Promise<void>
+  onToggleAllDiffs?: () => void
 }
 
 /**
@@ -55,6 +56,7 @@ const ApprovalActions = memo(function ApprovalActions({
   isExplaining,
   explanation,
   onSubmitFeedback,
+  onToggleAllDiffs,
 }: ApprovalActionsProps) {
   const [approvalMode, setApprovalMode] = useState<'select' | 'explain' | 'feedback'>('select')
   const [feedbackText, setFeedbackText] = useState('')
@@ -112,6 +114,11 @@ const ApprovalActions = memo(function ApprovalActions({
     if (key === 'e') {
       e.preventDefault()
       setApprovalMode('feedback')
+      return
+    }
+    if (key === 'd') {
+      e.preventDefault()
+      onToggleAllDiffs?.()
       return
     }
   }
@@ -367,6 +374,14 @@ export const FileChangeCard = memo(
 
     const allExpanded = expandedFiles.size === fileDiffs.length && fileDiffs.length > 0
 
+    const toggleAllDiffs = () => {
+      if (allExpanded) {
+        setExpandedFiles(new Set())
+      } else {
+        setExpandedFiles(new Set(fileDiffs.map((_, idx) => idx)))
+      }
+    }
+
     // Toggle file expansion
     const toggleFile = (index: number) => {
       setExpandedFiles((prev) => {
@@ -461,12 +476,9 @@ export const FileChangeCard = memo(
           className="ml-2 rounded-md border border-stroke/30 bg-surface-hover/[0.12] px-2 py-1 text-[10px] font-medium text-text-2 hover:text-text-1 hover:bg-surface-hover/[0.18]"
           onClick={(e) => {
             e.stopPropagation()
-            if (allExpanded) {
-              setExpandedFiles(new Set())
-            } else {
-              setExpandedFiles(new Set(fileDiffs.map((_, idx) => idx)))
-            }
+            toggleAllDiffs()
           }}
+          title="Keyboard: D (when approval prompt is focused)"
         >
           {allExpanded ? 'Collapse changes' : 'Review changes'}
         </button>
@@ -488,6 +500,7 @@ export const FileChangeCard = memo(
         isExplaining={isExplaining}
         explanation={explanation}
         onSubmitFeedback={handleSubmitFeedback}
+        onToggleAllDiffs={toggleAllDiffs}
       />
     ) : undefined
 

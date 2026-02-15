@@ -87,7 +87,7 @@ export interface WebSearchContentType {
 }
 
 export interface ReviewContentType {
-  phase: 'started' | 'complete'
+  phase: 'started' | 'completed'
   text: string
 }
 

@@ -46,6 +46,7 @@ import { isTauriAvailable } from '../../lib/tauri'
 import { serverApi, systemApi } from '../../lib/api'
 import { useToast } from './useToast'
 import { useSessionsStore } from '../../stores/sessions'
+import { getEffectiveWorkingDirectory, mergeProjectSettings, useSettingsStore } from '../../stores/settings'
 
 interface CommandItem {
   id: string
@@ -116,7 +117,7 @@ export function CommandPalette({
   }, [onClose])
 
   const handleAction = useCallback((action: () => void) => {
-    action()
+    void action()
     handleClose()
   }, [handleClose])
 
@@ -126,7 +127,40 @@ export function CommandPalette({
       label: 'New session',
       icon: <Plus size={16} />,
       shortcut: ['⌘', 'N'],
-      action: () => onNewThread?.(),
+      action: async () => {
+        if (onNewThread) {
+          onNewThread()
+          return
+        }
+        const { selectedProjectId, projects } = useProjectsStore.getState()
+        if (!selectedProjectId) {
+          toast.error('No project selected')
+          return
+        }
+        if (!useThreadStore.getState().canAddSession()) {
+          toast.error('Maximum sessions reached')
+          return
+        }
+        const project = projects.find((p) => p.id === selectedProjectId)
+        if (!project) {
+          toast.error('Project not found')
+          return
+        }
+
+        const settings = useSettingsStore.getState().settings
+        const effective = mergeProjectSettings(settings, project.settingsJson)
+        const cwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
+        try {
+          void useSessionsStore.getState().selectSession(null)
+          await useThreadStore
+            .getState()
+            .startThread(selectedProjectId, cwd, effective.model, effective.sandboxMode, effective.approvalPolicy)
+          toast.success('New session started')
+          void navigate('/')
+        } catch (err) {
+          toast.error('Failed to start new session', { message: String(err) })
+        }
+      },
       group: 'Actions',
     },
     {

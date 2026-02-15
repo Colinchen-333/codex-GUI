@@ -1,5 +1,5 @@
 import { useState, memo, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, MessageSquare, Loader2, MoreHorizontal, Play, ChevronDown, GitCommit, PanelRightClose, PanelRightOpen, SquareTerminal, FolderOpen, Code2, Square, Download, Pencil, Copy } from 'lucide-react'
+import { X, Plus, MessageSquare, Loader2, MoreHorizontal, ChevronDown, GitCommit, PanelRightClose, PanelRightOpen, SquareTerminal, FolderOpen, Code2, Square, Download, Pencil, Copy } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { copyTextToClipboard } from '../../lib/clipboard'
 import { useAppStore } from '../../stores/app'
@@ -254,20 +254,13 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
           <div className="flex items-center gap-2">
             {activeThreadState && (
               <>
-                {isRunning ? (
+                {isRunning && (
                   <button
                     onClick={handleStop}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-status-error/40 bg-status-error-muted text-status-error transition-colors hover:bg-status-error/20"
                     title="Stop (Esc)"
                   >
                     <Square size={12} />
-                  </button>
-                ) : (
-                  <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-stroke/30 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.08]"
-                    title="Run"
-                  >
-                    <Play size={12} />
                   </button>
                 )}
 

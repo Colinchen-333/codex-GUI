@@ -27,6 +27,8 @@ import {
   Pencil,
   X,
   Square,
+  FileText,
+  RefreshCw,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
@@ -36,6 +38,10 @@ import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
 import { APP_EVENTS, dispatchAppEvent } from '../../lib/appEvents'
 import { openInTerminal, openInVSCode, revealInFinder } from '../../lib/hostActions'
+import { buildDiagnosticsReportJson } from '../../lib/diagnostics'
+import { copyTextToClipboard } from '../../lib/clipboard'
+import { isTauriAvailable } from '../../lib/tauri'
+import { serverApi, systemApi } from '../../lib/api'
 import { useToast } from './useToast'
 import { useSessionsStore } from '../../stores/sessions'
 
@@ -159,6 +165,62 @@ export function CommandPalette({
         }
       },
       group: 'Actions',
+    },
+    {
+      id: 'copy-diagnostics-report',
+      label: 'Copy Diagnostics Report',
+      icon: <FileText size={16} />,
+      action: async () => {
+        try {
+          const json = await buildDiagnosticsReportJson()
+          const ok = await copyTextToClipboard(json)
+          if (ok) toast.success('Copied diagnostics report')
+          else toast.error('Copy failed')
+        } catch (err) {
+          toast.error('Failed to build diagnostics report', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'reveal-logs-folder',
+      label: 'Reveal Logs Folder',
+      icon: <FolderOpen size={16} />,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          const paths = await systemApi.getAppPaths()
+          if (!paths.logDir) {
+            toast.error('Log folder not available')
+            return
+          }
+          await revealInFinder(paths.logDir)
+        } catch (err) {
+          toast.error('Failed to reveal logs folder', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'restart-engine',
+      label: 'Restart Engine',
+      icon: <RefreshCw size={16} />,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          await serverApi.restart()
+          toast.success('Engine restart requested')
+        } catch (err) {
+          toast.error('Failed to restart engine', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
     },
     {
       id: 'open-commit-dialog',

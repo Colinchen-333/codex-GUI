@@ -81,6 +81,16 @@ export function CommandPalette({
   const threads = useThreadStore((state) => state.threads)
   const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
 
+  const recentSessions = useMemo(() => {
+    return [...sessions]
+      .sort((a, b) => {
+        const aTime = a.lastAccessedAt || a.createdAt
+        const bTime = b.lastAccessedAt || b.createdAt
+        return bTime - aTime
+      })
+      .slice(0, 12)
+  }, [sessions])
+
   const sessionTitleById = useMemo(() => {
     const map = new Map<string, string>()
     for (const session of sessions) {
@@ -448,6 +458,25 @@ export function CommandPalette({
       },
       group: 'Approvals',
     },
+    ...recentSessions.map((session) => {
+      const title = session.title || `Session ${session.sessionId.slice(0, 8)}`
+      return {
+        id: `select-session:${session.sessionId}`,
+        label: `Switch to: ${title}`,
+        icon: <MessageSquare size={16} />,
+        action: () => {
+          const projectsStore = useProjectsStore.getState()
+          const currentProjectId = projectsStore.selectedProjectId
+          if (session.projectId && session.projectId !== currentProjectId) {
+            void useThreadStore.getState().closeAllThreads()
+            void projectsStore.selectProject(session.projectId)
+          }
+          void useSessionsStore.getState().selectSession(session.sessionId)
+          void navigate('/')
+        },
+        group: 'Sessions',
+      }
+    }),
     ...Object.values(threads).slice(0, 12).map((threadState) => {
       const threadId = threadState.thread.id
       const title = sessionTitleById.get(threadId) || threadState.thread.cwd?.split('/').pop() || threadId.slice(0, 8)
@@ -456,7 +485,7 @@ export function CommandPalette({
         label: `Switch to: ${title}`,
         icon: <MessageSquare size={16} />,
         action: () => useThreadStore.getState().switchThread(threadId),
-        group: 'Sessions',
+        group: 'Active Sessions',
       }
     }),
     {

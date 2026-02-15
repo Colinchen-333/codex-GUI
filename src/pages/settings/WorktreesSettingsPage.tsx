@@ -17,6 +17,7 @@ export function WorktreesSettingsPage() {
   const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
   const projects = useProjectsStore((state) => state.projects)
   const { toast } = useToast()
+  const tauriAvailable = isTauriAvailable()
 
   const projectPath = useMemo(() => {
     if (!selectedProjectId) return null
@@ -154,7 +155,7 @@ export function WorktreesSettingsPage() {
     <div className="space-y-6">
       <SettingsSection
         title="Worktrees"
-        description="Manage worktree locations and cleanup policies."
+        description="Manage git worktrees for the selected project."
       >
         <SettingsCard>
           <SettingsList>
@@ -187,9 +188,9 @@ export function WorktreesSettingsPage() {
                       variant="primary"
                       size="sm"
                       loading={isCreating}
-                      disabled={!branchName.trim() || isLoading}
+                      disabled={!tauriAvailable || !branchName.trim() || isLoading}
                       onClick={() => void handleCreate()}
-                      title={isTauriAvailable() ? 'Create worktree' : 'Unavailable in web mode'}
+                      title={tauriAvailable ? 'Create worktree' : 'Unavailable in web mode'}
                     >
                       Create
                     </Button>
@@ -255,6 +256,7 @@ export function WorktreesSettingsPage() {
                             'hover:bg-surface-hover/[0.08] hover:text-text-1 transition-colors'
                           )}
                           onClick={() => void handleReveal(wt.path)}
+                          disabled={!tauriAvailable}
                           title="Reveal in Finder"
                         >
                           <FolderOpen size={14} />
@@ -266,6 +268,7 @@ export function WorktreesSettingsPage() {
                             'hover:bg-surface-hover/[0.08] hover:text-text-1 transition-colors'
                           )}
                           onClick={() => void handleOpenTerminal(wt.path)}
+                          disabled={!tauriAvailable}
                           title="Open in Terminal"
                         >
                           <SquareTerminal size={14} />
@@ -277,6 +280,7 @@ export function WorktreesSettingsPage() {
                             'hover:bg-surface-hover/[0.08] hover:text-text-1 transition-colors'
                           )}
                           onClick={() => void handleOpenVSCode(wt.path)}
+                          disabled={!tauriAvailable}
                           title="Open in VS Code"
                         >
                           <Code2 size={14} />
@@ -288,6 +292,7 @@ export function WorktreesSettingsPage() {
                             'hover:bg-destructive/10 hover:text-destructive transition-colors'
                           )}
                           onClick={() => openRemoveDialog(wt)}
+                          disabled={!tauriAvailable}
                           title="Remove worktree"
                         >
                           <Trash2 size={14} />

@@ -88,7 +88,12 @@ export function CommandPalette({
   const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
   const projects = useProjectsStore((state) => state.projects)
   const threads = useThreadStore((state) => state.threads)
+  const focusedThreadId = useThreadStore((state) => state.focusedThreadId)
   const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
+
+  const tauriAvailable = isTauriAvailable()
+  const activeThreadState = focusedThreadId ? threads[focusedThreadId] : null
+  const isActiveRunning = activeThreadState?.turnStatus === 'running'
 
   const selectedSession = useMemo(() => {
     if (!selectedSessionId) return null
@@ -292,6 +297,7 @@ export function CommandPalette({
       id: 'export-session',
       label: 'Export Session',
       icon: <Upload size={16} />,
+      disabled: !focusedThreadId,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_EXPORT_SESSION),
       group: 'Actions',
     },
@@ -299,6 +305,7 @@ export function CommandPalette({
       id: 'rename-session',
       label: 'Rename Session',
       icon: <Pencil size={16} />,
+      disabled: !focusedThreadId,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_RENAME_SESSION),
       group: 'Actions',
     },
@@ -306,6 +313,7 @@ export function CommandPalette({
       id: 'close-session',
       label: 'Close Session',
       icon: <X size={16} />,
+      disabled: !focusedThreadId,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_CLOSE_SESSION),
       group: 'Actions',
     },
@@ -313,6 +321,7 @@ export function CommandPalette({
       id: 'stop-session',
       label: 'Stop Session',
       icon: <Square size={16} />,
+      disabled: !focusedThreadId || !isActiveRunning,
       action: async () => {
         try {
           await useThreadStore.getState().interrupt()
@@ -342,6 +351,7 @@ export function CommandPalette({
       id: 'reveal-logs-folder',
       label: 'Reveal Logs Folder',
       icon: <FolderOpen size={16} />,
+      disabled: !tauriAvailable,
       action: async () => {
         if (!isTauriAvailable()) {
           toast.error('Unavailable in web mode')
@@ -364,6 +374,7 @@ export function CommandPalette({
       id: 'reveal-app-data-folder',
       label: 'Reveal App Data Folder',
       icon: <FolderOpen size={16} />,
+      disabled: !tauriAvailable,
       action: async () => {
         if (!isTauriAvailable()) {
           toast.error('Unavailable in web mode')
@@ -386,6 +397,7 @@ export function CommandPalette({
       id: 'toggle-keep-awake',
       label: 'Toggle Keep Awake',
       icon: <Coffee size={16} />,
+      disabled: !tauriAvailable,
       action: async () => {
         if (!isTauriAvailable()) {
           toast.error('Unavailable in web mode')
@@ -410,6 +422,7 @@ export function CommandPalette({
       id: 'restart-engine',
       label: 'Restart Engine',
       icon: <RefreshCw size={16} />,
+      disabled: !tauriAvailable,
       action: async () => {
         if (!isTauriAvailable()) {
           toast.error('Unavailable in web mode')
@@ -442,6 +455,7 @@ export function CommandPalette({
       id: 'reveal-in-finder',
       label: 'Reveal in Finder',
       icon: <FolderOpen size={16} />,
+      disabled: !tauriAvailable || !focusedCwd,
       action: async () => {
         if (!isTauriAvailable()) {
           toast.error('Unavailable in web mode')
@@ -463,6 +477,7 @@ export function CommandPalette({
       id: 'open-in-terminal',
       label: 'Open in Terminal',
       icon: <Terminal size={16} />,
+      disabled: !tauriAvailable || !focusedCwd,
       action: async () => {
         if (!isTauriAvailable()) {
           toast.error('Unavailable in web mode')
@@ -484,6 +499,7 @@ export function CommandPalette({
       id: 'open-in-vscode',
       label: 'Open in VS Code',
       icon: <Code2 size={16} />,
+      disabled: !tauriAvailable || !focusedCwd,
       action: async () => {
         if (!isTauriAvailable()) {
           toast.error('Unavailable in web mode')
@@ -507,6 +523,7 @@ export function CommandPalette({
             id: 'reveal-worktree-in-finder',
             label: 'Reveal Worktree in Finder',
             icon: <FolderOpen size={16} />,
+            disabled: !tauriAvailable,
             action: async () => {
               if (!isTauriAvailable()) {
                 toast.error('Unavailable in web mode')
@@ -524,6 +541,7 @@ export function CommandPalette({
             id: 'open-worktree-in-terminal',
             label: 'Open Worktree in Terminal',
             icon: <Terminal size={16} />,
+            disabled: !tauriAvailable,
             action: async () => {
               if (!isTauriAvailable()) {
                 toast.error('Unavailable in web mode')
@@ -541,6 +559,7 @@ export function CommandPalette({
             id: 'open-worktree-in-vscode',
             label: 'Open Worktree in VS Code',
             icon: <Code2 size={16} />,
+            disabled: !tauriAvailable,
             action: async () => {
               if (!isTauriAvailable()) {
                 toast.error('Unavailable in web mode')

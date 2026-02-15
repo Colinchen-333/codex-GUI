@@ -89,14 +89,14 @@ export function WorktreeInitPage() {
       className: 'text-text-2',
     },
     success: {
-      icon: <CheckCircle2 size={20} className="text-emerald-500" />,
+      icon: <CheckCircle2 size={20} className="text-status-success" />,
       label: 'Worktree Ready',
-      className: 'text-emerald-500',
+      className: 'text-status-success',
     },
     error: {
-      icon: <XCircle size={20} className="text-red-500" />,
+      icon: <XCircle size={20} className="text-status-error" />,
       label: 'Initialization Failed',
-      className: 'text-red-500',
+      className: 'text-status-error',
     },
   }
 
@@ -127,10 +127,10 @@ export function WorktreeInitPage() {
 
           {/* Worktree info card on success */}
           {status === 'success' && worktreePath && (
-            <div className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <div className="mb-4 rounded-lg border border-status-success/30 bg-status-success-muted p-4">
               <div className="flex items-center gap-2 mb-2">
-                <GitBranch size={14} className="text-emerald-500" />
-                <span className="text-sm font-medium text-emerald-400">{branchName}</span>
+                <GitBranch size={14} className="text-status-success" />
+                <span className="text-sm font-medium text-text-1">{branchName}</span>
               </div>
               <div className="text-xs text-text-3 font-mono truncate">{worktreePath}</div>
             </div>

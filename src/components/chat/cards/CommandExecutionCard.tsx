@@ -7,10 +7,11 @@
  * Performance optimization: Wrapped with React.memo and custom comparison function
  * to prevent unnecessary re-renders in message lists.
  */
-import { memo, useState, useEffect, useRef, type ReactNode } from 'react'
+import { memo, useState, useEffect, useRef, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { Terminal } from 'lucide-react'
+import { Copy, Terminal } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { copyTextToClipboard } from '../../../lib/clipboard'
 import { isCommandExecutionContent } from '../../../lib/typeGuards'
 import { useThreadStore, selectFocusedThread, type ThreadState } from '../../../stores/thread'
 import { log } from '../../../lib/logger'
@@ -18,8 +19,10 @@ import { truncateOutput, shallowContentEqual } from '../utils'
 import { MAX_OUTPUT_LINES } from '../types'
 import { ColorizedOutput } from '../messages/ColorizedOutput'
 import type { MessageItemProps } from '../types'
-import { BaseCard, CardSection, CardOutput, StatusBadge, type CardStatus } from './BaseCard'
+import { BaseCard, CardOutput, StatusBadge, type CardStatus } from './BaseCard'
 import { formatDuration } from './card-utils'
+import { IconButton } from '../../ui/IconButton'
+import { useToast } from '../../ui/useToast'
 
 // -----------------------------------------------------------------------------
 // Helper Components
@@ -70,8 +73,62 @@ const ApprovalUI = memo(function ApprovalUI({
     }
   }
 
+  const isEditableTarget = (target: EventTarget | null): boolean => {
+    if (!target) return false
+    if (!(target instanceof HTMLElement)) return false
+    const tag = target.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+    return target.isContentEditable
+  }
+
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (isEditableTarget(e.target)) return
+    const key = e.key.toLowerCase()
+
+    if (key === 'escape' && approvalMode !== 'select') {
+      e.preventDefault()
+      setApprovalMode('select')
+      return
+    }
+
+    if (approvalMode !== 'select') return
+
+    if (key === 'y') {
+      e.preventDefault()
+      void onApprove('accept')
+      return
+    }
+    if (key === 'a') {
+      e.preventDefault()
+      void onApprove('acceptForSession')
+      return
+    }
+    if (key === 'n') {
+      e.preventDefault()
+      void onApprove('decline')
+      return
+    }
+    if (key === 'x') {
+      e.preventDefault()
+      setApprovalMode('explain')
+      void onExplain()
+      return
+    }
+    if (key === 'e') {
+      e.preventDefault()
+      setApprovalMode('feedback')
+      setTimeout(() => feedbackInputRef.current?.focus(), 100)
+      return
+    }
+  }
+
   return (
-    <div className="mt-5 pt-3 border-t border-stroke/20">
+    <div
+      className="mt-5 pt-3 border-t border-stroke/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      aria-label="Approval options"
+    >
       {/* Explanation Mode */}
       {approvalMode === 'explain' && (
         <div className="animate-in fade-in duration-100">
@@ -228,6 +285,8 @@ export const CommandExecutionCard = memo(
       }))
     )
 
+    const { toast } = useToast()
+
     const [showFullOutput, setShowFullOutput] = useState(false)
     const [explanation, setExplanation] = useState('')
     const [isExplaining, setIsExplaining] = useState(false)
@@ -325,6 +384,24 @@ export const CommandExecutionCard = memo(
     }
 
     // Build header actions (exit code badge + duration)
+    const handleCopyCommand = async () => {
+      const ok = await copyTextToClipboard(commandDisplay)
+      if (ok) toast.success('Copied command')
+      else toast.error('Copy failed')
+    }
+
+    const handleCopyOutput = async () => {
+      const ok = await copyTextToClipboard(rawOutput)
+      if (ok) toast.success('Copied output')
+      else toast.error('Copy failed')
+    }
+
+    const handleCopyStderr = async () => {
+      const ok = await copyTextToClipboard(content.stderr || '')
+      if (ok) toast.success('Copied stderr')
+      else toast.error('Copy failed')
+    }
+
     const headerActions: ReactNode = (
       <>
         {content.exitCode !== undefined && (
@@ -338,6 +415,18 @@ export const CommandExecutionCard = memo(
             {formatDuration(content.durationMs)}
           </span>
         )}
+        <IconButton
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation()
+            void handleCopyCommand()
+          }}
+          title="Copy command"
+          aria-label="Copy command"
+        >
+          <Copy size={14} />
+        </IconButton>
       </>
     )
 
@@ -376,15 +465,29 @@ export const CommandExecutionCard = memo(
 
         {/* Output */}
         {(rawOutput || content.isRunning) && (
-          <CardSection
-            title="Output"
-            className="mb-0"
-          >
-            {content.isRunning && (
-              <span className="ml-2 text-[9px] normal-case text-status-info animate-pulse inline-block mb-1">
-                streaming...
-              </span>
-            )}
+          <div className="mb-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-text-3">
+                  Output
+                </div>
+                {content.isRunning && (
+                  <span className="text-[9px] normal-case text-status-info animate-pulse inline-block mb-1">
+                    streaming...
+                  </span>
+                )}
+              </div>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleCopyOutput()}
+                disabled={!rawOutput}
+                title="Copy output"
+                aria-label="Copy output"
+              >
+                <Copy size={14} />
+              </IconButton>
+            </div>
             <CardOutput
               error={content.exitCode !== undefined && content.exitCode !== 0}
               className={cn(content.isRunning && 'min-h-[2rem]')}
@@ -419,16 +522,30 @@ export const CommandExecutionCard = memo(
                 Collapse output
               </button>
             )}
-          </CardSection>
+          </div>
         )}
 
         {/* Stderr if different from output */}
         {content.stderr && content.stderr !== content.output && (
-          <CardSection title="Stderr" titleColor="text-status-error" className="mt-3">
+          <div className="mt-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-status-error">
+                Stderr
+              </div>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleCopyStderr()}
+                title="Copy stderr"
+                aria-label="Copy stderr"
+              >
+                <Copy size={14} />
+              </IconButton>
+            </div>
             <CardOutput error maxHeight="max-h-40">
               {content.stderr}
             </CardOutput>
-          </CardSection>
+          </div>
         )}
 
         {/* Reason */}

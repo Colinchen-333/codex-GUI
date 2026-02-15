@@ -257,6 +257,7 @@ export function KeyboardShortcuts() {
       // Help - Show keyboard shortcuts
       {
         key: '?',
+        shift: true,
         description: 'Show keyboard shortcuts',
         handler: () => useAppStore.getState().setKeyboardShortcutsOpen(true),
       },

@@ -33,6 +33,28 @@ describe('ReasoningCard', () => {
     expect(copyTextToClipboard).toHaveBeenCalledWith(expect.stringContaining('- Step 2'))
   })
 
+  it('toggles via keyboard on the header', async () => {
+    const user = userEvent.setup()
+    const item: ReasoningItem = {
+      id: 'r-3',
+      type: 'reasoning',
+      status: 'completed',
+      createdAt: Date.now(),
+      content: { summary: ['Step 1'], isStreaming: false },
+    }
+
+    render(
+      <ToastProvider>
+        <ReasoningCard item={item} />
+      </ToastProvider>
+    )
+
+    const header = screen.getByLabelText('Toggle reasoning')
+    header.focus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByText('• Step 1')).toBeInTheDocument()
+  })
+
   it('copies full thinking when selected', async () => {
     const user = userEvent.setup()
     const item: ReasoningItem = {
@@ -59,4 +81,3 @@ describe('ReasoningCard', () => {
     expect(copyTextToClipboard).toHaveBeenCalledWith('Long A\nLong B')
   })
 })
-

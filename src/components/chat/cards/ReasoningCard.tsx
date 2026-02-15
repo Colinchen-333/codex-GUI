@@ -44,6 +44,16 @@ export function ReasoningCard({ item }: MessageItemProps) {
         <div
           className="flex items-center justify-between border-b border-stroke/20 bg-surface-hover/[0.06] px-4 py-2.5 cursor-pointer select-none"
           onClick={() => setIsExpanded(!isExpanded)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setIsExpanded((prev) => !prev)
+            }
+          }}
+          aria-expanded={isExpanded}
+          aria-label="Toggle reasoning"
         >
           <div className="flex items-center gap-2">
             <div className="rounded-md p-1 shadow-[var(--shadow-1)] bg-surface-solid text-text-3">

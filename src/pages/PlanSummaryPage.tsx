@@ -1,33 +1,17 @@
 import { useMemo } from 'react'
-import { CheckCircle2, Circle, Loader2, Maximize2, XCircle, ArrowUpRight } from 'lucide-react'
+import { CheckCircle2, Circle, Copy, Loader2, XCircle, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { PageScaffold } from '../components/layout/PageScaffold'
 import { cn } from '../lib/utils'
+import { copyTextToClipboard } from '../lib/clipboard'
 import { useThreadStore } from '../stores/thread'
 import { selectItemsByType } from '../stores/thread/selectors'
 import { parseDiff } from '../components/ui/DiffView'
+import { IconButton } from '../components/ui/IconButton'
+import { useToast } from '../components/ui/useToast'
 import type { PlanItem, FileChangeItem } from '../stores/thread/types'
 
 type TaskStatus = 'completed' | 'in_progress' | 'failed' | 'pending'
-
-const FALLBACK_TASKS: Array<{ text: string; status: TaskStatus }> = [
-  {
-    text: 'Align core routing and page shells to match official layout',
-    status: 'completed',
-  },
-  {
-    text: 'Unify input controls, queue list, and status hints styling',
-    status: 'completed',
-  },
-  {
-    text: 'Polish diff view cards and file change summary row',
-    status: 'completed',
-  },
-  {
-    text: 'Finalize small spacing/typography details and QA',
-    status: 'pending',
-  },
-]
 
 const getStatusIcon = (status: TaskStatus) => {
   switch (status) {
@@ -43,17 +27,46 @@ const getStatusIcon = (status: TaskStatus) => {
 }
 
 export function PlanSummaryPage() {
-  const planItems = useThreadStore(selectItemsByType('plan')) as PlanItem[]
-  const fileChangeItems = useThreadStore(selectItemsByType('fileChange')) as FileChangeItem[]
+  const { toast } = useToast()
+  const planSelector = useMemo(() => selectItemsByType('plan'), [])
+  const fileChangeSelector = useMemo(() => selectItemsByType('fileChange'), [])
+  const planItems = useThreadStore(planSelector) as PlanItem[]
+  const fileChangeItems = useThreadStore(fileChangeSelector) as FileChangeItem[]
 
-  const tasks = useMemo(() => {
-    const latestPlan = planItems[planItems.length - 1]
-    if (!latestPlan) return FALLBACK_TASKS
+  const latestPlan = planItems[planItems.length - 1] ?? null
+
+  const tasks = useMemo((): Array<{ text: string; status: TaskStatus }> => {
+    if (!latestPlan) return []
     return latestPlan.content.steps.map((step) => ({
       text: step.step,
       status: step.status as TaskStatus,
     }))
-  }, [planItems])
+  }, [latestPlan])
+
+  const planText = useMemo(() => {
+    if (!latestPlan) return ''
+    const completedSteps = latestPlan.content.steps.filter((s) => s.status === 'completed').length
+    const totalSteps = latestPlan.content.steps.length
+    const statusToken = (status: TaskStatus) => {
+      if (status === 'completed') return 'x'
+      if (status === 'in_progress') return '~'
+      if (status === 'failed') return '!'
+      return ' '
+    }
+    const lines = [
+      `Plan (${completedSteps}/${totalSteps})`,
+      '',
+      ...(latestPlan.content.explanation ? [latestPlan.content.explanation, ''] : []),
+      ...latestPlan.content.steps.map((s, i) => `- [${statusToken(s.status as TaskStatus)}] ${i + 1}. ${s.step}`),
+    ]
+    return lines.join('\n')
+  }, [latestPlan])
+
+  const handleCopyPlan = async () => {
+    const ok = await copyTextToClipboard(planText)
+    if (ok) toast.success('Copied plan')
+    else toast.error('Copy failed')
+  }
 
   const diffSummary = useMemo(() => {
     const latestChange = fileChangeItems[fileChangeItems.length - 1]
@@ -88,34 +101,51 @@ export function PlanSummaryPage() {
           <div className="flex items-center justify-between px-5 py-4">
             <div className="flex items-center gap-2 text-sm text-text-2">
               <span className="text-text-3">•</span>
-              <span className="font-medium">
-                {completedCount} out of {totalCount} tasks completed
-              </span>
+              {latestPlan ? (
+                <span className="font-medium">
+                  {completedCount} out of {totalCount} tasks completed
+                </span>
+              ) : (
+                <span className="font-medium">No plan yet</span>
+              )}
             </div>
-            <div className="text-text-3/80">
-              <Maximize2 size={16} />
-            </div>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              onClick={() => void handleCopyPlan()}
+              disabled={!planText}
+              title="Copy plan"
+              aria-label="Copy plan"
+            >
+              <Copy size={14} />
+            </IconButton>
           </div>
 
           <div className="px-5 pb-4">
-            <ol className="space-y-2">
-              {tasks.map((task, index) => (
-                <li key={task.text} className="flex items-start gap-3">
-                  <div className="mt-0.5 flex-shrink-0">{getStatusIcon(task.status)}</div>
-                  <span
-                    className={cn(
-                      'text-sm leading-relaxed text-text-1',
-                      task.status === 'completed' && 'line-through text-text-3',
-                      task.status === 'in_progress' && 'text-text-1 font-medium',
-                      task.status === 'failed' && 'text-status-error',
-                      task.status === 'pending' && 'text-text-2'
-                    )}
-                  >
-                    {index + 1}. {task.text}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            {tasks.length > 0 ? (
+              <ol className="space-y-2">
+                {tasks.map((task, index) => (
+                  <li key={`${index}-${task.text}`} className="flex items-start gap-3">
+                    <div className="mt-0.5 flex-shrink-0">{getStatusIcon(task.status)}</div>
+                    <span
+                      className={cn(
+                        'text-sm leading-relaxed text-text-1',
+                        task.status === 'completed' && 'line-through text-text-3',
+                        task.status === 'in_progress' && 'text-text-1 font-medium',
+                        task.status === 'failed' && 'text-status-error',
+                        task.status === 'pending' && 'text-text-2'
+                      )}
+                    >
+                      {index + 1}. {task.text}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="text-sm text-text-3">
+                No plan available yet. Start a task in chat to generate one.
+              </div>
+            )}
           </div>
 
           {diffSummary.filesChanged > 0 && (

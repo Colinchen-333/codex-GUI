@@ -13,6 +13,7 @@
 import { useEffect } from 'react'
 import { eventBus } from '../lib/eventBus'
 import { useNotifications } from '../hooks/useNotifications'
+import { useThreadStore } from '../stores/thread'
 
 export function NotificationListener() {
   const { sendNotification, requestPermission, permission, isSupported } = useNotifications()
@@ -67,29 +68,26 @@ export function NotificationListener() {
   // We also need to detect approval requests from the thread store.
   // Use a subscription to the thread store for pending approvals.
   useEffect(() => {
-    // Import thread store dynamically to avoid circular deps
     let unsubscribe: (() => void) | null = null
     let prevCount = 0
 
-    import('../stores/thread/index').then(({ useThreadStore }) => {
-      unsubscribe = useThreadStore.subscribe((state) => {
-        // Count all pending approvals across all threads
-        let totalApprovals = 0
-        Object.values(state.threads).forEach((threadState) => {
-          totalApprovals += threadState.pendingApprovals.length
-        })
-
-        // Only notify when count increases (new approval)
-        if (totalApprovals > prevCount) {
-          sendNotification(
-            'approval_needed',
-            'Approval Needed',
-            'The agent needs your approval to proceed.'
-          )
-        }
-        prevCount = totalApprovals
+    unsubscribe = useThreadStore.subscribe((state) => {
+      // Count all pending approvals across all threads
+      let totalApprovals = 0
+      Object.values(state.threads).forEach((threadState) => {
+        totalApprovals += threadState.pendingApprovals.length
       })
-    }).catch((err) => console.error('Failed to load thread store:', err))
+
+      // Only notify when count increases (new approval)
+      if (totalApprovals > prevCount) {
+        sendNotification(
+          'approval_needed',
+          'Approval Needed',
+          'The agent needs your approval to proceed.'
+        )
+      }
+      prevCount = totalApprovals
+    })
 
     return () => {
       unsubscribe?.()

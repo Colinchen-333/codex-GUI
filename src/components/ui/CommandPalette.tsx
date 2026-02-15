@@ -21,6 +21,7 @@ import {
 
 import { useTheme } from '../../hooks/useTheme'
 import { useAppStore } from '../../stores/app'
+import { useThreadStore } from '../../stores/thread'
 
 interface CommandItem {
   id: string
@@ -52,11 +53,15 @@ export function CommandPalette({
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
 
+  const handleClose = useCallback(() => {
+    setSearch('')
+    onClose()
+  }, [onClose])
+
   const handleAction = useCallback((action: () => void) => {
     action()
-    onClose()
-    setSearch('')
-  }, [onClose])
+    handleClose()
+  }, [handleClose])
 
   const commands: CommandItem[] = [
     {
@@ -141,12 +146,10 @@ export function CommandPalette({
       icon: <TextCursorInput size={16} />,
       shortcut: ['⌘', 'L'],
       action: () => {
-        void import('../../stores/thread').then(({ useThreadStore }) => {
-          const { focusedThreadId, clearThread } = useThreadStore.getState()
-          if (focusedThreadId) {
-            clearThread()
-          }
-        })
+        const { focusedThreadId, clearThread } = useThreadStore.getState()
+        if (focusedThreadId) {
+          clearThread()
+        }
         useAppStore.getState().triggerFocusInput()
       },
       group: 'Actions',
@@ -178,18 +181,12 @@ export function CommandPalette({
 
   const groups = [...new Set(commands.map((c) => c.group))]
 
-  useEffect(() => {
-    if (!isOpen) {
-      setSearch('')
-    }
-  }, [isOpen])
-
   if (!isOpen) return null
 
   return (
     <div
       className="command-menu-dialog fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center pt-[20vh] bg-overlay backdrop-blur-sm codex-dialog-overlay"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <Command
         className="codex-dialog w-full max-w-[560px] overflow-hidden"

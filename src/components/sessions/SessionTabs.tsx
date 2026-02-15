@@ -40,6 +40,10 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   const [threadToClose, setThreadToClose] = useState<string | null>(null)
   const [switchingTabId, setSwitchingTabId] = useState<string | null>(null)
   const switchingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tabRefMap = useRef<Map<string, HTMLDivElement | null>>(new Map())
+  const threadIdsRef = useRef<string[]>([])
+  const focusedThreadIdRef = useRef<string | null>(null)
+  const switchingTabIdRef = useRef<string | null>(null)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [threadToExport, setThreadToExport] = useState<string | null>(null)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
@@ -54,9 +58,17 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
     }
   }, [])
 
+  useEffect(() => {
+    focusedThreadIdRef.current = focusedThreadId
+  }, [focusedThreadId])
+
+  useEffect(() => {
+    switchingTabIdRef.current = switchingTabId
+  }, [switchingTabId])
+
   const handleTabClick = useCallback((threadId: string) => {
     // Prevent clicking if already switching or if it's the current tab
-    if (threadId === focusedThreadId || switchingTabId !== null) {
+    if (threadId === focusedThreadIdRef.current || switchingTabIdRef.current !== null) {
       return
     }
 
@@ -82,7 +94,15 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
     switchingTimeoutRef.current = setTimeout(() => {
       setSwitchingTabId(null)
     }, 300)
-  }, [focusedThreadId, switchingTabId, switchThread])
+  }, [switchThread])
+
+  const registerTabRef = useCallback((threadId: string, el: HTMLDivElement | null) => {
+    if (el) {
+      tabRefMap.current.set(threadId, el)
+    } else {
+      tabRefMap.current.delete(threadId)
+    }
+  }, [])
 
   const handleCloseClick = (e: React.MouseEvent, threadId: string) => {
     e.stopPropagation()
@@ -97,6 +117,11 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   }
 
   const threadEntries = Object.entries(threads)
+  const threadIds = useMemo(() => threadEntries.map(([id]) => id), [threadEntries])
+
+  useEffect(() => {
+    threadIdsRef.current = threadIds
+  }, [threadIds])
 
   const activeSession = sessions.find(s => s.sessionId === focusedThreadId)
   const activeThreadState = focusedThreadId ? threads[focusedThreadId] : null
@@ -169,6 +194,23 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
     setThreadToRename(focusedThreadId)
     setRenameDialogOpen(true)
   }, [focusedThreadId])
+
+  const handleTabArrowNavigate = useCallback((currentThreadId: string, direction: 'prev' | 'next') => {
+    if (switchingTabIdRef.current !== null) return
+    const ids = threadIdsRef.current
+    if (ids.length < 2) return
+    const currentIndex = ids.indexOf(currentThreadId)
+    if (currentIndex < 0) return
+    const targetIndex =
+      direction === 'next'
+        ? (currentIndex + 1) % ids.length
+        : (currentIndex - 1 + ids.length) % ids.length
+    const targetThreadId = ids[targetIndex]
+    handleTabClick(targetThreadId)
+    window.requestAnimationFrame(() => {
+      tabRefMap.current.get(targetThreadId)?.focus()
+    })
+  }, [handleTabClick])
 
   // Don't render if no threads
   if (threadEntries.length === 0) {
@@ -290,7 +332,11 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
       </div>
 
       {showTabStrip && (
-        <div className="flex items-center gap-1 overflow-x-auto border-b border-stroke/20 bg-surface-hover/[0.04] px-3 py-2 backdrop-blur-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/50">
+        <div
+          className="flex items-center gap-1 overflow-x-auto border-b border-stroke/20 bg-surface-hover/[0.04] px-3 py-2 backdrop-blur-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/50"
+          role="tablist"
+          aria-label="Sessions"
+        >
         {threadEntries.map(([threadId, threadState]) => {
           const sessionMeta = sessions.find(s => s.sessionId === threadId)
           return (
@@ -303,6 +349,8 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
               isGloballyLoading={isLoading}
               onClick={() => handleTabClick(threadId)}
               onClose={(e) => handleCloseClick(e, threadId)}
+              onArrowNavigate={handleTabArrowNavigate}
+              registerTabRef={registerTabRef}
               sessionTitle={sessionMeta?.title || null}
               sessionTasksJson={sessionMeta?.tasksJson || null}
               sessionStatus={sessionMeta?.status || 'idle'}
@@ -378,18 +426,23 @@ interface SessionTabProps {
   isGloballyLoading: boolean
   onClick: () => void
   onClose: (e: React.MouseEvent) => void
+  onArrowNavigate: (currentThreadId: string, direction: 'prev' | 'next') => void
+  registerTabRef: (threadId: string, el: HTMLDivElement | null) => void
   sessionTitle: string | null
   sessionTasksJson: string | null
   sessionStatus: SessionStatus
 }
 
 const SessionTab = memo(function SessionTab({
+  threadId,
   threadState,
   isActive,
   isSwitching,
   isGloballyLoading,
   onClick,
   onClose,
+  onArrowNavigate,
+  registerTabRef,
   sessionTitle,
   sessionTasksJson,
   sessionStatus
@@ -450,9 +503,37 @@ const SessionTab = memo(function SessionTab({
   // Determine if this tab is in a loading state
   const isLoading = isSwitching || (isGloballyLoading && !isActive)
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return
+    if (isLoading) return
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleClick()
+      return
+    }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      onArrowNavigate(threadId, 'prev')
+      return
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      onArrowNavigate(threadId, 'next')
+      return
+    }
+  }, [handleClick, isLoading, onArrowNavigate, threadId])
+
   return (
     <div
       onClick={handleClick}
+      ref={(node) => registerTabRef(threadId, node)}
+      data-thread-id={threadId}
+      role="tab"
+      aria-selected={isActive}
+      aria-disabled={isLoading}
+      tabIndex={isLoading ? -1 : isActive ? 0 : -1}
+      onKeyDown={handleKeyDown}
       className={cn(
         'group flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium',
         'transition-all duration-150 min-w-[100px] max-w-[200px]',

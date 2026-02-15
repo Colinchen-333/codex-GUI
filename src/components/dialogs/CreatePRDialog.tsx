@@ -192,7 +192,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
         {(ghStatus === 'not-installed' || ghStatus === 'not-authenticated') && (
           <div className="mx-5 mt-4 rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning-muted px-3 py-2.5">
             <div className="flex items-start gap-2">
-              <AlertTriangle size={14} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+              <AlertTriangle size={14} className="text-status-warning mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-[12px] font-medium text-text-1">
                   {ghStatus === 'not-installed'
@@ -212,7 +212,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
         {/* Error banner */}
         {error && (
           <div className="mx-5 mt-3 rounded-[var(--radius-sm)] border border-status-error/30 bg-status-error-muted px-3 py-2">
-            <p className="text-[12px] text-red-400">{error}</p>
+            <p className="text-[12px] text-status-error">{error}</p>
           </div>
         )}
 
@@ -318,8 +318,8 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
         {step === 'done' && prUrl && (
           <div className="px-5 py-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
-                <Check size={16} className="text-emerald-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-status-success-muted">
+                <Check size={16} className="text-status-success" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] text-text-1 font-medium">Pull request created</p>
@@ -334,7 +334,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
                 onClick={handleCopyUrl}
                 className={cn(
                   'flex-shrink-0 p-1 rounded-[var(--radius-xs)] transition-colors',
-                  copied ? 'text-emerald-400' : 'text-text-3 hover:text-text-1'
+                  copied ? 'text-status-success' : 'text-text-3 hover:text-text-1'
                 )}
                 aria-label="Copy URL"
               >

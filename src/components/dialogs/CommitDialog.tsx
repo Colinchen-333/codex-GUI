@@ -17,11 +17,11 @@ interface CommitDialogProps {
 }
 
 const STATUS_ICONS: Record<string, { icon: React.ReactNode; color: string }> = {
-  M: { icon: <FileText size={14} />, color: 'text-blue-400' },
-  A: { icon: <Plus size={14} />, color: 'text-emerald-400' },
-  D: { icon: <Minus size={14} />, color: 'text-red-400' },
-  R: { icon: <FileText size={14} />, color: 'text-purple-400' },
-  '?': { icon: <CircleDot size={14} />, color: 'text-yellow-400' },
+  M: { icon: <FileText size={14} />, color: 'text-status-info' },
+  A: { icon: <Plus size={14} />, color: 'text-status-success' },
+  D: { icon: <Minus size={14} />, color: 'text-status-error' },
+  R: { icon: <FileText size={14} />, color: 'text-status-info' },
+  '?': { icon: <CircleDot size={14} />, color: 'text-status-warning' },
 }
 
 export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
@@ -353,10 +353,10 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
           <div className="flex items-center gap-2 text-[12px] font-medium">
             <span className="text-text-3">{files.length} files</span>
             {remoteInfo && remoteInfo.ahead > 0 && (
-              <span className="text-emerald-400">{remoteInfo.ahead} ahead</span>
+              <span className="text-status-success">{remoteInfo.ahead} ahead</span>
             )}
             {remoteInfo && remoteInfo.behind > 0 && (
-              <span className="text-red-400">{remoteInfo.behind} behind</span>
+              <span className="text-status-error">{remoteInfo.behind} behind</span>
             )}
           </div>
         </div>
@@ -364,7 +364,7 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
         {/* Error banner */}
         {error && (
           <div className="mx-5 mt-3 rounded-[var(--radius-sm)] border border-status-error/30 bg-status-error-muted px-3 py-2">
-            <p className="text-[12px] text-red-400">{error}</p>
+            <p className="text-[12px] text-status-error">{error}</p>
           </div>
         )}
 
@@ -514,8 +514,8 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
         {step === 'done' && (
           <div className="px-5 py-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
-                <Check size={16} className="text-emerald-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-status-success-muted">
+                <Check size={16} className="text-status-success" />
               </div>
               <div>
                 <p className="text-[14px] text-text-1 font-medium">

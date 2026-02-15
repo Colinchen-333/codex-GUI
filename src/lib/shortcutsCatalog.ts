@@ -43,6 +43,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: 'Git',
     shortcuts: [
       { keys: ['Cmd', 'Enter'], description: 'Run primary action (Commit dialog)' },
+      { keys: ['Cmd', 'Enter'], description: 'Create pull request (Create PR dialog)' },
     ],
   },
   {

@@ -27,6 +27,8 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const { toast } = useToast()
   const tauriAvailable = isTauriAvailable()
+  const isMac =
+    typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
 
   // Form state
   const [title, setTitle] = useState('')
@@ -104,7 +106,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
   }, [isOpen, initialize])
   // Initialize form when dialog opens.
 
-  const handleCreatePR = async () => {
+  const handleCreatePR = useCallback(async () => {
     if (!selectedProject?.path || !title.trim()) return
 
     setStep('creating')
@@ -131,7 +133,31 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
       setStep('form')
       toast.error('PR creation failed', { message: errMsg })
     }
-  }
+  }, [baseBranch, body, headBranch, isDraft, selectedProject?.path, title, toast])
+
+  useEffect(() => {
+    if (!isOpen) return
+    if (!tauriAvailable) return
+    if (!selectedProject?.path) return
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.isComposing) return
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+      if (!modifier) return
+      if (e.key !== 'Enter') return
+      if (step !== 'form') return
+      if (ghStatus !== 'ready') return
+      if (!title.trim() || !baseBranch || !headBranch) return
+
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      void handleCreatePR()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [baseBranch, ghStatus, handleCreatePR, headBranch, isMac, isOpen, selectedProject?.path, step, tauriAvailable, title])
 
   const handleCopyUrl = async () => {
     if (!prUrl) return
@@ -375,19 +401,29 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2 p-5">
-              <Button onClick={onClose} variant="secondary" className="flex-1">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreatePR}
-                disabled={!title.trim() || !baseBranch || !headBranch || ghStatus !== 'ready'}
-                variant="primary"
-                className="flex-1"
-              >
-                <GitPullRequest size={14} />
-                Create Pull Request
-              </Button>
+            <div className="p-5 pt-3">
+              <div className="mb-2 flex items-center justify-between text-[11px] text-text-3">
+                <span>
+                  <span className="font-mono">{isMac ? 'Cmd' : 'Ctrl'}+Enter</span> to create PR
+                </span>
+                <span>
+                  <span className="font-mono">Esc</span> to close
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={onClose} variant="secondary" className="flex-1">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreatePR}
+                  disabled={!title.trim() || !baseBranch || !headBranch || ghStatus !== 'ready'}
+                  variant="primary"
+                  className="flex-1"
+                >
+                  <GitPullRequest size={14} />
+                  Create Pull Request
+                </Button>
+              </div>
             </div>
           </>
         )}

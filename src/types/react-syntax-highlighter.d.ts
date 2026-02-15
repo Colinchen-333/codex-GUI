@@ -1,7 +1,7 @@
 declare module 'react-syntax-highlighter/dist/esm/prism-light' {
   import type { ComponentType } from 'react'
 
-  const Highlighter: ComponentType<any> & {
+  const Highlighter: ComponentType<Record<string, unknown>> & {
     registerLanguage?: (languageName: string, language: unknown) => void
     alias?: (languageName: string, aliases: string[]) => void
   }
@@ -18,4 +18,3 @@ declare module 'react-syntax-highlighter/dist/esm/styles/prism/*' {
   const theme: Record<string, unknown>
   export default theme
 }
-

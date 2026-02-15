@@ -459,6 +459,20 @@ export function CommandPalette({
       group: 'Navigation',
     },
     {
+      id: 'go-settings-git',
+      label: 'Git Settings',
+      icon: <GitBranch size={16} />,
+      action: () => navigate('/settings/git'),
+      group: 'Navigation',
+    },
+    {
+      id: 'go-settings-worktrees',
+      label: 'Worktrees Settings',
+      icon: <GitBranch size={16} />,
+      action: () => navigate('/settings/worktrees'),
+      group: 'Navigation',
+    },
+    {
       id: 'toggle-theme',
       label: theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode',
       icon: theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />,

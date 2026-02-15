@@ -16,9 +16,16 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'General',
     shortcuts: [
-      { keys: ['\u2318', ','], description: 'Open settings' },
-      { keys: ['\u2318', 'K'], description: 'Focus message input' },
-      { keys: ['\u2318', 'N'], description: 'New session' },
+      { keys: ['Cmd', ','], description: 'Open settings' },
+      { keys: ['Cmd', 'K'], description: 'Open command palette' },
+      { keys: ['Cmd', 'Shift', 'K'], description: 'Focus input' },
+      { keys: ['Cmd', 'N'], description: 'New session' },
+      { keys: ['Cmd', 'O'], description: 'Open project' },
+      { keys: ['Cmd', 'J'], description: 'Toggle terminal' },
+      { keys: ['Cmd', 'L'], description: 'Clear thread' },
+      { keys: ['Cmd', '/'], description: 'Toggle review pane' },
+      { keys: ['Cmd', 'Z'], description: 'Undo' },
+      { keys: ['Cmd', 'Shift', 'Z'], description: 'Redo' },
       { keys: ['Esc'], description: 'Stop generation (double-tap) / Close dialogs' },
       { keys: ['?'], description: 'Show keyboard shortcuts' },
     ],
@@ -26,9 +33,13 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Navigation',
     shortcuts: [
-      { keys: ['\u2318', '1'], description: 'Switch to Projects tab' },
-      { keys: ['\u2318', '2'], description: 'Switch to Sessions tab' },
-      { keys: ['\u2191', '\u2193'], description: 'Navigate message history (input)' },
+      { keys: ['Cmd', '1'], description: 'Switch to Projects tab' },
+      { keys: ['Cmd', '2'], description: 'Switch to Sessions tab' },
+      { keys: ['Cmd', ']'], description: 'Next session' },
+      { keys: ['Cmd', '['], description: 'Previous session' },
+      { keys: ['Cmd', 'Shift', '['], description: 'First session' },
+      { keys: ['Cmd', 'Shift', ']'], description: 'Last session' },
+      { keys: ['Up', 'Down'], description: 'Navigate message history (input)' },
     ],
   },
   {
@@ -38,7 +49,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['Shift', 'Enter'], description: 'New line (input)' },
       { keys: ['/'], description: 'Show slash commands (input)' },
       { keys: ['@'], description: 'Mention file (input)' },
-      { keys: ['\u2318', 'V'], description: 'Paste image (input)' },
+      { keys: ['Cmd', 'V'], description: 'Paste image (input)' },
     ],
   },
   {

@@ -55,6 +55,8 @@ interface CommandItem {
   icon: React.ReactNode
   shortcut?: string[]
   disabled?: boolean
+  meta?: React.ReactNode
+  searchText?: string
   action: () => void
   group: string
 }
@@ -148,6 +150,52 @@ export function CommandPalette({
     if (session.mode !== 'worktree') return ''
     const branch = session.worktreeBranch?.trim()
     return ` \u00b7 ${branch || 'worktree'}`
+  }, [])
+
+  const renderSessionMeta = useCallback((session: {
+    isFavorite?: boolean
+    isArchived?: boolean
+    status?: string
+  }): React.ReactNode => {
+    const chips: Array<{ label: string; className: string }> = []
+
+    if (session.isFavorite) chips.push({ label: 'PINNED', className: 'border-stroke/20 bg-surface-hover/[0.08] text-text-2' })
+    if (session.isArchived) chips.push({ label: 'ARCHIVED', className: 'border-stroke/20 bg-surface-hover/[0.06] text-text-3' })
+
+    switch (session.status) {
+      case 'running':
+        chips.push({ label: 'RUNNING', className: 'border-status-info/30 bg-status-info/10 text-status-info' })
+        break
+      case 'failed':
+        chips.push({ label: 'FAILED', className: 'border-status-error/30 bg-status-error-muted text-status-error' })
+        break
+      case 'interrupted':
+        chips.push({ label: 'STOPPED', className: 'border-status-warning/30 bg-status-warning/10 text-status-warning' })
+        break
+      case 'completed':
+        chips.push({ label: 'DONE', className: 'border-status-success/30 bg-status-success/10 text-status-success' })
+        break
+      default:
+        break
+    }
+
+    if (chips.length === 0) return null
+
+    return (
+      <div className="hidden sm:flex items-center gap-1">
+        {chips.slice(0, 3).map((chip) => (
+          <span
+            key={chip.label}
+            className={cn(
+              'inline-flex items-center rounded-xs border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide',
+              chip.className
+            )}
+          >
+            {chip.label}
+          </span>
+        ))}
+      </div>
+    )
   }, [])
 
   useEffect(() => {
@@ -671,6 +719,8 @@ export function CommandPalette({
               id: `search-session:${session.sessionId}`,
               label: `${title} (${projectName}${worktreeSuffix})`,
               icon: <MessageSquare size={16} />,
+              meta: renderSessionMeta(session),
+              searchText: `${projectName} ${session.sessionId} ${session.status ?? ''} ${session.isFavorite ? 'pinned' : ''} ${session.isArchived ? 'archived' : ''} ${session.worktreeBranch ?? ''}`,
               action: () => {
                 const projectsStore = useProjectsStore.getState()
                 const currentProjectId = projectsStore.selectedProjectId
@@ -714,6 +764,8 @@ export function CommandPalette({
         id: `select-session:${session.sessionId}`,
         label: `Switch to: ${title} (${projectName}${worktreeSuffix})`,
         icon: <MessageSquare size={16} />,
+        meta: renderSessionMeta(session),
+        searchText: `${projectName} ${session.sessionId} ${session.status ?? ''} ${session.isFavorite ? 'pinned' : ''} ${session.isArchived ? 'archived' : ''} ${session.worktreeBranch ?? ''}`,
         action: () => {
           const projectsStore = useProjectsStore.getState()
           const currentProjectId = projectsStore.selectedProjectId
@@ -730,10 +782,12 @@ export function CommandPalette({
     ...Object.values(threads).slice(0, 12).map((threadState) => {
       const threadId = threadState.thread.id
       const title = sessionTitleById.get(threadId) || threadState.thread.cwd?.split('/').pop() || threadId.slice(0, 8)
+      const meta = sessions.find((s) => s.sessionId === threadId) ?? null
       return {
         id: `switch-session:${threadId}`,
         label: `Switch to: ${title}`,
         icon: <MessageSquare size={16} />,
+        meta: meta ? renderSessionMeta({ ...meta, status: threadState.turnStatus === 'running' ? 'running' : meta.status }) : null,
         action: () => useThreadStore.getState().switchThread(threadId),
         group: 'Active Sessions',
       }
@@ -799,7 +853,7 @@ export function CommandPalette({
                 .map((command) => (
                   <Command.Item
                     key={command.id}
-                    value={command.label}
+                    value={command.searchText ? `${command.label} ${command.searchText}` : command.label}
                     disabled={command.disabled}
                     onSelect={() => {
                       if (command.disabled) return
@@ -811,18 +865,21 @@ export function CommandPalette({
                       <span className="text-text-3">{command.icon}</span>
                       <span className="text-[13px]">{command.label}</span>
                     </div>
-                    {command.shortcut && (
-                      <div className="flex items-center gap-1">
-                        {command.shortcut.map((key, i) => (
-                          <kbd
-                            key={i}
-                            className="min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-xs bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono"
-                          >
-                            {key}
-                          </kbd>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {command.meta}
+                      {command.shortcut && (
+                        <div className="flex items-center gap-1">
+                          {command.shortcut.map((key, i) => (
+                            <kbd
+                              key={i}
+                              className="min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-xs bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono"
+                            >
+                              {key}
+                            </kbd>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </Command.Item>
                 ))}
             </Command.Group>

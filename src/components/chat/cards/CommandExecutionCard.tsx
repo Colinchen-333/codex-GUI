@@ -32,6 +32,7 @@ interface ApprovalUIProps {
   proposedExecpolicyAmendment?: { command: string[] } | null
   onApprove: (decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline') => Promise<void>
   onExplain: () => Promise<void>
+  onToggleOutput?: () => void
   isExplaining: boolean
   explanation: string
   isApproving: boolean
@@ -44,6 +45,7 @@ const ApprovalUI = memo(function ApprovalUI({
   proposedExecpolicyAmendment,
   onApprove,
   onExplain,
+  onToggleOutput,
   isExplaining,
   explanation,
   isApproving,
@@ -128,6 +130,11 @@ const ApprovalUI = memo(function ApprovalUI({
     if (key === 'e') {
       e.preventDefault()
       setApprovalMode('feedback')
+      return
+    }
+    if (key === 'o') {
+      e.preventDefault()
+      onToggleOutput?.()
       return
     }
   }
@@ -229,7 +236,7 @@ const ApprovalUI = memo(function ApprovalUI({
           </div>
 
           <div className="mt-2 text-[11px] text-text-3">
-            Hotkeys: <span className="font-mono">y</span> accept, <span className="font-mono">a</span> allow for session, <span className="font-mono">n</span> decline, <span className="font-mono">x</span> explain, <span className="font-mono">e</span> feedback
+            Hotkeys: <span className="font-mono">y</span> accept, <span className="font-mono">a</span> allow for session, <span className="font-mono">n</span> decline, <span className="font-mono">o</span> toggle output, <span className="font-mono">x</span> explain, <span className="font-mono">e</span> feedback
           </div>
 
           {/* Secondary Actions */}
@@ -420,6 +427,11 @@ export const CommandExecutionCard = memo(
       else toast.error('Copy failed')
     }
 
+    const handleToggleOutput = () => {
+      if (!rawOutput) return
+      setShowFullOutput((prev) => !prev)
+    }
+
     const handleCopyStderr = async () => {
       const ok = await copyTextToClipboard(content.stderr || '')
       if (ok) toast.success('Copied stderr')
@@ -583,6 +595,7 @@ export const CommandExecutionCard = memo(
             proposedExecpolicyAmendment={content.proposedExecpolicyAmendment}
             onApprove={handleApprove}
             onExplain={handleExplain}
+            onToggleOutput={handleToggleOutput}
             isExplaining={isExplaining}
             explanation={explanation}
             isApproving={isApproving}

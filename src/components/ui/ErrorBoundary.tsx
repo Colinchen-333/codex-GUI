@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react'
 import { AlertTriangle, Copy } from 'lucide-react'
 import { logError } from '../../lib/errorUtils'
+import { copyTextToClipboard } from '../../lib/clipboard'
 import { Button } from './Button'
 
 interface Props {
@@ -41,19 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
       const copyError = async () => {
         try {
           const text = this.state.error?.stack || message
-          if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(text)
-          } else {
-            const el = document.createElement('textarea')
-            el.value = text
-            el.setAttribute('readonly', 'true')
-            el.style.position = 'fixed'
-            el.style.left = '-9999px'
-            document.body.appendChild(el)
-            el.select()
-            document.execCommand('copy')
-            document.body.removeChild(el)
-          }
+          await copyTextToClipboard(text)
         } catch {
           // Ignore clipboard failures in crash UI.
         }

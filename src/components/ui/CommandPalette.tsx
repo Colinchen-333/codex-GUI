@@ -29,6 +29,7 @@ import {
   Square,
   FileText,
   RefreshCw,
+  GitPullRequest,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
@@ -227,6 +228,13 @@ export function CommandPalette({
       label: 'Commit Changes',
       icon: <GitCommit size={16} />,
       action: () => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG),
+      group: 'Actions',
+    },
+    {
+      id: 'create-pr',
+      label: 'Create Pull Request',
+      icon: <GitPullRequest size={16} />,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_CREATE_PR_DIALOG),
       group: 'Actions',
     },
     {

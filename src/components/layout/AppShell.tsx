@@ -16,6 +16,7 @@ import { APP_EVENTS } from '../../lib/appEvents'
 export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
   const [commitDialogOpen, setCommitDialogOpen] = useState(false)
+  const [commitDialogIntent, setCommitDialogIntent] = useState<'commit' | 'pr'>('commit')
   const navigate = useNavigate()
   const commandPalette = useCommandPalette()
 
@@ -24,6 +25,7 @@ export function AppShell() {
   }, [])
 
   const handleOpenCommitDialog = useCallback(() => {
+    setCommitDialogIntent('commit')
     setCommitDialogOpen(true)
   }, [])
 
@@ -39,6 +41,15 @@ export function AppShell() {
     const handleOpen = () => setCommitDialogOpen(true)
     window.addEventListener(APP_EVENTS.OPEN_COMMIT_DIALOG, handleOpen)
     return () => window.removeEventListener(APP_EVENTS.OPEN_COMMIT_DIALOG, handleOpen)
+  }, [])
+
+  useEffect(() => {
+    const handleOpen = () => {
+      setCommitDialogIntent('pr')
+      setCommitDialogOpen(true)
+    }
+    window.addEventListener(APP_EVENTS.OPEN_CREATE_PR_DIALOG, handleOpen)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_CREATE_PR_DIALOG, handleOpen)
   }, [])
 
   return (
@@ -73,7 +84,11 @@ export function AppShell() {
       </div>
       <CommitDialog
         isOpen={commitDialogOpen}
-        onClose={() => setCommitDialogOpen(false)}
+        initialIntent={commitDialogIntent}
+        onClose={() => {
+          setCommitDialogOpen(false)
+          setCommitDialogIntent('commit')
+        }}
       />
       <CommandPalette
         isOpen={commandPalette.isOpen}

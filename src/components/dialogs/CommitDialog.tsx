@@ -13,6 +13,7 @@ type CommitStep = 'review' | 'pushing' | 'done'
 
 interface CommitDialogProps {
   isOpen: boolean
+  initialIntent?: 'commit' | 'pr'
   onClose: () => void
 }
 
@@ -24,7 +25,7 @@ const STATUS_ICONS: Record<string, { icon: React.ReactNode; color: string }> = {
   '?': { icon: <CircleDot size={14} />, color: 'text-status-warning' },
 }
 
-export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
+export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: CommitDialogProps) {
   const { selectedProjectId, projects, gitInfo } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const projectGitInfo = selectedProjectId ? gitInfo[selectedProjectId] : null
@@ -52,6 +53,16 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
     initialFocusRef: closeButtonRef,
     restoreFocus: true,
   })
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowPRDialog(false)
+      return
+    }
+    if (initialIntent === 'pr') {
+      setShowPRDialog(true)
+    }
+  }, [initialIntent, isOpen])
 
   const stagedFiles = files.filter((f) => f.isStaged)
   const unstagedFiles = files.filter((f) => !f.isStaged)

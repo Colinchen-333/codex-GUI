@@ -1,5 +1,6 @@
 export const APP_EVENTS = {
   OPEN_COMMIT_DIALOG: 'codex:open-commit-dialog',
+  OPEN_CREATE_PR_DIALOG: 'codex:open-create-pr-dialog',
   TOGGLE_TERMINAL: 'codex:toggle-terminal',
   TOGGLE_REVIEW_PANEL: 'codex:toggle-review-panel',
   OPEN_IMPORT_CODEX_SESSIONS: 'codex:open-import-codex-sessions',

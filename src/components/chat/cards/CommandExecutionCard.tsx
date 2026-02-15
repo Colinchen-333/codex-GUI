@@ -23,6 +23,7 @@ import { BaseCard, CardOutput, StatusBadge, type CardStatus } from './BaseCard'
 import { formatDuration } from './card-utils'
 import { IconButton } from '../../ui/IconButton'
 import { useToast } from '../../ui/useToast'
+import { focusNextApprovalInThreadOrInput } from '../../../lib/approvalNav'
 
 // -----------------------------------------------------------------------------
 // Helper Components
@@ -378,9 +379,17 @@ export const CommandExecutionCard = memo(
       isApprovingRef.current = true
       setIsApproving(true)
       try {
+        const threadIdAtStart = activeThread.id
+        const approvalCreatedAtAtStart =
+          (useThreadStore.getState() as unknown as {
+            threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
+          }).threads?.[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === item.id)?.createdAt
+
         await respondToApproval(item.id, decision, {
           execpolicyAmendment: content.proposedExecpolicyAmendment,
         })
+
+        focusNextApprovalInThreadOrInput(threadIdAtStart, approvalCreatedAtAtStart)
       } finally {
         isApprovingRef.current = false
         setIsApproving(false)

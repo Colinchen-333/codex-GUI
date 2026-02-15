@@ -199,6 +199,7 @@ export function DiffPage() {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set())
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const sidebarRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const filterInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchDiff = useCallback(async () => {
@@ -510,6 +511,11 @@ export function DiffPage() {
     }
   }, [resolvedSelectedPath])
 
+  useEffect(() => {
+    if (!resolvedSelectedPath) return
+    sidebarRefs.current[resolvedSelectedPath]?.scrollIntoView({ block: 'nearest' })
+  }, [resolvedSelectedPath])
+
   const getFileIcon = (path: string) => {
     const ext = path.split('.').pop()?.toLowerCase()
     if (ext === 'json') {
@@ -750,7 +756,7 @@ export function DiffPage() {
               Hotkeys:{' '}
               <span className="font-mono">/</span> filter, <span className="font-mono">j</span>/<span className="font-mono">k</span> navigate,{' '}
               <span className="font-mono">s</span> stage, <span className="font-mono">o</span> open, <span className="font-mono">c</span> copy,{' '}
-              <span className="font-mono">r</span> refresh
+              <span className="font-mono">r</span> refresh, <span className="font-mono">Esc</span> clear
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
@@ -763,6 +769,9 @@ export function DiffPage() {
 	              return (
 	                <button
 	                  key={`${node.type}-${node.path}`}
+                    ref={(el) => {
+                      sidebarRefs.current[node.path] = el
+                    }}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors',
                     isSelected

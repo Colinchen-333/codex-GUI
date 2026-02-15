@@ -2,41 +2,15 @@
  * QueuedMessagesDisplay - Shows messages waiting to be processed
  * Memoized to prevent unnecessary re-renders when only turnStatus changes
  */
-import { memo, useEffect, useRef, useState } from 'react'
-import { ArrowUp, CornerDownLeft, MoreHorizontal, Trash2 } from 'lucide-react'
+import { memo } from 'react'
+import { ArrowUp, CornerDownLeft, Trash2 } from 'lucide-react'
 import { useThreadStore, type QueuedMessage, selectFocusedThread } from '../../../stores/thread'
-import { useToast } from '../../ui/Toast'
-import { cn } from '../../../lib/utils'
 
 export const QueuedMessagesDisplay = memo(function QueuedMessagesDisplay() {
   // Use proper selector to avoid re-render loops from getter-based state access
   const focusedThread = useThreadStore(selectFocusedThread)
   const removeQueuedMessage = useThreadStore((state) => state.removeQueuedMessage)
   const promoteQueuedMessage = useThreadStore((state) => state.promoteQueuedMessage)
-  const { showToast } = useToast()
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const menuRefs = useRef<Record<string, HTMLDivElement | null>>({})
-
-  useEffect(() => {
-    if (!openMenuId) return
-    const handleClickOutside = (event: MouseEvent) => {
-      const menuRef = menuRefs.current[openMenuId]
-      if (menuRef && !menuRef.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [openMenuId])
 
   const queuedMessages = focusedThread?.queuedMessages ?? []
   if (queuedMessages.length === 0) return null
@@ -73,46 +47,6 @@ export const QueuedMessagesDisplay = memo(function QueuedMessagesDisplay() {
               >
                 <Trash2 size={14} />
               </button>
-              <div
-                ref={(node) => {
-                  menuRefs.current[msg.id] = node
-                }}
-                className="relative"
-              >
-                <button
-                  className={cn(
-                    'rounded-full p-1 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1',
-                    openMenuId === msg.id && 'bg-surface-hover/[0.12] text-text-1'
-                  )}
-                  onClick={() => setOpenMenuId((prev) => (prev === msg.id ? null : msg.id))}
-                  title="More"
-                  aria-label="More actions"
-                >
-                  <MoreHorizontal size={14} />
-                </button>
-                {openMenuId === msg.id && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-stroke/15 bg-surface-solid p-1.5 shadow-[var(--shadow-2)]">
-                    <button
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-[13px] text-text-1 hover:bg-surface-hover/[0.12]"
-                      onClick={() => {
-                        showToast('Edit message not wired yet', 'info')
-                        setOpenMenuId(null)
-                      }}
-                    >
-                      Edit message
-                    </button>
-                    <button
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-[13px] text-text-1 hover:bg-surface-hover/[0.12]"
-                      onClick={() => {
-                        showToast('Turn off queueing not wired yet', 'info')
-                        setOpenMenuId(null)
-                      }}
-                    >
-                      Turn off queueing
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         ))}

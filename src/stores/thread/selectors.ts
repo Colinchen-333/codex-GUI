@@ -16,6 +16,7 @@ import { defaultTokenUsage, defaultTurnTiming } from './utils'
 
 const EMPTY_ITEMS: Record<string, AnyThreadItem> = {}
 const EMPTY_ITEM_ORDER: string[] = []
+const EMPTY_ORDERED_ITEMS: AnyThreadItem[] = []
 const EMPTY_PENDING_APPROVALS: ThreadState['pendingApprovals'] = []
 const EMPTY_QUEUED_MESSAGES: ThreadState['queuedMessages'] = []
 const EMPTY_SESSION_OVERRIDES: ThreadState['sessionOverrides'] = {}
@@ -128,7 +129,7 @@ let cachedThreadId: string | null = null
 
 export function selectOrderedItems(state: ThreadState): AnyThreadItem[] {
   const focusedThread = selectFocusedThread(state)
-  if (!focusedThread) return []
+  if (!focusedThread) return EMPTY_ORDERED_ITEMS
   const { items, itemOrder } = focusedThread
   if (
     cachedThreadId === focusedThread.thread.id &&
@@ -158,8 +159,17 @@ export function selectItemById(itemId: string) {
  * Select items of a specific type from the focused thread.
  */
 export function selectItemsByType(itemType: ThreadItemType) {
+  // Cache filtered results to ensure selector output is referentially stable.
+  // Returning a new array on every call can break useSyncExternalStore expectations
+  // and trigger infinite update loops (especially in Strict Mode / tests).
+  let cachedOrderedItemsRef: AnyThreadItem[] | null = null
+  let cachedFilteredItems: AnyThreadItem[] = []
   return (state: ThreadState): AnyThreadItem[] => {
-    return selectOrderedItems(state).filter((item) => item.type === itemType)
+    const ordered = selectOrderedItems(state)
+    if (ordered === cachedOrderedItemsRef) return cachedFilteredItems
+    cachedOrderedItemsRef = ordered
+    cachedFilteredItems = ordered.filter((item) => item.type === itemType)
+    return cachedFilteredItems
   }
 }
 

@@ -30,6 +30,7 @@ import {
   FileText,
   RefreshCw,
   GitPullRequest,
+  Coffee,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
@@ -201,6 +202,52 @@ export function CommandPalette({
           await revealInFinder(paths.logDir)
         } catch (err) {
           toast.error('Failed to reveal logs folder', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'reveal-app-data-folder',
+      label: 'Reveal App Data Folder',
+      icon: <FolderOpen size={16} />,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          const paths = await systemApi.getAppPaths()
+          if (!paths.appDataDir) {
+            toast.error('App data folder not available')
+            return
+          }
+          await revealInFinder(paths.appDataDir)
+        } catch (err) {
+          toast.error('Failed to reveal app data folder', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'toggle-keep-awake',
+      label: 'Toggle Keep Awake',
+      icon: <Coffee size={16} />,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          const active = await systemApi.isKeepAwakeActive()
+          if (active) {
+            await systemApi.stopKeepAwake()
+            toast.success('Keep awake disabled')
+          } else {
+            await systemApi.startKeepAwake()
+            toast.success('Keep awake enabled')
+          }
+        } catch (err) {
+          toast.error('Failed to toggle keep awake', { message: String(err) })
         }
       },
       group: 'Diagnostics',

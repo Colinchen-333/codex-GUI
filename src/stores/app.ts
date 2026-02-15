@@ -1,6 +1,28 @@
 import { create } from 'zustand'
 
 type SidebarTab = 'projects' | 'sessions'
+
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'codex:sidebar-collapsed'
+
+function readSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)
+    return raw === '1' || raw === 'true'
+  } catch {
+    return false
+  }
+}
+
+function writeSidebarCollapsed(collapsed: boolean): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, collapsed ? '1' : '0')
+  } catch {
+    // Best-effort persistence.
+  }
+}
+
 export interface AppState {
   // Dialog states
   settingsTab: 'general' | 'model' | 'safety' | 'account' | 'allowlist'
@@ -52,9 +74,17 @@ export const useAppStore = create<AppState>((set) => ({
   // Sidebar state
   sidebarTab: 'projects',
   setSidebarTab: (tab) => set({ sidebarTab: tab }),
-  sidebarCollapsed: false,
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  toggleSidebarCollapsed: () => set((prev) => ({ sidebarCollapsed: !prev.sidebarCollapsed })),
+  sidebarCollapsed: readSidebarCollapsed(),
+  setSidebarCollapsed: (collapsed) => {
+    writeSidebarCollapsed(collapsed)
+    set({ sidebarCollapsed: collapsed })
+  },
+  toggleSidebarCollapsed: () =>
+    set((prev) => {
+      const next = !prev.sidebarCollapsed
+      writeSidebarCollapsed(next)
+      return { sidebarCollapsed: next }
+    }),
 
   // Input focus
   shouldFocusInput: false,

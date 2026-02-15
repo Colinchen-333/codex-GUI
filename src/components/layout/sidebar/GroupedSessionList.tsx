@@ -1,14 +1,16 @@
 import { memo, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Folder, MessageSquare } from 'lucide-react'
+import { ChevronDown, ChevronRight, Folder, MessageSquare, Settings } from 'lucide-react'
 import { cn, formatSessionTime } from '../../../lib/utils'
 import { useProjectsStore } from '../../../stores/projects'
 import { useSessionsStore } from '../../../stores/sessions'
 import type { Session } from './SessionList'
+import { IconButton } from '../../ui/IconButton'
 
 interface GroupedSessionListProps {
   sessions: Session[]
   selectedSessionId: string | null
   onSelectSession: (sessionId: string | null, projectId?: string) => void
+  onOpenProjectSettings?: (projectId: string) => void
   isLoading: boolean
 }
 
@@ -22,6 +24,7 @@ export const GroupedSessionList = memo(function GroupedSessionList({
   sessions,
   selectedSessionId,
   onSelectSession,
+  onOpenProjectSettings,
   isLoading,
 }: GroupedSessionListProps) {
   const { projects } = useProjectsStore()
@@ -106,24 +109,39 @@ export const GroupedSessionList = memo(function GroupedSessionList({
         const isExpanded = expandedProjects.has(group.projectId)
         return (
           <div key={group.projectId}>
-            <button
-              onClick={() => toggleProject(group.projectId)}
-              className="flex h-9 w-full items-center gap-1.5 rounded-md px-2.5 text-left transition-colors hover:bg-surface-hover/[0.06]"
-            >
-              {isExpanded ? (
-                <ChevronDown size={14} className="text-text-3" />
-              ) : (
-                <ChevronRight size={14} className="text-text-3" />
+            <div className="flex h-9 w-full items-center rounded-md transition-colors hover:bg-surface-hover/[0.06]">
+              <button
+                type="button"
+                onClick={() => toggleProject(group.projectId)}
+                className="flex h-9 flex-1 items-center gap-1.5 px-2.5 text-left"
+              >
+                {isExpanded ? (
+                  <ChevronDown size={14} className="text-text-3" />
+                ) : (
+                  <ChevronRight size={14} className="text-text-3" />
+                )}
+                <Folder size={15} className="text-text-2" />
+                <span className="flex-1 truncate text-[14px] font-semibold text-text-1">{group.projectName}</span>
+                <span className="text-[11px] text-text-3">{group.sessions.length}</span>
+              </button>
+              {onOpenProjectSettings && (
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  className="mr-1 h-7 w-7 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
+                  title="Project Settings"
+                  aria-label="Project Settings"
+                  onClick={() => onOpenProjectSettings(group.projectId)}
+                >
+                  <Settings size={14} />
+                </IconButton>
               )}
-              <Folder size={15} className="text-text-2" />
-              <span className="flex-1 truncate text-[14px] font-semibold text-text-1">{group.projectName}</span>
-              <span className="text-[11px] text-text-3">{group.sessions.length}</span>
-            </button>
+            </div>
 
             {isExpanded && (
               <div className="mt-1 space-y-0.5 pl-5">
                 {group.sessions.length === 0 && (
-                  <div className="rounded-md px-2.5 py-1.5 text-[12px] text-text-3">No threads yet</div>
+                  <div className="rounded-md px-2.5 py-1.5 text-[12px] text-text-3">No sessions yet</div>
                 )}
 
                 {group.sessions.map((session) => {

@@ -328,6 +328,7 @@ export function Sidebar() {
           sessions={displaySessions}
           selectedSessionId={selectedSessionId}
           onSelectSession={handleSelectSession}
+          onOpenProjectSettings={handleOpenProjectSettings}
           isLoading={sessionsLoading || isSearching}
         />
       </div>

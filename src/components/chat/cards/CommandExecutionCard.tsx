@@ -213,7 +213,7 @@ const ApprovalUI = memo(function ApprovalUI({
               className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)]"
               onClick={() => onApprove('accept')}
               disabled={isApproving}
-              title="Keyboard: Y"
+              title="Keyboard: y"
             >
               Yes (y)
             </button>
@@ -221,7 +221,7 @@ const ApprovalUI = memo(function ApprovalUI({
               className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => onApprove('acceptForSession')}
               disabled={isApproving}
-              title="Keyboard: A"
+              title="Keyboard: a"
             >
               Allow for session (a)
             </button>
@@ -229,7 +229,7 @@ const ApprovalUI = memo(function ApprovalUI({
               className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors"
               onClick={() => onApprove('decline')}
               disabled={isApproving}
-              title="Keyboard: N"
+              title="Keyboard: n"
             >
               No (n)
             </button>
@@ -248,7 +248,7 @@ const ApprovalUI = memo(function ApprovalUI({
                 void onExplain()
               }}
               disabled={isApproving}
-              title="Keyboard: X"
+              title="Keyboard: x"
             >
               Explain (x)
             </button>
@@ -258,7 +258,7 @@ const ApprovalUI = memo(function ApprovalUI({
                 setApprovalMode('feedback')
               }}
               disabled={isApproving}
-              title="Keyboard: E"
+              title="Keyboard: e"
             >
               Edit/Feedback (e)
             </button>

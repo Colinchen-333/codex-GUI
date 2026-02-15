@@ -201,7 +201,7 @@ const ApprovalActions = memo(function ApprovalActions({
               className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)] disabled:opacity-50"
               onClick={() => void onApply('accept')}
               disabled={isApplying || isDeclining}
-              title="Keyboard: Y"
+              title="Keyboard: y"
             >
               {isApplying ? 'Applying...' : 'Apply Changes'} (y)
             </button>
@@ -209,7 +209,7 @@ const ApprovalActions = memo(function ApprovalActions({
               className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors disabled:opacity-50"
               onClick={() => void onApply('acceptForSession')}
               disabled={isApplying || isDeclining}
-              title="Keyboard: A"
+              title="Keyboard: a"
             >
               Allow for Session (a)
             </button>
@@ -217,7 +217,7 @@ const ApprovalActions = memo(function ApprovalActions({
               className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors disabled:opacity-50"
               onClick={() => void onDecline()}
               disabled={isApplying || isDeclining}
-              title="Keyboard: N"
+              title="Keyboard: n"
             >
               Decline (n)
             </button>
@@ -234,7 +234,7 @@ const ApprovalActions = memo(function ApprovalActions({
                 setApprovalMode('explain')
                 void onExplain()
               }}
-              title="Keyboard: X"
+              title="Keyboard: x"
               disabled={isApplying || isDeclining}
             >
               Explain (x)
@@ -244,7 +244,7 @@ const ApprovalActions = memo(function ApprovalActions({
               onClick={() => {
                 setApprovalMode('feedback')
               }}
-              title="Keyboard: E"
+              title="Keyboard: e"
               disabled={isApplying || isDeclining}
             >
               Edit/Feedback (e)
@@ -482,7 +482,7 @@ export const FileChangeCard = memo(
             e.stopPropagation()
             toggleAllDiffs()
           }}
-          title="Keyboard: D (when approval prompt is focused)"
+          title="Keyboard: d (when approval prompt is focused)"
         >
           {allExpanded ? 'Collapse changes' : 'Review changes'}
         </button>

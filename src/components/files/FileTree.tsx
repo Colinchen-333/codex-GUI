@@ -31,25 +31,25 @@ function getFileIconColor(name: string): string {
   switch (ext) {
     case 'ts':
     case 'tsx':
-      return 'text-blue-400'
+      return 'text-primary'
     case 'rs':
-      return 'text-orange-400'
+      return 'text-primary'
     case 'css':
     case 'scss':
-      return 'text-purple-400'
+      return 'text-primary'
     case 'json':
     case 'toml':
     case 'yaml':
     case 'yml':
-      return 'text-yellow-400'
+      return 'text-text-2'
     case 'md':
     case 'txt':
       return 'text-text-3'
     case 'js':
     case 'jsx':
-      return 'text-yellow-300'
+      return 'text-primary'
     case 'html':
-      return 'text-orange-300'
+      return 'text-primary'
     default:
       return 'text-text-3'
   }

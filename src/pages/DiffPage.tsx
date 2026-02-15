@@ -13,18 +13,21 @@ import {
   RefreshCw,
   Copy,
   Code2,
+  Check,
+  Minus,
   GitCommit,
 } from 'lucide-react'
 import { DiffView, parseDiff, type FileDiff } from '../components/ui/DiffView'
 import { cn } from '../lib/utils'
 import { parseError } from '../lib/errorUtils'
-import { projectApi } from '../lib/api'
+import { projectApi, type GitFileStatus } from '../lib/api'
 import { useProjectsStore } from '../stores/projects'
 import { useToast } from '../components/ui/Toast'
 import { copyTextToClipboard } from '../lib/clipboard'
 import { openInVSCode } from '../lib/hostActions'
 import { isTauriAvailable } from '../lib/tauri'
 import { dispatchAppEvent, APP_EVENTS } from '../lib/appEvents'
+import { IconButton } from '../components/ui/IconButton'
 
 type LoadState = 'idle' | 'loading' | 'error' | 'not-git' | 'empty'
 type DiffMode = 'unstaged' | 'staged'
@@ -188,6 +191,7 @@ export function DiffPage() {
   const [loadState, setLoadState] = useState<LoadState>('idle')
   const [diffText, setDiffText] = useState<string>('')
   const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([])
+  const [gitStatus, setGitStatus] = useState<GitFileStatus[]>([])
   const [filterQuery, setFilterQuery] = useState('')
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
@@ -199,6 +203,7 @@ export function DiffPage() {
       setLoadState('empty')
       setDiffText('')
       setFileDiffs([])
+      setGitStatus([])
       return
     }
 
@@ -212,8 +217,17 @@ export function DiffPage() {
         setLoadState('not-git')
         setDiffText('')
         setFileDiffs([])
+        setGitStatus([])
         return
       }
+
+      try {
+        const status = await projectApi.gitStatus(selectedProject.path)
+        setGitStatus(status)
+      } catch {
+        setGitStatus([])
+      }
+
       if (!result.diff) {
         setLoadState('empty')
         setDiffText('')
@@ -229,6 +243,7 @@ export function DiffPage() {
       setLoadState('error')
       setDiffText('')
       setFileDiffs([])
+      setGitStatus([])
       console.error('Failed to load diff:', parseError(error))
     }
   }, [diffMode, selectedProject])
@@ -274,6 +289,42 @@ export function DiffPage() {
       showToast(err instanceof Error ? err.message : 'Failed to open file in VS Code', 'error')
     }
   }, [requireTauri, selectedProject, showToast])
+
+  const statusByPath = useMemo(() => {
+    const map = new Map<string, GitFileStatus>()
+    for (const file of gitStatus) {
+      map.set(file.path, file)
+    }
+    return map
+  }, [gitStatus])
+
+  const copyPath = useCallback(async (path: string) => {
+    try {
+      const ok = await copyTextToClipboard(path)
+      if (!ok) throw new Error('Clipboard unavailable')
+      showToast('Path copied', 'success')
+    } catch {
+      showToast('Copy failed', 'error')
+    }
+  }, [showToast])
+
+  const stageOrUnstageFile = useCallback(async (path: string) => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+
+    try {
+      if (diffMode === 'staged') {
+        await projectApi.gitUnstageFiles(selectedProject.path, [path])
+        showToast('Unstaged file', 'success')
+      } else {
+        await projectApi.gitStageFiles(selectedProject.path, [path])
+        showToast('Staged file', 'success')
+      }
+      await fetchDiff()
+    } catch (err) {
+      showToast(`${diffMode === 'staged' ? 'Unstage' : 'Stage'} failed: ${parseError(err)}`, 'error')
+    }
+  }, [diffMode, fetchDiff, requireTauri, selectedProject, showToast])
 
   const handleStageAll = useCallback(async () => {
     if (!selectedProject) return
@@ -436,6 +487,8 @@ export function DiffPage() {
               const ext = diff.path.split('.').pop()?.toLowerCase()
               const isImage = ext ? IMAGE_EXTENSIONS.has(ext) : false
               const isCollapsed = collapsedFiles.has(diff.path)
+              const status = statusByPath.get(diff.path) ?? null
+              const showStage = diffMode === 'unstaged'
 
               return (
                 <div
@@ -445,8 +498,13 @@ export function DiffPage() {
                   }}
                   className="rounded-2xl border border-stroke/10 bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden"
                 >
-                  <button
-                    className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left bg-surface-hover/[0.06]"
+                  <div
+                    className={cn(
+                      'flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left bg-surface-hover/[0.06]',
+                      'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                    )}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setSelectedPath(diff.path)
                       setCollapsedFiles((prev) => {
@@ -459,14 +517,80 @@ export function DiffPage() {
                         return next
                       })
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedPath(diff.path)
+                        setCollapsedFiles((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(diff.path)) {
+                            next.delete(diff.path)
+                          } else {
+                            next.add(diff.path)
+                          }
+                          return next
+                        })
+                      }
+                    }}
                   >
                     <div className="flex min-w-0 items-center gap-2 text-sm text-text-1">
                       <span className="truncate font-semibold">{diff.path}</span>
                       <span className="text-xs font-semibold text-status-success">+{diffStats.additions}</span>
                       <span className="text-xs font-semibold text-status-error">-{diffStats.deletions}</span>
+                      {status?.isStaged && (
+                        <span className="rounded-xs border border-stroke/20 bg-surface-hover/[0.08] px-1.5 py-0.5 text-[10px] font-semibold text-text-2">
+                          STAGED
+                        </span>
+                      )}
                     </div>
-                    <ChevronUp size={14} className={cn('text-text-3 transition-transform', isCollapsed && 'rotate-180')} />
-                  </button>
+                    <div className="flex items-center gap-1.5">
+                      <IconButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void handleOpenFileInVSCode(diff.path)
+                        }}
+                        disabled={!isTauriAvailable()}
+                        aria-label="Open file in VS Code"
+                        title="Open file in VS Code"
+                      >
+                        <Code2 size={14} />
+                      </IconButton>
+                      <IconButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void copyPath(diff.path)
+                        }}
+                        aria-label="Copy file path"
+                        title="Copy file path"
+                      >
+                        <Copy size={14} />
+                      </IconButton>
+                      <IconButton
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void stageOrUnstageFile(diff.path)
+                        }}
+                        disabled={!isTauriAvailable()}
+                        aria-label={showStage ? 'Stage file' : 'Unstage file'}
+                        title={showStage ? 'Stage file (git add)' : 'Unstage file (git reset HEAD --)'}
+                      >
+                        {showStage ? <Check size={14} /> : <Minus size={14} />}
+                      </IconButton>
+                      <ChevronUp
+                        size={14}
+                        className={cn('text-text-3 transition-transform', isCollapsed && 'rotate-180')}
+                      />
+                    </div>
+                  </div>
 
                   {!isCollapsed && (
                     <div className="border-t border-stroke/10">
@@ -528,14 +652,15 @@ export function DiffPage() {
             />
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {flattened.map(({ node, depth }) => {
-              const isDir = node.type === 'dir'
-              const isExpanded = autoExpand || effectiveExpandedDirs.has(node.path)
-              const isSelected = node.path === resolvedSelectedPath
-              const indent = depth * 12
-              return (
-                <button
-                  key={`${node.type}-${node.path}`}
+	            {flattened.map(({ node, depth }) => {
+	              const isDir = node.type === 'dir'
+	              const isExpanded = autoExpand || effectiveExpandedDirs.has(node.path)
+	              const isSelected = node.path === resolvedSelectedPath
+	              const status = !isDir ? statusByPath.get(node.path) ?? null : null
+	              const indent = depth * 12
+	              return (
+	                <button
+	                  key={`${node.type}-${node.path}`}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors',
                     isSelected
@@ -566,14 +691,19 @@ export function DiffPage() {
                     )}
                     {isDir ? (
                       isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />
-                    ) : (
-                      getFileIcon(node.path)
-                    )}
-                    <span className="truncate">{node.name}</span>
-                  </span>
-                </button>
-              )
-            })}
+	                    ) : (
+	                      getFileIcon(node.path)
+	                    )}
+	                    <span className="truncate">{node.name}</span>
+	                    {!isDir && status?.isStaged && (
+	                      <span className="ml-1 rounded-xs border border-stroke/20 bg-surface-hover/[0.08] px-1 py-0.5 text-[10px] font-semibold text-text-3">
+	                        S
+	                      </span>
+	                    )}
+	                  </span>
+	                </button>
+	              )
+	            })}
           </div>
         </aside>
       </div>
@@ -585,7 +715,6 @@ export function DiffPage() {
       <div className="flex items-center justify-between border-b border-stroke/10 px-6 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-text-1">
           <span>{diffMode === 'staged' ? 'Staged changes' : 'Unstaged changes'}</span>
-          <ChevronDown size={16} className="text-text-3" />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-status-success">+{stats.additions}</span>

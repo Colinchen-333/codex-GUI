@@ -83,9 +83,18 @@ export function CommandPalette({
   const sessions = useSessionsStore((state) => state.sessions)
   const sessionSearchResults = useSessionsStore((state) => state.searchResults)
   const isSessionSearching = useSessionsStore((state) => state.isSearching)
+  const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
   const projects = useProjectsStore((state) => state.projects)
   const threads = useThreadStore((state) => state.threads)
   const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
+
+  const selectedSession = useMemo(() => {
+    if (!selectedSessionId) return null
+    return sessions.find((s) => s.sessionId === selectedSessionId) ?? null
+  }, [selectedSessionId, sessions])
+
+  const selectedWorktreePath =
+    selectedSession?.mode === 'worktree' ? (selectedSession.worktreePath ?? null) : null
 
   const recentProjects = useMemo(() => {
     return [...projects]
@@ -386,6 +395,10 @@ export function CommandPalette({
       label: 'Reveal in Finder',
       icon: <FolderOpen size={16} />,
       action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
         if (!focusedCwd) {
           toast.error('No active session')
           return
@@ -403,6 +416,10 @@ export function CommandPalette({
       label: 'Open in Terminal',
       icon: <Terminal size={16} />,
       action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
         if (!focusedCwd) {
           toast.error('No active session')
           return
@@ -420,6 +437,10 @@ export function CommandPalette({
       label: 'Open in VS Code',
       icon: <Code2 size={16} />,
       action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
         if (!focusedCwd) {
           toast.error('No active session')
           return
@@ -432,6 +453,61 @@ export function CommandPalette({
       },
       group: 'Actions',
     },
+    ...(selectedWorktreePath
+      ? ([
+          {
+            id: 'reveal-worktree-in-finder',
+            label: 'Reveal Worktree in Finder',
+            icon: <FolderOpen size={16} />,
+            action: async () => {
+              if (!isTauriAvailable()) {
+                toast.error('Unavailable in web mode')
+                return
+              }
+              try {
+                await revealInFinder(selectedWorktreePath)
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to reveal worktree in Finder')
+              }
+            },
+            group: 'Actions',
+          },
+          {
+            id: 'open-worktree-in-terminal',
+            label: 'Open Worktree in Terminal',
+            icon: <Terminal size={16} />,
+            action: async () => {
+              if (!isTauriAvailable()) {
+                toast.error('Unavailable in web mode')
+                return
+              }
+              try {
+                await openInTerminal(selectedWorktreePath)
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to open worktree in Terminal')
+              }
+            },
+            group: 'Actions',
+          },
+          {
+            id: 'open-worktree-in-vscode',
+            label: 'Open Worktree in VS Code',
+            icon: <Code2 size={16} />,
+            action: async () => {
+              if (!isTauriAvailable()) {
+                toast.error('Unavailable in web mode')
+                return
+              }
+              try {
+                await openInVSCode(selectedWorktreePath)
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to open worktree in VS Code')
+              }
+            },
+            group: 'Actions',
+          },
+        ] as CommandItem[])
+      : []),
     {
       id: 'open-snapshots',
       label: 'Open Snapshots',

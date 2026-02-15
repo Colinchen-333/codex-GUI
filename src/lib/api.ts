@@ -407,11 +407,15 @@ export const projectApi = {
   gitDiffBranch: (projectPath: string, baseBranch: string) =>
     invokeWithTimeout<string>('git_diff_branch', { projectPath, baseBranch }, 20000),
   listFiles: (path: string, query?: string, limit?: number) =>
-    invoke<FileEntry[]>('list_project_files', { path, query, limit }),
+    isTauriAvailable()
+      ? invoke<FileEntry[]>('list_project_files', { path, query, limit })
+      : Promise.reject(new Error('Unavailable in web mode')),
   validateDirectory: (path: string) =>
     invoke<string>('validate_project_directory', { path }),
   readProjectFile: (projectId: string, relativePath: string) =>
-    invoke<number[]>('read_project_file', { projectId, relativePath }),
+    isTauriAvailable()
+      ? invoke<number[]>('read_project_file', { projectId, relativePath })
+      : Promise.reject(new Error('Unavailable in web mode')),
   getGitBranches: (path: string) => invoke<GitBranch[]>('get_git_branches', { path }),
   getGitCommits: (path: string, limit?: number) =>
     invoke<GitCommit[]>('get_git_commits', { path, limit }),

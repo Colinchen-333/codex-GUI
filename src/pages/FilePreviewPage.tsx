@@ -6,10 +6,12 @@ import { useProjectsStore } from '../stores/projects'
 import { FileTree } from '../components/files/FileTree'
 import { FileViewer } from '../components/files/FileViewer'
 import { cn } from '../lib/utils'
+import { isTauriAvailable } from '../lib/tauri'
 
 export function FilePreviewPage() {
   const { projects, selectedProjectId } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? projects[0] ?? null
+  const tauriAvailable = isTauriAvailable()
 
   const [files, setFiles] = useState<FileEntry[]>([])
   const [filesLoading, setFilesLoading] = useState(false)
@@ -25,7 +27,7 @@ export function FilePreviewPage() {
 
   // Fetch file list when project changes
   useEffect(() => {
-    if (!selectedProject) return
+    if (!tauriAvailable || !selectedProject) return
 
     let cancelled = false
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: start loading state when effect runs
@@ -50,12 +52,12 @@ export function FilePreviewPage() {
     return () => {
       cancelled = true
     }
-  }, [selectedProject])
+  }, [selectedProject, tauriAvailable])
 
   // Fetch file content when selected file changes
   const handleSelectFile = useCallback(
     (path: string) => {
-      if (!selectedProject) return
+      if (!tauriAvailable || !selectedProject) return
       setSelectedFilePath(path)
       setFileContent(null)
       setFileError(null)
@@ -76,8 +78,19 @@ export function FilePreviewPage() {
           setFileLoading(false)
         })
     },
-    [selectedProject]
+    [selectedProject, tauriAvailable]
   )
+
+  if (!tauriAvailable) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-3">
+        <div className="text-center space-y-2">
+          <p className="text-sm">Unavailable in web mode</p>
+          <p className="text-xs text-text-3/70">File browsing requires the desktop app.</p>
+        </div>
+      </div>
+    )
+  }
 
   // No project selected
   if (!selectedProject) {

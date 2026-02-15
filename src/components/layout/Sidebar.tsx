@@ -13,7 +13,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
-import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftClose } from 'lucide-react'
+import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftClose, Filter, Check } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
 import { log } from '../../lib/logger'
 import { APP_EVENTS } from '../../lib/appEvents'
@@ -28,6 +28,7 @@ import { SessionSearch, GroupedSessionList, SidebarDialogs, useSidebarDialogs } 
 import { ImportCodexSessionDialog } from '../LazyComponents'
 import type { CodexSessionSummary } from '../../lib/api'
 import { formatSessionTime } from '../../lib/utils'
+import { Dropdown } from '../ui/Dropdown'
 
 type OpenProjectSettingsEventDetail = { projectId?: string | null }
 
@@ -49,6 +50,11 @@ export function Sidebar() {
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
   const navigate = useNavigate()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [sessionFilters, setSessionFilters] = useState({
+    pinnedOnly: false,
+    runningOnly: false,
+    showArchived: false,
+  })
   const {
     sessions,
     selectedSessionId,
@@ -91,6 +97,12 @@ export function Sidebar() {
   }, [fetchSessions, selectedProjectId])
 
   const displaySessions = searchQuery ? searchResults : sessions
+  const filteredSessions = displaySessions.filter((s) => {
+    if (!sessionFilters.showArchived && s.isArchived) return false
+    if (sessionFilters.pinnedOnly && !s.isFavorite) return false
+    if (sessionFilters.runningOnly && s.status !== 'running') return false
+    return true
+  })
   const displayProjectName = selectedProjectId
     ? projects.find((p) => p.id === selectedProjectId)?.displayName
       || projects.find((p) => p.id === selectedProjectId)?.path.split('/').pop()
@@ -300,21 +312,60 @@ export function Sidebar() {
         </button>
       </nav>
 
-        <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
-        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
-          Sessions
-        </span>
-        <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
-          <IconButton
-            onClick={handleAddProject}
-            size="sm"
-            title="Add project folder"
-            className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
-          >
-            <FolderPlus size={13} strokeWidth={1.5} />
-          </IconButton>
-        </div>
-      </div>
+	      <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
+	        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
+	          Sessions
+	        </span>
+	        <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
+	          <IconButton
+	            onClick={handleAddProject}
+	            size="sm"
+	            title="Add project folder"
+	            className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
+	          >
+	            <FolderPlus size={13} strokeWidth={1.5} />
+	          </IconButton>
+            <Dropdown.Root>
+              <Dropdown.Trigger
+                className="relative inline-flex h-6 w-6 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
+                title="Filter sessions"
+                aria-label="Filter sessions"
+              >
+                <Filter size={13} strokeWidth={1.5} />
+                {(sessionFilters.pinnedOnly || sessionFilters.runningOnly || sessionFilters.showArchived) && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary" />
+                )}
+              </Dropdown.Trigger>
+              <Dropdown.Content side="bottom" align="end" sideOffset={8}>
+                <Dropdown.Label>Filters</Dropdown.Label>
+                <Dropdown.Item
+                  onClick={() => setSessionFilters((prev) => ({ ...prev, pinnedOnly: !prev.pinnedOnly }))}
+                >
+                  {sessionFilters.pinnedOnly ? <Check size={14} /> : <span className="w-[14px]" />}
+                  Pinned only
+                </Dropdown.Item>
+                <Dropdown.Item
+                  onClick={() => setSessionFilters((prev) => ({ ...prev, runningOnly: !prev.runningOnly }))}
+                >
+                  {sessionFilters.runningOnly ? <Check size={14} /> : <span className="w-[14px]" />}
+                  Running only
+                </Dropdown.Item>
+                <Dropdown.Item
+                  onClick={() => setSessionFilters((prev) => ({ ...prev, showArchived: !prev.showArchived }))}
+                >
+                  {sessionFilters.showArchived ? <Check size={14} /> : <span className="w-[14px]" />}
+                  Show archived
+                </Dropdown.Item>
+                <Dropdown.Separator />
+                <Dropdown.Item
+                  onClick={() => setSessionFilters({ pinnedOnly: false, runningOnly: false, showArchived: false })}
+                >
+                  Clear filters
+                </Dropdown.Item>
+              </Dropdown.Content>
+            </Dropdown.Root>
+	        </div>
+	      </div>
 
       <div className="relative z-10 px-2">
         <SessionSearch visible={true} />
@@ -322,7 +373,7 @@ export function Sidebar() {
 
       <div className="relative z-10 flex-1 overflow-y-auto px-2">
         <GroupedSessionList
-          sessions={displaySessions}
+          sessions={filteredSessions}
           selectedSessionId={selectedSessionId}
           onSelectSession={handleSelectSession}
           onOpenProjectSettings={handleOpenProjectSettings}

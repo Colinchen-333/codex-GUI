@@ -144,7 +144,7 @@ export function ChatView() {
   }, [focusedThread])
 
   const handleQuickContinue = useCallback(() => {
-    setInputValue('继续')
+    setInputValue('Continue')
     requestAnimationFrame(() => {
       inputRef.current?.focus()
     })
@@ -158,7 +158,7 @@ export function ChatView() {
             className="rounded-full border border-stroke/20 bg-surface-hover/[0.08] px-4 py-2 text-sm font-semibold text-text-2 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.14]"
             onClick={handleQuickContinue}
           >
-            继续
+            Continue
           </button>
         </div>
       )}

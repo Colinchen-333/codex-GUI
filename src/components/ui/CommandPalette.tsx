@@ -49,6 +49,16 @@ import { useSessionsStore } from '../../stores/sessions'
 import { getEffectiveWorkingDirectory, mergeProjectSettings, useSettingsStore } from '../../stores/settings'
 import { cn } from '../../lib/utils'
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+
+function normalizeShortcutKey(key: string): string {
+  if (isMac) return key
+  if (key === '⌘') return 'Ctrl'
+  if (key === '⇧') return 'Shift'
+  if (key === '⌥') return 'Alt'
+  return key
+}
+
 interface CommandItem {
   id: string
   label: string
@@ -893,7 +903,7 @@ export function CommandPalette({
                               key={i}
                               className="min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-xs bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono"
                             >
-                              {key}
+                              {normalizeShortcutKey(key)}
                             </kbd>
                           ))}
                         </div>

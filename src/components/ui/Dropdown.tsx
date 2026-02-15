@@ -16,6 +16,7 @@ type DropdownContextValue = {
   open: boolean
   setOpen: (open: boolean) => void
   triggerRef: React.RefObject<HTMLButtonElement | null>
+  contentRef: React.RefObject<HTMLDivElement | null>
 }
 
 const DropdownContext = createContext<DropdownContextValue | null>(null)
@@ -36,6 +37,7 @@ interface DropdownRootProps {
 export function DropdownRoot({ children, defaultOpen = false, open: controlledOpen, onOpenChange }: DropdownRootProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const open = controlledOpen ?? uncontrolledOpen
   const setOpen = useCallback((newOpen: boolean) => {
@@ -45,7 +47,9 @@ export function DropdownRoot({ children, defaultOpen = false, open: controlledOp
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (!triggerRef.current?.contains(e.target as Node)) {
+      const target = e.target as Node
+      // Don't close when interacting with the trigger or the menu content.
+      if (!triggerRef.current?.contains(target) && !contentRef.current?.contains(target)) {
         setOpen(false)
       }
     }
@@ -66,7 +70,7 @@ export function DropdownRoot({ children, defaultOpen = false, open: controlledOp
   }, [open, setOpen])
 
   return (
-    <DropdownContext.Provider value={{ open, setOpen, triggerRef }}>
+    <DropdownContext.Provider value={{ open, setOpen, triggerRef, contentRef }}>
       <div className="relative inline-block">{children}</div>
     </DropdownContext.Provider>
   )
@@ -135,14 +139,20 @@ const alignPositions: Record<DropdownAlign, Record<'vertical' | 'horizontal', st
 
 export const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
   ({ children, side = 'bottom', align = 'start', sideOffset = 0, className, style, ...props }, ref) => {
-    const { open } = useDropdown()
+    const { open, contentRef } = useDropdown()
     const isVertical = side === 'top' || side === 'bottom'
 
     if (!open) return null
 
+    const handleRef = (node: HTMLDivElement | null) => {
+      contentRef.current = node
+      if (typeof ref === 'function') ref(node)
+      else if (ref) ref.current = node
+    }
+
     return (
       <div
-        ref={ref}
+        ref={handleRef}
         role="menu"
         className={cn(
           'absolute z-[var(--z-dropdown)]',

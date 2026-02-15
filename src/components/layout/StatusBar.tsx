@@ -12,6 +12,7 @@ import { useSettingsStore } from '../../stores/settings'
 import { useServerConnectionStore } from '../../stores/server-connection'
 import { useAppStore } from '../../stores/app'
 import { StatusBarActions } from './status-bar'
+import { GlobalApprovalsIndicator } from './status-bar/GlobalApprovalsIndicator'
 import { cn } from '../../lib/utils'
 
 function sandboxLabel(mode: string): { text: string; danger: boolean } {
@@ -142,6 +143,8 @@ export function StatusBar() {
               <ChevronDown size={11} />
             </span>
           )}
+
+          <GlobalApprovalsIndicator />
 
           <StatusBarActions
             onHelpClick={() => setHelpOpen(true)}

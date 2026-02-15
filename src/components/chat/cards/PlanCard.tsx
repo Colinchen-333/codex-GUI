@@ -2,18 +2,25 @@
  * PlanCard - Shows turn plan with step progress
  */
 import { useMemo } from 'react'
-import { Circle, CheckCircle2, XCircle, Loader2, Maximize2, ArrowUpRight } from 'lucide-react'
+import { Circle, CheckCircle2, XCircle, Loader2, Copy, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '../../../lib/utils'
+import { copyTextToClipboard } from '../../../lib/clipboard'
 import { useThreadStore } from '../../../stores/thread'
 import { selectItemsByType } from '../../../stores/thread/selectors'
+import { IconButton } from '../../ui/IconButton'
+import { useToast } from '../../ui/useToast'
 import { parseDiff } from '../../ui/DiffView'
 import type { FileChangeItem, PlanStep } from '../../../stores/thread'
 import type { MessageItemProps, PlanContentType } from '../types'
 
 export function PlanCard({ item }: MessageItemProps) {
   const content = item.content as PlanContentType
-  const fileChangeItems = useThreadStore(selectItemsByType('fileChange')) as FileChangeItem[]
+  // Memoize selector factory to avoid creating a new selector function each render.
+  // This prevents useSyncExternalStore from re-subscribing and can trigger update-depth issues in tests.
+  const fileChangeSelector = useMemo(() => selectItemsByType('fileChange'), [])
+  const fileChangeItems = useThreadStore(fileChangeSelector) as FileChangeItem[]
+  const { toast } = useToast()
 
   // Get step status icon
   const getStepIcon = (status: PlanStep['status']) => {
@@ -32,6 +39,31 @@ export function PlanCard({ item }: MessageItemProps) {
   // Calculate progress
   const completedSteps = content.steps.filter((s) => s.status === 'completed').length
   const totalSteps = content.steps.length
+
+  const planText = useMemo(() => {
+    const statusToken = (status: PlanStep['status']) => {
+      if (status === 'completed') return 'x'
+      if (status === 'in_progress') return '~'
+      if (status === 'failed') return '!'
+      return ' '
+    }
+
+    const lines = [
+      `Plan (${completedSteps}/${totalSteps})`,
+      '',
+      content.explanation ? content.explanation : null,
+      content.explanation ? '' : null,
+      ...content.steps.map((s, i) => `- [${statusToken(s.status)}] ${i + 1}. ${s.step}`),
+    ].filter((line): line is string => Boolean(line))
+
+    return lines.join('\n')
+  }, [content.explanation, content.steps, completedSteps, totalSteps])
+
+  const handleCopyPlan = async () => {
+    const ok = await copyTextToClipboard(planText)
+    if (ok) toast.success('Copied plan')
+    else toast.error('Copy failed')
+  }
 
   const diffSummary = useMemo(() => {
     const latestChange = fileChangeItems[fileChangeItems.length - 1]
@@ -72,8 +104,16 @@ export function PlanCard({ item }: MessageItemProps) {
               {completedSteps} out of {totalSteps} tasks completed
             </span>
           </div>
-          <div className="text-text-3/80">
-            <Maximize2 size={16} />
+          <div className="flex items-center gap-2">
+            <IconButton
+              size="sm"
+              variant="ghost"
+              onClick={() => void handleCopyPlan()}
+              title="Copy plan"
+              aria-label="Copy plan"
+            >
+              <Copy size={14} />
+            </IconButton>
           </div>
         </div>
 

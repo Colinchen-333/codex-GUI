@@ -271,9 +271,12 @@ export function useCommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
+        e.stopPropagation()
         setIsOpen((prev) => !prev)
       }
       if (e.key === 'Escape' && isOpen) {
+        e.preventDefault()
+        e.stopPropagation()
         setIsOpen(false)
       }
     }

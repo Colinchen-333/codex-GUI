@@ -58,6 +58,10 @@ export function AppShell() {
         toast.error('Unavailable in web mode')
         return
       }
+      if (!useProjectsStore.getState().selectedProjectId) {
+        toast.error('No project selected')
+        return
+      }
       setCommitDialogIntent('commit')
       setCommitDialogOpen(true)
     }
@@ -69,6 +73,10 @@ export function AppShell() {
     const handleOpen = () => {
       if (!isTauriAvailable()) {
         toast.error('Unavailable in web mode')
+        return
+      }
+      if (!useProjectsStore.getState().selectedProjectId) {
+        toast.error('No project selected')
         return
       }
       setCommitDialogIntent('pr')

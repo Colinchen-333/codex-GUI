@@ -17,6 +17,7 @@ import {
   FolderOpen,
   Bug,
   Terminal,
+  Code2,
   TextCursorInput,
   AlertTriangle,
   GitCommit,
@@ -24,7 +25,7 @@ import {
 
 import { useTheme } from '../../hooks/useTheme'
 import { useAppStore } from '../../stores/app'
-import { useThreadStore } from '../../stores/thread'
+import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
 import { useToast } from './useToast'
 import { useSessionsStore } from '../../stores/sessions'
@@ -61,6 +62,7 @@ export function CommandPalette({
   const { toast } = useToast()
   const sessions = useSessionsStore((state) => state.sessions)
   const threads = useThreadStore((state) => state.threads)
+  const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
 
   const sessionTitleById = useMemo(() => {
     const map = new Map<string, string>()
@@ -94,6 +96,60 @@ export function CommandPalette({
       label: 'Commit Changes',
       icon: <GitCommit size={16} />,
       action: () => window.dispatchEvent(new CustomEvent('codex:open-commit-dialog')),
+      group: 'Actions',
+    },
+    {
+      id: 'reveal-in-finder',
+      label: 'Reveal in Finder',
+      icon: <FolderOpen size={16} />,
+      action: async () => {
+        if (!focusedCwd) {
+          toast.error('No active session')
+          return
+        }
+        try {
+          const { open } = await import('@tauri-apps/plugin-shell')
+          await open(focusedCwd)
+        } catch {
+          toast.error('Failed to reveal in Finder')
+        }
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'open-in-terminal',
+      label: 'Open in Terminal',
+      icon: <Terminal size={16} />,
+      action: async () => {
+        if (!focusedCwd) {
+          toast.error('No active session')
+          return
+        }
+        try {
+          const { Command } = await import('@tauri-apps/plugin-shell')
+          await Command.create('open', ['-a', 'Terminal', focusedCwd]).execute()
+        } catch {
+          toast.error('Failed to open in Terminal')
+        }
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'open-in-vscode',
+      label: 'Open in VS Code',
+      icon: <Code2 size={16} />,
+      action: async () => {
+        if (!focusedCwd) {
+          toast.error('No active session')
+          return
+        }
+        try {
+          const { Command } = await import('@tauri-apps/plugin-shell')
+          await Command.create('code', [focusedCwd]).execute()
+        } catch {
+          toast.error('Failed to open in VS Code')
+        }
+      },
       group: 'Actions',
     },
     {

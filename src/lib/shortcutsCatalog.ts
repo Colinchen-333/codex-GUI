@@ -1,0 +1,59 @@
+export interface ShortcutGroup {
+  title: string
+  shortcuts: Array<{
+    keys: string[]
+    description: string
+  }>
+}
+
+export const SHORTCUT_GROUPS: ShortcutGroup[] = [
+  {
+    title: 'General',
+    shortcuts: [
+      { keys: ['Cmd', ','], description: 'Open settings' },
+      { keys: ['Cmd', 'K'], description: 'Open command palette' },
+      { keys: ['Cmd', 'Shift', 'K'], description: 'Focus input' },
+      { keys: ['Cmd', 'N'], description: 'New session' },
+      { keys: ['Cmd', 'O'], description: 'Open project' },
+      { keys: ['Cmd', 'J'], description: 'Toggle terminal' },
+      { keys: ['Cmd', 'L'], description: 'Clear thread' },
+      { keys: ['Cmd', '/'], description: 'Toggle review pane' },
+      { keys: ['Cmd', 'Z'], description: 'Undo' },
+      { keys: ['Cmd', 'Shift', 'Z'], description: 'Redo' },
+      { keys: ['Esc'], description: 'Stop generation (double-tap) / Close dialogs' },
+      { keys: ['?'], description: 'Show keyboard shortcuts' },
+    ],
+  },
+  {
+    title: 'Navigation',
+    shortcuts: [
+      { keys: ['Cmd', '1'], description: 'Switch to Projects tab' },
+      { keys: ['Cmd', '2'], description: 'Switch to Sessions tab' },
+      { keys: ['Cmd', ']'], description: 'Next session' },
+      { keys: ['Cmd', '['], description: 'Previous session' },
+      { keys: ['Cmd', 'Shift', '['], description: 'First session' },
+      { keys: ['Cmd', 'Shift', ']'], description: 'Last session' },
+      { keys: ['Up', 'Down'], description: 'Navigate message history (input)' },
+    ],
+  },
+  {
+    title: 'Chat Input',
+    shortcuts: [
+      { keys: ['Enter'], description: 'Send message (input)' },
+      { keys: ['Shift', 'Enter'], description: 'New line (input)' },
+      { keys: ['/'], description: 'Show slash commands (input)' },
+      { keys: ['@'], description: 'Mention file (input)' },
+      { keys: ['Cmd', 'V'], description: 'Paste image (input)' },
+    ],
+  },
+  {
+    title: 'Approval Actions',
+    shortcuts: [
+      { keys: ['Y'], description: 'Accept action' },
+      { keys: ['N'], description: 'Decline action' },
+      { keys: ['A'], description: 'Accept all for session' },
+      { keys: ['Cmd', 'Shift', 'A'], description: 'Jump to next approval' },
+    ],
+  },
+]
+

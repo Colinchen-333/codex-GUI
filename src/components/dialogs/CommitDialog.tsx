@@ -7,7 +7,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap'
 import { Button } from '../ui/Button'
 import { IconButton } from '../ui/IconButton'
 import { useToast } from '../ui/useToast'
-import { CreatePRDialog } from './CreatePRDialog'
+import { CreatePRDialog } from '../LazyComponents'
 
 type CommitStep = 'review' | 'pushing' | 'done'
 

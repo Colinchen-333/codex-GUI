@@ -114,7 +114,8 @@ export function ImportCodexSessionDialog({ isOpen, onClose, onImport }: ImportCo
       return
     }
     void loadSessions()
-    setTimeout(() => searchInputRef.current?.focus(), 100)
+    const rafId = window.requestAnimationFrame(() => searchInputRef.current?.focus())
+    return () => window.cancelAnimationFrame(rafId)
   }, [isOpen, loadSessions])
 
   useEffect(() => {
@@ -349,4 +350,3 @@ export function ImportCodexSessionDialog({ isOpen, onClose, onImport }: ImportCo
     </ErrorBoundary>
   )
 }
-

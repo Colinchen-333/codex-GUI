@@ -571,6 +571,7 @@ export function DiffPage() {
               const ext = diff.path.split('.').pop()?.toLowerCase()
               const isImage = ext ? IMAGE_EXTENSIONS.has(ext) : false
               const isCollapsed = collapsedFiles.has(diff.path)
+              const isSelected = diff.path === resolvedSelectedPath
               const status = statusByPath.get(diff.path) ?? null
               const showStage = diffMode === 'unstaged'
 
@@ -580,7 +581,10 @@ export function DiffPage() {
                   ref={(node) => {
                     fileRefs.current[diff.path] = node
                   }}
-                  className="rounded-2xl border border-stroke/10 bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden"
+                  className={cn(
+                    'rounded-2xl border bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden',
+                    isSelected ? 'border-stroke/25 ring-2 ring-ring/25' : 'border-stroke/10'
+                  )}
                 >
                   <div
                     className={cn(

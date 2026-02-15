@@ -85,6 +85,7 @@ export function ChatView() {
   const escapeToastShownRef = useRef(false)
   const scrollToItemId = useAppStore((state: AppState) => state.scrollToItemId)
   const clearScrollToItemId = useAppStore((state: AppState) => state.clearScrollToItemId)
+  const focusRafRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (escapePending && !escapeToastShownRef.current) {
@@ -96,6 +97,39 @@ export function ChatView() {
     }
   }, [escapePending, showToast])
 
+  const focusApprovalPromptForItem = useCallback((itemId: string) => {
+    if (focusRafRef.current) {
+      window.cancelAnimationFrame(focusRafRef.current)
+      focusRafRef.current = null
+    }
+
+    const escaped =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(itemId) : itemId
+    const base = `[data-item-id="${escaped}"]`
+    const selectors = [
+      `${base} [aria-label="Approval options"]`,
+      `${base} [aria-label="File change approval options"]`,
+    ]
+
+    let attempts = 0
+    const tryFocus = () => {
+      attempts += 1
+      const el = document.querySelector(selectors.join(', ')) as HTMLElement | null
+      if (el) {
+        el.focus({ preventScroll: true })
+        focusRafRef.current = null
+        return
+      }
+      if (attempts >= 12) {
+        focusRafRef.current = null
+        return
+      }
+      focusRafRef.current = window.requestAnimationFrame(tryFocus)
+    }
+
+    focusRafRef.current = window.requestAnimationFrame(tryFocus)
+  }, [])
+
   // Cross-component scroll requests (for example: jumping to pending approvals)
   useEffect(() => {
     if (!scrollToItemId || !focusedThread) return
@@ -104,9 +138,16 @@ export function ChatView() {
     const rafId = window.requestAnimationFrame(() => {
       virtualListRef.current?.scrollToRow({ index, align: 'start', behavior: 'instant' })
       clearScrollToItemId()
+      focusApprovalPromptForItem(scrollToItemId)
     })
-    return () => window.cancelAnimationFrame(rafId)
-  }, [scrollToItemId, focusedThread, clearScrollToItemId])
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      if (focusRafRef.current) {
+        window.cancelAnimationFrame(focusRafRef.current)
+        focusRafRef.current = null
+      }
+    }
+  }, [scrollToItemId, focusedThread, clearScrollToItemId, focusApprovalPromptForItem])
 
   // Handle review target selection from dialog
   // P0 Fix: Added proper error handling and use activeThread from hook to avoid stale closure

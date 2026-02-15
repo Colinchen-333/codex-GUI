@@ -70,7 +70,14 @@ const VirtualizedRow = memo(function VirtualizedRow({
   }
 
   return (
-    <div ref={rowRef} style={style} className="py-1.5" data-index={index} {...ariaAttributes}>
+    <div
+      ref={rowRef}
+      style={style}
+      className="py-1.5"
+      data-index={index}
+      data-item-id={id}
+      {...ariaAttributes}
+    >
       <MessageItem key={id} item={item} />
     </div>
   )

@@ -420,9 +420,9 @@ export default memo(function ChatInputArea({
 
   // Focus branch search when menu opens
   useEffect(() => {
-    if (isBranchMenuOpen) {
-      setTimeout(() => branchSearchRef.current?.focus(), 50)
-    }
+    if (!isBranchMenuOpen) return
+    const rafId = window.requestAnimationFrame(() => branchSearchRef.current?.focus())
+    return () => window.cancelAnimationFrame(rafId)
   }, [isBranchMenuOpen])
 
   // Approval policy helpers

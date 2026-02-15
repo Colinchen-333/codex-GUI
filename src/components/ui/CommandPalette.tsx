@@ -79,6 +79,7 @@ export function CommandPalette({
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
   const sessions = useSessionsStore((state) => state.sessions)
+  const sessionSearchResults = useSessionsStore((state) => state.searchResults)
   const projects = useProjectsStore((state) => state.projects)
   const threads = useThreadStore((state) => state.threads)
   const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
@@ -113,6 +114,7 @@ export function CommandPalette({
 
   const handleClose = useCallback(() => {
     setSearch('')
+    useSessionsStore.getState().clearSearch()
     onClose()
   }, [onClose])
 
@@ -120,6 +122,18 @@ export function CommandPalette({
     void action()
     handleClose()
   }, [handleClose])
+
+  useEffect(() => {
+    const q = search.trim()
+    if (q.length < 2) {
+      useSessionsStore.getState().clearSearch()
+      return
+    }
+    const timerId = setTimeout(() => {
+      void useSessionsStore.getState().searchSessions(q)
+    }, 200)
+    return () => clearTimeout(timerId)
+  }, [search])
 
   const commands: CommandItem[] = [
     {
@@ -525,6 +539,30 @@ export function CommandPalette({
       },
       group: 'Approvals',
     },
+    ...(sessionSearchResults.length > 0
+      ? sessionSearchResults.slice(0, 10).map((session) => {
+            const projectName = projects.find((p) => p.id === session.projectId)?.displayName
+              || projects.find((p) => p.id === session.projectId)?.path.split('/').pop()
+              || 'Project'
+            const title = session.title || session.firstMessage || `Session ${session.sessionId.slice(0, 8)}`
+            return {
+              id: `search-session:${session.sessionId}`,
+              label: `${title} (${projectName})`,
+              icon: <MessageSquare size={16} />,
+              action: () => {
+                const projectsStore = useProjectsStore.getState()
+                const currentProjectId = projectsStore.selectedProjectId
+                if (session.projectId && session.projectId !== currentProjectId) {
+                  void useThreadStore.getState().closeAllThreads()
+                  void projectsStore.selectProject(session.projectId)
+                }
+                void useSessionsStore.getState().selectSession(session.sessionId)
+                void navigate('/')
+              },
+              group: 'Session Search',
+            }
+          })
+      : []),
     ...recentProjects.map((project) => {
       const label = project.displayName || project.path.split('/').pop() || project.path
       return {

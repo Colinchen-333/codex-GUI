@@ -33,7 +33,7 @@ const modes: { id: ThreadMode; label: string; icon: typeof Monitor; description:
     id: 'cloud',
     label: 'Cloud',
     icon: Cloud,
-    description: 'Run tasks in the cloud.',
+    description: 'Cloud mode is not available yet.',
     disabled: true,
   },
 ]
@@ -123,6 +123,7 @@ export function NewThreadDialog({
                 key={mode.id}
                 onClick={() => !mode.disabled && setSelectedMode(mode.id)}
                 disabled={mode.disabled}
+                title={mode.disabled ? 'Unavailable' : undefined}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                   isSelected
@@ -136,7 +137,7 @@ export function NewThreadDialog({
                 <span>{mode.label}</span>
                 {mode.disabled && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-hover/[0.12] text-text-3">
-                    Soon
+                    Unavailable
                   </span>
                 )}
               </button>

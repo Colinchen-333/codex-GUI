@@ -180,6 +180,20 @@ export function DiffView({
         <div
           className="flex items-center justify-between bg-surface-hover/[0.06] px-3 py-2 cursor-pointer hover:bg-surface-hover/[0.12]"
           onClick={onToggleCollapse}
+          role={onToggleCollapse ? 'button' : undefined}
+          tabIndex={onToggleCollapse ? 0 : undefined}
+          onKeyDown={
+            onToggleCollapse
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onToggleCollapse()
+                  }
+                }
+              : undefined
+          }
+          aria-expanded={onToggleCollapse ? !collapsed : undefined}
+          aria-label={onToggleCollapse ? `Toggle diff: ${diff.path}` : undefined}
         >
           <div className="flex items-center gap-2">
             <span className={cn('font-mono text-sm', kindColor[diff.kind])}>

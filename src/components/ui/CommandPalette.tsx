@@ -123,10 +123,17 @@ export function CommandPalette({
 
   const commands: CommandItem[] = [
     {
-      id: 'new-thread',
-      label: 'New session',
+      id: 'new-session-dialog',
+      label: 'New Session...',
       icon: <Plus size={16} />,
       shortcut: ['⌘', 'N'],
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_NEW_SESSION_DIALOG),
+      group: 'Actions',
+    },
+    {
+      id: 'new-session-quick',
+      label: 'New Session (Quick)',
+      icon: <Plus size={16} />,
       action: async () => {
         if (onNewThread) {
           onNewThread()
@@ -152,22 +159,16 @@ export function CommandPalette({
         const cwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
         try {
           void useSessionsStore.getState().selectSession(null)
-          await useThreadStore
+          const threadId = await useThreadStore
             .getState()
             .startThread(selectedProjectId, cwd, effective.model, effective.sandboxMode, effective.approvalPolicy)
+          void useSessionsStore.getState().selectSession(threadId)
           toast.success('New session started')
           void navigate('/')
         } catch (err) {
           toast.error('Failed to start new session', { message: String(err) })
         }
       },
-      group: 'Actions',
-    },
-    {
-      id: 'new-session-dialog',
-      label: 'New Session...',
-      icon: <Plus size={16} />,
-      action: () => dispatchAppEvent(APP_EVENTS.OPEN_NEW_SESSION_DIALOG),
       group: 'Actions',
     },
     {

@@ -6,11 +6,6 @@ import { useAppStore } from '../stores/app'
 import { useProjectsStore } from '../stores/projects'
 import { useThreadStore } from '../stores/thread/index'
 import { useSessionsStore } from '../stores/sessions'
-import {
-  useSettingsStore,
-  mergeProjectSettings,
-  getEffectiveWorkingDirectory,
-} from '../stores/settings'
 import { useToast } from './ui/Toast'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useUndoRedoStore } from '../stores/undoRedo'
@@ -212,27 +207,11 @@ export function KeyboardShortcuts() {
             showToast('Please select a project first', 'error')
             return
           }
-          const project = useProjectsStore.getState().projects.find((p) => p.id === projectId)
-          if (!project) return
-
-          const settings = useSettingsStore.getState().settings
-          const effective = mergeProjectSettings(settings, project.settingsJson)
-          const cwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
-
           if (!useThreadStore.getState().canAddSession()) {
             showToast('Maximum sessions reached. Close one and retry.', 'error')
             return
           }
-
-          void useThreadStore
-            .getState()
-            .startThread(projectId, cwd, effective.model, effective.sandboxMode, effective.approvalPolicy)
-            .then(() => {
-              showToast('New session started', 'success')
-            })
-            .catch(() => {
-              showToast('Failed to start new session', 'error')
-            })
+          dispatchAppEvent(APP_EVENTS.OPEN_NEW_SESSION_DIALOG)
         },
       },
       // Toggle terminal (Cmd/Ctrl + J)

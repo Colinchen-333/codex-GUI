@@ -165,7 +165,7 @@ export function McpToolCard({ item }: MessageItemProps) {
                   <IconButton
                     size="sm"
                     variant="ghost"
-                    onClick={() => void copy('error', content.error)}
+                    onClick={() => void copy('error', content.error ?? '')}
                     title="Copy error"
                     aria-label="Copy error"
                   >

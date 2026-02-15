@@ -829,7 +829,7 @@ function UnifiedDiff({
             >
               {/* Hunk header */}
               {showHunkHeader && (
-                <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
+                <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                   <span>@@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@</span>
                   <div className="flex items-center gap-2">
                     {enableChunkActions && filePath && (
@@ -1047,7 +1047,7 @@ function UnifiedDiff({
           >
             {/* Hunk header */}
             {showHunkHeader && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
+              <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                 <span>@@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@</span>
                 <div className="flex items-center gap-2">
                   {enableChunkActions && filePath && (
@@ -1138,7 +1138,7 @@ function SplitDiff({
               {/* Left side (old) */}
               <div className="border-r border-stroke/20">
                 {showHunkHeader && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
+              <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                 <span>-{hunk.oldStart},{hunk.oldLines}</span>
               </div>
                 )}
@@ -1184,7 +1184,7 @@ function SplitDiff({
               {/* Right side (new) */}
               <div>
                 {showHunkHeader && (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
+                  <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                     <span>+{hunk.newStart},{hunk.newLines}</span>
                     <div className="flex items-center gap-2">
                       {enableChunkActions && filePath && (
@@ -1273,10 +1273,10 @@ function SplitDiff({
             {/* Headers - grid layout */}
             {showHunkHeader && (
               <div className="grid grid-cols-2 border-y border-stroke/20">
-                <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-r border-stroke/20">
+                <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-r border-stroke/20">
                   <span>-{hunk.oldStart},{hunk.oldLines}</span>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 flex items-center justify-between">
+                <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 flex items-center justify-between">
                   <span>+{hunk.newStart},{hunk.newLines}</span>
                   <div className="flex items-center gap-2">
                     {enableChunkActions && filePath && (

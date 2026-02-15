@@ -13,10 +13,8 @@ import { LoginPage } from './pages/LoginPage'
 import { MainWorkbenchPage } from './pages/MainWorkbenchPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlanSummaryPage } from './pages/PlanSummaryPage'
-import { RemoteTaskPage } from './pages/RemoteTaskPage'
 import { SelectWorkspacePage } from './pages/SelectWorkspacePage'
 import { SkillsPage } from './pages/SkillsPage'
-import { ThreadOverlayPage } from './pages/ThreadOverlayPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { WorktreeInitPage } from './pages/WorktreeInitPage'
 import { SettingsLicensesPage } from './pages/settings/SettingsLicensesPage'
@@ -44,10 +42,8 @@ export const router = createBrowserRouter([
       { path: '/plan-summary', element: <PlanSummaryPage /> },
       { path: '/file-preview', element: <FilePreviewPage /> },
       { path: '/local/:conversationId', element: <LocalConversationPage /> },
-      { path: '/thread-overlay/:conversationId', element: <ThreadOverlayPage /> },
       { path: '/inbox', element: <InboxPage /> },
       { path: '/inbox/:itemId', element: <InboxItemPage /> },
-      { path: '/remote/:taskId', element: <RemoteTaskPage /> },
       { path: '/skills', element: <SkillsPage /> },
       {
         path: '/settings',

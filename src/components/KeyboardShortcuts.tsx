@@ -67,8 +67,8 @@ export function KeyboardShortcuts() {
           escapeTimerRef.current = null
         }, DOUBLE_ESCAPE_TIMEOUT_MS)
       }
-      } else {
-        // Not running - close dialogs / leave settings
+    } else {
+      // Not running - close dialogs / leave settings
       if (location.pathname.startsWith('/settings')) {
         void navigate(-1)
       }

@@ -124,6 +124,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
 
       e.preventDefault()
       e.stopPropagation()
+      e.stopImmediatePropagation()
 
       if (remoteInfo?.remote) {
         void handleCommitAndPush()
@@ -132,8 +133,8 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
       }
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [handleCommit, handleCommitAndPush, isCommitting, isMac, isOpen, remoteInfo?.remote, selectedCount, step])
 
   const handleToggleFile = (file: GitFileStatus) => {

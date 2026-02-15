@@ -155,8 +155,8 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
       void handleCreatePR()
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [baseBranch, ghStatus, handleCreatePR, headBranch, isMac, isOpen, selectedProject?.path, step, tauriAvailable, title])
 
   const handleCopyUrl = async () => {

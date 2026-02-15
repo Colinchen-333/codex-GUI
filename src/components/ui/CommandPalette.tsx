@@ -78,8 +78,19 @@ export function CommandPalette({
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
   const sessions = useSessionsStore((state) => state.sessions)
+  const projects = useProjectsStore((state) => state.projects)
   const threads = useThreadStore((state) => state.threads)
   const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
+
+  const recentProjects = useMemo(() => {
+    return [...projects]
+      .sort((a, b) => {
+        const aTime = a.lastOpenedAt || a.createdAt
+        const bTime = b.lastOpenedAt || b.createdAt
+        return bTime - aTime
+      })
+      .slice(0, 10)
+  }, [projects])
 
   const recentSessions = useMemo(() => {
     return [...sessions]
@@ -458,6 +469,27 @@ export function CommandPalette({
       },
       group: 'Approvals',
     },
+    ...recentProjects.map((project) => {
+      const label = project.displayName || project.path.split('/').pop() || project.path
+      return {
+        id: `select-project:${project.id}`,
+        label: `Switch project: ${label}`,
+        icon: <FolderOpen size={16} />,
+        action: () => {
+          const projectsStore = useProjectsStore.getState()
+          const currentProjectId = projectsStore.selectedProjectId
+          if (project.id === currentProjectId) {
+            toast.info('Project already selected')
+            return
+          }
+          void useThreadStore.getState().closeAllThreads()
+          void projectsStore.selectProject(project.id)
+          void useSessionsStore.getState().selectSession(null)
+          void navigate('/')
+        },
+        group: 'Projects',
+      }
+    }),
     ...recentSessions.map((session) => {
       const title = session.title || `Session ${session.sessionId.slice(0, 8)}`
       return {

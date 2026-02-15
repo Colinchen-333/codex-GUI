@@ -8,9 +8,12 @@ import {
   Folder,
   FolderOpen,
   Image as ImageIcon,
-  MoreHorizontal,
   RotateCcw,
   Plus,
+  RefreshCw,
+  Copy,
+  Code2,
+  GitCommit,
 } from 'lucide-react'
 import { DiffView, parseDiff, type FileDiff } from '../components/ui/DiffView'
 import { cn } from '../lib/utils'
@@ -18,8 +21,13 @@ import { parseError } from '../lib/errorUtils'
 import { projectApi } from '../lib/api'
 import { useProjectsStore } from '../stores/projects'
 import { useToast } from '../components/ui/Toast'
+import { copyTextToClipboard } from '../lib/clipboard'
+import { openInVSCode } from '../lib/hostActions'
+import { isTauriAvailable } from '../lib/tauri'
+import { dispatchAppEvent, APP_EVENTS } from '../lib/appEvents'
 
 type LoadState = 'idle' | 'loading' | 'error' | 'not-git' | 'empty'
+type DiffMode = 'unstaged' | 'staged'
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 
@@ -176,6 +184,7 @@ export function DiffPage() {
   const { selectedProjectId, projects } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
 
+  const [diffMode, setDiffMode] = useState<DiffMode>('unstaged')
   const [loadState, setLoadState] = useState<LoadState>('idle')
   const [diffText, setDiffText] = useState<string>('')
   const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([])
@@ -195,7 +204,10 @@ export function DiffPage() {
 
     setLoadState('loading')
     try {
-      const result = await projectApi.getGitDiff(selectedProject.path)
+      const result =
+        diffMode === 'staged'
+          ? await projectApi.getGitDiffStaged(selectedProject.path)
+          : await projectApi.getGitDiff(selectedProject.path)
       if (!result.isGitRepo) {
         setLoadState('not-git')
         setDiffText('')
@@ -219,12 +231,85 @@ export function DiffPage() {
       setFileDiffs([])
       console.error('Failed to load diff:', parseError(error))
     }
-  }, [selectedProject])
+  }, [diffMode, selectedProject])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetching data on mount/project change is intentional.
     void fetchDiff()
   }, [fetchDiff])
+
+  const requireTauri = useCallback((): boolean => {
+    if (isTauriAvailable()) return true
+    showToast('Unavailable in web mode', 'error')
+    return false
+  }, [showToast])
+
+  const handleCopyDiff = useCallback(async () => {
+    if (!diffText) return
+    try {
+      const ok = await copyTextToClipboard(diffText)
+      if (!ok) throw new Error('Clipboard unavailable')
+      showToast('Diff copied', 'success')
+    } catch {
+      showToast('Copy failed', 'error')
+    }
+  }, [diffText, showToast])
+
+  const handleOpenInVSCode = useCallback(async () => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    try {
+      await openInVSCode(selectedProject.path)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to open in VS Code', 'error')
+    }
+  }, [requireTauri, selectedProject, showToast])
+
+  const handleOpenFileInVSCode = useCallback(async (relativePath: string) => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    const absolutePath = `${selectedProject.path}/${relativePath}`
+    try {
+      await openInVSCode(absolutePath)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to open file in VS Code', 'error')
+    }
+  }, [requireTauri, selectedProject, showToast])
+
+  const handleStageAll = useCallback(async () => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    try {
+      const status = await projectApi.gitStatus(selectedProject.path)
+      const filesToStage = status.filter((f) => !f.isStaged).map((f) => f.path)
+      if (filesToStage.length === 0) {
+        showToast('Nothing to stage', 'info')
+        return
+      }
+      await projectApi.gitStageFiles(selectedProject.path, filesToStage)
+      showToast(`Staged ${filesToStage.length} file(s)`, 'success')
+      await fetchDiff()
+    } catch (err) {
+      showToast(`Stage all failed: ${parseError(err)}`, 'error')
+    }
+  }, [fetchDiff, requireTauri, selectedProject, showToast])
+
+  const handleUnstageAll = useCallback(async () => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    try {
+      const status = await projectApi.gitStatus(selectedProject.path)
+      const filesToUnstage = status.filter((f) => f.isStaged).map((f) => f.path)
+      if (filesToUnstage.length === 0) {
+        showToast('Nothing to unstage', 'info')
+        return
+      }
+      await projectApi.gitUnstageFiles(selectedProject.path, filesToUnstage)
+      showToast(`Unstaged ${filesToUnstage.length} file(s)`, 'success')
+      await fetchDiff()
+    } catch (err) {
+      showToast(`Unstage all failed: ${parseError(err)}`, 'error')
+    }
+  }, [fetchDiff, requireTauri, selectedProject, showToast])
 
   const stats = useMemo(() => {
     let additions = 0
@@ -390,9 +475,9 @@ export function DiffPage() {
                           <span className="min-w-0 flex-1 truncate">This file is too large to display here.</span>
                           <button
                             className="inline-flex items-center gap-1 text-text-2 hover:text-text-1"
-                            onClick={() => showToast('Open in editor not wired yet', 'info')}
+                            onClick={() => void handleOpenFileInVSCode(diff.path)}
                           >
-                            Open in editor
+                            Open in VS Code
                           </button>
                         </div>
                       ) : isImage ? (
@@ -403,9 +488,9 @@ export function DiffPage() {
                           </div>
                           <button
                             className="inline-flex items-center gap-1 text-text-2 hover:text-text-1"
-                            onClick={() => showToast('Open in editor not wired yet', 'info')}
+                            onClick={() => void handleOpenFileInVSCode(diff.path)}
                           >
-                            Open in editor
+                            Open in VS Code
                           </button>
                         </div>
                       ) : (
@@ -499,30 +584,61 @@ export function DiffPage() {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-stroke/10 px-6 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-text-1">
-          <span>Uncommitted changes</span>
+          <span>{diffMode === 'staged' ? 'Staged changes' : 'Unstaged changes'}</span>
           <ChevronDown size={16} className="text-text-3" />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-status-success">+{stats.additions}</span>
           <span className="text-xs text-status-error">-{stats.deletions}</span>
+          <span className="text-xs text-text-3">{stats.filesChanged} file(s)</span>
           <button
-            className="rounded-full border border-stroke/20 bg-surface-hover/[0.08] px-3 py-1 text-xs font-semibold text-text-1"
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-semibold',
+              diffMode === 'unstaged'
+                ? 'border-stroke/20 bg-surface-hover/[0.08] text-text-1'
+                : 'border-transparent bg-transparent text-text-3 hover:text-text-1'
+            )}
+            onClick={() => setDiffMode('unstaged')}
           >
-            Unstaged · {stats.filesChanged}
+            Unstaged
           </button>
-          <button className="text-xs font-semibold text-text-3 hover:text-text-1">Staged</button>
+          <button
+            className={cn(
+              'text-xs font-semibold',
+              diffMode === 'staged' ? 'text-text-1' : 'text-text-3 hover:text-text-1'
+            )}
+            onClick={() => setDiffMode('staged')}
+          >
+            Staged
+          </button>
           <button
             className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
-            onClick={() => showToast('Open in editor not wired yet', 'info')}
-            title="Open in editor"
+            onClick={() => void fetchDiff()}
+            title="Refresh"
           >
-            <FolderOpen size={14} />
+            <RefreshCw size={14} />
           </button>
           <button
             className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
-            onClick={() => showToast('More actions not wired yet', 'info')}
+            onClick={() => void handleCopyDiff()}
+            title="Copy diff"
+            disabled={!diffText}
           >
-            <MoreHorizontal size={14} />
+            <Copy size={14} />
+          </button>
+          <button
+            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
+            onClick={() => void handleOpenInVSCode()}
+            title="Open in VS Code"
+          >
+            <Code2 size={14} />
+          </button>
+          <button
+            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
+            onClick={() => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG)}
+            title="Commit"
+          >
+            <GitCommit size={14} />
           </button>
         </div>
       </div>
@@ -534,18 +650,21 @@ export function DiffPage() {
           <div className="flex items-center rounded-full border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden">
             <button
               className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1]"
-              onClick={() => showToast('Revert all is not wired yet', 'info')}
+              onClick={() => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG)}
             >
-              <RotateCcw size={14} />
-              Revert all
+              <GitCommit size={14} />
+              Commit
             </button>
             <div className="h-4 w-px bg-stroke/20" />
             <button
               className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1]"
-              onClick={() => showToast('Stage all is not wired yet', 'info')}
+              onClick={() => {
+                if (diffMode === 'staged') void handleUnstageAll()
+                else void handleStageAll()
+              }}
             >
-              <Plus size={14} />
-              Stage all
+              {diffMode === 'staged' ? <RotateCcw size={14} /> : <Plus size={14} />}
+              {diffMode === 'staged' ? 'Unstage all' : 'Stage all'}
             </button>
           </div>
         </div>

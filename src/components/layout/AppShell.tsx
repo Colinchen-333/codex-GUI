@@ -12,13 +12,24 @@ import { HostNavigationListener } from '../navigation/HostNavigationListener'
 import { KeyboardShortcuts } from '../KeyboardShortcuts'
 import { useAppStore } from '../../stores/app'
 import { APP_EVENTS } from '../../lib/appEvents'
+import { NewThreadDialog } from '../LazyComponents'
+import { useProjectsStore } from '../../stores/projects'
+import { useSettingsStore, mergeProjectSettings, getEffectiveWorkingDirectory } from '../../stores/settings'
+import { useThreadStore } from '../../stores/thread'
+import { useSessionsStore } from '../../stores/sessions'
+import { useToast } from '../ui/useToast'
 
 export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
   const [commitDialogOpen, setCommitDialogOpen] = useState(false)
   const [commitDialogIntent, setCommitDialogIntent] = useState<'commit' | 'pr'>('commit')
+  const [newSessionDialogOpen, setNewSessionDialogOpen] = useState(false)
   const navigate = useNavigate()
   const commandPalette = useCommandPalette()
+  const { toast } = useToast()
+  const selectedProject = useProjectsStore((state) =>
+    state.selectedProjectId ? state.projects.find((p) => p.id === state.selectedProjectId) ?? null : null
+  )
 
   const handleToggleRightPanel = useCallback(() => {
     setRightPanelOpen((prev) => !prev)
@@ -51,6 +62,46 @@ export function AppShell() {
     window.addEventListener(APP_EVENTS.OPEN_CREATE_PR_DIALOG, handleOpen)
     return () => window.removeEventListener(APP_EVENTS.OPEN_CREATE_PR_DIALOG, handleOpen)
   }, [])
+
+  useEffect(() => {
+    const handleOpen = () => setNewSessionDialogOpen(true)
+    window.addEventListener(APP_EVENTS.OPEN_NEW_SESSION_DIALOG, handleOpen)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_NEW_SESSION_DIALOG, handleOpen)
+  }, [])
+
+  const startSession = useCallback((cwdOverride?: string | null) => {
+    const { selectedProjectId, projects } = useProjectsStore.getState()
+    if (!selectedProjectId) {
+      toast.error('No project selected')
+      return
+    }
+    if (!useThreadStore.getState().canAddSession()) {
+      toast.error('Maximum sessions reached')
+      return
+    }
+    const project = projects.find((p) => p.id === selectedProjectId)
+    if (!project) {
+      toast.error('Project not found')
+      return
+    }
+
+    const settings = useSettingsStore.getState().settings
+    const effective = mergeProjectSettings(settings, project.settingsJson)
+    const cwd = cwdOverride || getEffectiveWorkingDirectory(project.path, project.settingsJson)
+
+    void useSessionsStore.getState().selectSession(null)
+    void useThreadStore
+      .getState()
+      .startThread(selectedProjectId, cwd, effective.model, effective.sandboxMode, effective.approvalPolicy)
+      .then((threadId) => {
+        void useSessionsStore.getState().selectSession(threadId)
+        toast.success('New session started')
+        void navigate('/')
+      })
+      .catch((err) => {
+        toast.error('Failed to start new session', { message: String(err) })
+      })
+  }, [navigate, toast])
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
@@ -89,6 +140,13 @@ export function AppShell() {
           setCommitDialogOpen(false)
           setCommitDialogIntent('commit')
         }}
+      />
+      <NewThreadDialog
+        isOpen={newSessionDialogOpen}
+        onClose={() => setNewSessionDialogOpen(false)}
+        projectPath={selectedProject?.path ?? null}
+        onCreateLocal={() => startSession(null)}
+        onCreateWorktree={(_branchName, worktreePath) => startSession(worktreePath)}
       />
       <CommandPalette
         isOpen={commandPalette.isOpen}

@@ -109,7 +109,7 @@ export function NewThreadDialog({
     <BaseDialog
       isOpen={isOpen}
       onClose={handleClose}
-      title="New Thread"
+      title="New Session"
       maxWidth="md"
     >
       <div className="px-6 py-5 space-y-5">
@@ -211,7 +211,7 @@ export function NewThreadDialog({
           ) : selectedMode === 'worktree' ? (
             'Create Worktree'
           ) : (
-            'Create Thread'
+            'Create Session'
           )}
         </Button>
       </div>

@@ -164,6 +164,13 @@ export function CommandPalette({
       group: 'Actions',
     },
     {
+      id: 'new-session-dialog',
+      label: 'New Session...',
+      icon: <Plus size={16} />,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_NEW_SESSION_DIALOG),
+      group: 'Actions',
+    },
+    {
       id: 'open-project-settings',
       label: 'Project Settings',
       icon: <Settings size={16} />,

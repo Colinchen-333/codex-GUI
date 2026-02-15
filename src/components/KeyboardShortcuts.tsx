@@ -15,6 +15,7 @@ import { useToast } from './ui/Toast'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useUndoRedoStore } from '../stores/undoRedo'
 import { logError } from '../lib/errorUtils'
+import { selectGlobalNextPendingApproval } from '../stores/thread/selectors'
 
 // Double-escape timeout (like CLI)
 const DOUBLE_ESCAPE_TIMEOUT_MS = 1500
@@ -122,6 +123,17 @@ export function KeyboardShortcuts() {
       useThreadStore.getState().switchThread(targetThreadId)
       showToast(`Switched to ${sessionName.length > 30 ? sessionName.slice(0, 30) + '...' : sessionName}`, 'info')
     }
+  }, [showToast])
+
+  const jumpToNextApproval = useCallback(() => {
+    const next = selectGlobalNextPendingApproval(useThreadStore.getState())
+    if (!next) {
+      showToast('No pending approvals', 'info')
+      return
+    }
+    useThreadStore.getState().switchThread(next.threadId)
+    useAppStore.getState().setScrollToItemId(next.itemId)
+    showToast('Jumped to next approval', 'info')
   }, [showToast])
 
   const shortcuts: KeyboardShortcut[] = useMemo(
@@ -254,6 +266,14 @@ export function KeyboardShortcuts() {
           window.dispatchEvent(new CustomEvent('codex:toggle-review-panel'))
         },
       },
+      // Jump to next approval (Cmd/Ctrl + Shift + A)
+      {
+        key: 'a',
+        meta: true,
+        shift: true,
+        description: 'Jump to next approval',
+        handler: jumpToNextApproval,
+      },
       // Help - Show keyboard shortcuts
       {
         key: '?',
@@ -315,7 +335,7 @@ export function KeyboardShortcuts() {
         },
       },
     ],
-    [showToast, handleEscape, navigateToNextSession, undo, redo, canUndo, canRedo, navigate] // Only dependencies that aren't store functions
+    [showToast, handleEscape, navigateToNextSession, jumpToNextApproval, undo, redo, canUndo, canRedo, navigate] // Only dependencies that aren't store functions
   )
 
   useKeyboardShortcuts(shortcuts)

@@ -63,6 +63,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['Y'], description: 'Accept action' },
       { keys: ['N'], description: 'Decline action' },
       { keys: ['A'], description: 'Accept all for session' },
+      { keys: ['Cmd', 'Shift', 'A'], description: 'Jump to next approval' },
     ],
   },
 ]

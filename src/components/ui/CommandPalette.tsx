@@ -17,11 +17,14 @@ import {
   Bug,
   Terminal,
   TextCursorInput,
+  AlertTriangle,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
 import { useAppStore } from '../../stores/app'
 import { useThreadStore } from '../../stores/thread'
+import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
+import { useToast } from './useToast'
 
 interface CommandItem {
   id: string
@@ -52,6 +55,7 @@ export function CommandPalette({
   const [search, setSearch] = useState('')
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
 
   const handleClose = useCallback(() => {
     setSearch('')
@@ -161,6 +165,22 @@ export function CommandPalette({
       shortcut: ['⌘', '/'],
       action: () => window.dispatchEvent(new CustomEvent('codex:toggle-review-panel')),
       group: 'Actions',
+    },
+    {
+      id: 'jump-next-approval',
+      label: 'Jump to Next Approval',
+      icon: <AlertTriangle size={16} />,
+      shortcut: ['⌘', '⇧', 'A'],
+      action: () => {
+        const next = selectGlobalNextPendingApproval(useThreadStore.getState())
+        if (!next) {
+          toast.info('No pending approvals')
+          return
+        }
+        useThreadStore.getState().switchThread(next.threadId)
+        useAppStore.getState().setScrollToItemId(next.itemId)
+      },
+      group: 'Approvals',
     },
     {
       id: 'keyboard-shortcuts',

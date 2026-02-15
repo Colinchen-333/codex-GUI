@@ -59,6 +59,7 @@ const helpSections: HelpSection[] = [
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + ,', description: 'Open Settings' },
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + N', description: 'Start a new session' },
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + ] / Cmd + [', description: 'Next / previous session' },
+      { icon: <Keyboard size={18} className="text-text-2" />, label: 'Cmd + Shift + A', description: 'Jump to next approval' },
       { icon: <Keyboard size={18} className="text-text-2" />, label: 'Escape', description: 'Stop generation (double-press) / Close dialogs' },
     ],
   },

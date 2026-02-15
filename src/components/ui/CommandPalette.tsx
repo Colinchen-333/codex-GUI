@@ -21,10 +21,13 @@ import {
   TextCursorInput,
   AlertTriangle,
   GitCommit,
+  Download,
+  Info,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
 import { useAppStore } from '../../stores/app'
+import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
 import { useToast } from './useToast'
@@ -85,10 +88,33 @@ export function CommandPalette({
   const commands: CommandItem[] = [
     {
       id: 'new-thread',
-      label: 'New thread',
+      label: 'New session',
       icon: <Plus size={16} />,
       shortcut: ['⌘', 'N'],
       action: () => onNewThread?.(),
+      group: 'Actions',
+    },
+    {
+      id: 'open-project-settings',
+      label: 'Project Settings',
+      icon: <Settings size={16} />,
+      action: () => {
+        const projectId = useProjectsStore.getState().selectedProjectId
+        if (!projectId) {
+          toast.error('No project selected')
+          return
+        }
+        window.dispatchEvent(
+          new CustomEvent('codex:open-project-settings', { detail: { projectId } })
+        )
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'import-codex-cli-session',
+      label: 'Import Codex CLI Session',
+      icon: <Download size={16} />,
+      action: () => window.dispatchEvent(new CustomEvent('codex:open-import-codex-sessions')),
       group: 'Actions',
     },
     {
@@ -289,6 +315,13 @@ export function CommandPalette({
       label: 'Help & Documentation',
       icon: <HelpCircle size={16} />,
       action: () => onOpenHelp?.(),
+      group: 'Help',
+    },
+    {
+      id: 'about',
+      label: 'About',
+      icon: <Info size={16} />,
+      action: () => useAppStore.getState().setAboutOpen(true),
       group: 'Help',
     },
   ]

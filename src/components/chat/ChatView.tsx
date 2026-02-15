@@ -102,7 +102,7 @@ export function ChatView() {
     const index = focusedThread.itemOrder.indexOf(scrollToItemId)
     if (index < 0) return
     const rafId = window.requestAnimationFrame(() => {
-      virtualListRef.current?.scrollToItem(index, 'start')
+      virtualListRef.current?.scrollToRow({ index, align: 'start', behavior: 'instant' })
       clearScrollToItemId()
     })
     return () => window.cancelAnimationFrame(rafId)

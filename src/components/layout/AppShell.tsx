@@ -33,6 +33,13 @@ export function AppShell() {
     return () => window.removeEventListener('codex:toggle-review-panel', handleToggle)
   }, [])
 
+  // Cross-component request to open the commit dialog (for example: from command palette)
+  useEffect(() => {
+    const handleOpen = () => setCommitDialogOpen(true)
+    window.addEventListener('codex:open-commit-dialog', handleOpen)
+    return () => window.removeEventListener('codex:open-commit-dialog', handleOpen)
+  }, [])
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       <HostNavigationListener />

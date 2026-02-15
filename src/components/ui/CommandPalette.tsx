@@ -19,6 +19,7 @@ import {
   Terminal,
   TextCursorInput,
   AlertTriangle,
+  GitCommit,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
@@ -86,6 +87,13 @@ export function CommandPalette({
       icon: <Plus size={16} />,
       shortcut: ['⌘', 'N'],
       action: () => onNewThread?.(),
+      group: 'Actions',
+    },
+    {
+      id: 'open-commit-dialog',
+      label: 'Commit Changes',
+      icon: <GitCommit size={16} />,
+      action: () => window.dispatchEvent(new CustomEvent('codex:open-commit-dialog')),
       group: 'Actions',
     },
     {

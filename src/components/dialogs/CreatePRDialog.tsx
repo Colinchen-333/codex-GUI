@@ -46,10 +46,11 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
   const [copied, setCopied] = useState(false)
 
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useFocusTrap<HTMLDivElement>({
     isActive: isOpen,
     onEscape: onClose,
-    initialFocusRef: closeButtonRef,
+    initialFocus: tauriAvailable && !!selectedProject?.path ? titleInputRef : closeButtonRef,
     restoreFocus: true,
   })
 
@@ -362,6 +363,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="PR title"
                   error={title.length > 0 && title.trim().length === 0}
+                  ref={titleInputRef}
                 />
               </div>
 

@@ -51,10 +51,11 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
   const [pushCompleted, setPushCompleted] = useState(false)
 
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const commitMessageRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useFocusTrap<HTMLDivElement>({
     isActive: isOpen,
     onEscape: onClose,
-    initialFocusRef: closeButtonRef,
+    initialFocus: tauriAvailable && !!selectedProject?.path ? commitMessageRef : closeButtonRef,
     restoreFocus: true,
   })
 
@@ -600,6 +601,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
                 onChange={(e) => setCommitMessage(e.target.value)}
                 placeholder="Leave blank to use default message"
                 className="w-full h-[72px] rounded-[var(--radius-sm)] border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2 text-[13px] text-text-1 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none resize-none"
+                ref={commitMessageRef}
               />
             </div>
 

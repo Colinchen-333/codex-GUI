@@ -50,10 +50,21 @@ export function Sidebar() {
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
   const navigate = useNavigate()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
-  const [sessionFilters, setSessionFilters] = useState({
-    pinnedOnly: false,
-    runningOnly: false,
-    showArchived: false,
+  const [sessionFilters, setSessionFilters] = useState(() => {
+    const defaults = { pinnedOnly: false, runningOnly: false, showArchived: false }
+    try {
+      if (typeof localStorage === 'undefined') return defaults
+      const raw = localStorage.getItem('codex:session-filters')
+      if (!raw) return defaults
+      const parsed = JSON.parse(raw) as Partial<typeof defaults>
+      return {
+        pinnedOnly: typeof parsed.pinnedOnly === 'boolean' ? parsed.pinnedOnly : defaults.pinnedOnly,
+        runningOnly: typeof parsed.runningOnly === 'boolean' ? parsed.runningOnly : defaults.runningOnly,
+        showArchived: typeof parsed.showArchived === 'boolean' ? parsed.showArchived : defaults.showArchived,
+      }
+    } catch {
+      return defaults
+    }
   })
   const {
     sessions,
@@ -71,6 +82,14 @@ export function Sidebar() {
   const { showToast } = useToast()
   const dialogs = useSidebarDialogs()
   const handleOpenProjectSettings = dialogs.handleOpenProjectSettings
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('codex:session-filters', JSON.stringify(sessionFilters))
+    } catch {
+      // Ignore quota errors.
+    }
+  }, [sessionFilters])
 
   useEffect(() => {
     const onOpenImport = () => setImportDialogOpen(true)

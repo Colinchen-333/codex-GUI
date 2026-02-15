@@ -3,9 +3,12 @@
  * Memoized to prevent unnecessary re-renders
  */
 import { memo } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Copy } from 'lucide-react'
 import { formatTimestamp } from '../utils'
 import { cn } from '../../../lib/utils'
+import { copyTextToClipboard } from '../../../lib/clipboard'
+import { IconButton } from '../../ui/IconButton'
+import { useToast } from '../../ui/useToast'
 import type { MessageItemProps, ErrorContentType } from '../types'
 
 const HTTP_STATUS_LABELS: Record<number, string> = {
@@ -33,6 +36,23 @@ export const ErrorCard = memo(
   function ErrorCard({ item }: MessageItemProps) {
     const content = item.content as ErrorContentType
     const statusText = formatHttpStatus(content.httpStatusCode)
+    const { toast } = useToast()
+
+    const errorText = [
+      `Error${content.errorType ? ` (${content.errorType})` : ''}`,
+      statusText ? statusText : null,
+      content.willRetry ? 'Will retry...' : null,
+      '',
+      content.message,
+    ]
+      .filter((line): line is string => Boolean(line))
+      .join('\n')
+
+    const handleCopy = async () => {
+      const ok = await copyTextToClipboard(errorText)
+      if (ok) toast.success('Copied error')
+      else toast.error('Copy failed')
+    }
 
     return (
       <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
@@ -56,6 +76,15 @@ export const ErrorCard = memo(
               )}
             </div>
             <div className="flex items-center gap-2">
+              <IconButton
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleCopy()}
+                title="Copy error"
+                aria-label="Copy error"
+              >
+                <Copy size={14} />
+              </IconButton>
               {content.willRetry && (
                 <span className="text-[10px] text-status-warning">
                   Will retry...

@@ -1,5 +1,26 @@
 import { useState, memo, useMemo, useCallback, useRef, useEffect } from 'react'
-import { X, Plus, MessageSquare, Loader2, MoreHorizontal, ChevronDown, GitCommit, PanelRightClose, PanelRightOpen, SquareTerminal, FolderOpen, Code2, Square, Download, Pencil, Copy } from 'lucide-react'
+import {
+  X,
+  Plus,
+  MessageSquare,
+  Loader2,
+  MoreHorizontal,
+  ChevronDown,
+  GitCommit,
+  PanelRightClose,
+  PanelRightOpen,
+  SquareTerminal,
+  FolderOpen,
+  Code2,
+  Square,
+  Download,
+  Pencil,
+  Copy,
+  GitBranch,
+  CheckCircle2,
+  XCircle,
+  CircleSlash2,
+} from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { copyTextToClipboard } from '../../lib/clipboard'
 import { useAppStore } from '../../stores/app'
@@ -8,6 +29,7 @@ import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { openInTerminal, openInVSCode, revealInFinder } from '../../lib/hostActions'
 import { APP_EVENTS } from '../../lib/appEvents'
+import { isTauriAvailable } from '../../lib/tauri'
 import { CloseSessionDialog } from './CloseSessionDialog'
 import { PendingApprovalDotButton } from './PendingApprovalDotButton'
 import { ExportDialog } from './ExportDialog'
@@ -170,6 +192,8 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   const activeSession = sessions.find(s => s.sessionId === focusedThreadId)
   const activeThreadState = focusedThreadId ? threads[focusedThreadId] : null
   const sessionTitle = activeSession?.title || activeThreadState?.thread?.cwd?.split('/').pop() || 'New session'
+  const activeWorktreeBranch = activeSession?.mode === 'worktree' ? (activeSession.worktreeBranch ?? null) : null
+  const activeWorktreePath = activeSession?.mode === 'worktree' ? (activeSession.worktreePath ?? null) : null
   const activeProjectName = useMemo(() => {
     const cwd = activeThreadState?.thread?.cwd
     if (!cwd) return null
@@ -182,32 +206,71 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
 
   const projectCwd = activeThreadState?.thread?.cwd ?? null
 
+  const requireTauri = useCallback((): boolean => {
+    if (isTauriAvailable()) return true
+    toast.error('Unavailable in web mode')
+    return false
+  }, [toast])
+
   const handleRevealInFinder = useCallback(async () => {
     if (!projectCwd) return
+    if (!requireTauri()) return
     try {
       await revealInFinder(projectCwd)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to reveal in Finder')
     }
-  }, [projectCwd, toast])
+  }, [projectCwd, requireTauri, toast])
 
   const handleOpenInTerminal = useCallback(async () => {
     if (!projectCwd) return
+    if (!requireTauri()) return
     try {
       await openInTerminal(projectCwd)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to open in Terminal')
     }
-  }, [projectCwd, toast])
+  }, [projectCwd, requireTauri, toast])
 
   const handleOpenInVSCode = useCallback(async () => {
     if (!projectCwd) return
+    if (!requireTauri()) return
     try {
       await openInVSCode(projectCwd)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to open in VS Code')
     }
-  }, [projectCwd, toast])
+  }, [projectCwd, requireTauri, toast])
+
+  const handleRevealWorktreeInFinder = useCallback(async () => {
+    if (!activeWorktreePath) return
+    if (!requireTauri()) return
+    try {
+      await revealInFinder(activeWorktreePath)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reveal worktree in Finder')
+    }
+  }, [activeWorktreePath, requireTauri, toast])
+
+  const handleOpenWorktreeInTerminal = useCallback(async () => {
+    if (!activeWorktreePath) return
+    if (!requireTauri()) return
+    try {
+      await openInTerminal(activeWorktreePath)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to open worktree in Terminal')
+    }
+  }, [activeWorktreePath, requireTauri, toast])
+
+  const handleOpenWorktreeInVSCode = useCallback(async () => {
+    if (!activeWorktreePath) return
+    if (!requireTauri()) return
+    try {
+      await openInVSCode(activeWorktreePath)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to open worktree in VS Code')
+    }
+  }, [activeWorktreePath, requireTauri, toast])
 
   const handleStop = useCallback(() => {
     void useThreadStore.getState().interrupt()
@@ -266,6 +329,15 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
             <h1 className="truncate text-[15px] font-semibold text-text-1">{sessionTitle}</h1>
             {activeProjectName && (
               <span className="truncate text-[14px] font-semibold text-text-3">{activeProjectName}</span>
+            )}
+            {activeWorktreeBranch && (
+              <span
+                className="hidden sm:inline-flex items-center gap-1 rounded-md border border-stroke/20 bg-surface-hover/[0.08] px-2 py-0.5 text-[11px] font-medium text-text-2"
+                title={`Worktree branch: ${activeWorktreeBranch}`}
+              >
+                <GitBranch size={12} className="text-text-3" />
+                <span className="max-w-[160px] truncate font-mono">{activeWorktreeBranch}</span>
+              </span>
             )}
             <Dropdown.Root>
               <Dropdown.Trigger
@@ -336,6 +408,23 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
                       <Code2 size={14} className="text-text-3" />
                       Open in VS Code
                     </Dropdown.Item>
+                    {activeWorktreePath && (
+                      <>
+                        <Dropdown.Separator />
+                        <Dropdown.Item onClick={() => void handleRevealWorktreeInFinder()}>
+                          <FolderOpen size={14} className="text-text-3" />
+                          Reveal worktree in Finder
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={() => void handleOpenWorktreeInTerminal()}>
+                          <SquareTerminal size={14} className="text-text-3" />
+                          Open worktree in Terminal
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={() => void handleOpenWorktreeInVSCode()}>
+                          <Code2 size={14} className="text-text-3" />
+                          Open worktree in VS Code
+                        </Dropdown.Item>
+                      </>
+                    )}
                   </Dropdown.Content>
                 </Dropdown.Root>
 
@@ -388,6 +477,8 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
               sessionTitle={sessionMeta?.title || null}
               sessionTasksJson={sessionMeta?.tasksJson || null}
               sessionStatus={sessionMeta?.status || 'idle'}
+              sessionMode={sessionMeta?.mode || null}
+              worktreeBranch={sessionMeta?.worktreeBranch || null}
             />
           )
         })}
@@ -465,6 +556,8 @@ interface SessionTabProps {
   sessionTitle: string | null
   sessionTasksJson: string | null
   sessionStatus: SessionStatus
+  sessionMode: 'local' | 'worktree' | 'cloud' | null
+  worktreeBranch: string | null
 }
 
 const SessionTab = memo(function SessionTab({
@@ -479,7 +572,9 @@ const SessionTab = memo(function SessionTab({
   registerTabRef,
   sessionTitle,
   sessionTasksJson,
-  sessionStatus
+  sessionStatus,
+  sessionMode,
+  worktreeBranch
 }: SessionTabProps) {
   const { thread, turnStatus, pendingApprovals } = threadState
   const setScrollToItemId = useAppStore((state) => state.setScrollToItemId)
@@ -536,6 +631,12 @@ const SessionTab = memo(function SessionTab({
 
   // Determine if this tab is in a loading state
   const isLoading = isSwitching || (isGloballyLoading && !isActive)
+
+  const branchLabel = useMemo(() => {
+    if (sessionMode !== 'worktree') return null
+    const branch = worktreeBranch?.trim()
+    return branch || 'worktree'
+  }, [sessionMode, worktreeBranch])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.target !== e.currentTarget) return
@@ -596,6 +697,12 @@ const SessionTab = memo(function SessionTab({
             disabled={isLoading}
             onJump={handleJumpToPendingApproval}
           />
+        ) : sessionStatus === 'completed' ? (
+          <CheckCircle2 size={12} className="text-status-success" />
+        ) : sessionStatus === 'failed' ? (
+          <XCircle size={12} className="text-status-error" />
+        ) : sessionStatus === 'interrupted' ? (
+          <CircleSlash2 size={12} className="text-status-warning" />
         ) : (
           <MessageSquare size={12} />
         )}
@@ -603,6 +710,19 @@ const SessionTab = memo(function SessionTab({
 
       {/* Label */}
       <span className={cn('truncate flex-1', isLoading && 'opacity-40')}>{displayLabel}</span>
+
+      {branchLabel && (
+        <span
+          className={cn(
+            'hidden sm:inline-flex items-center gap-1 rounded-md border border-stroke/20 bg-surface-hover/[0.06] px-1.5 py-0.5',
+            isLoading && 'opacity-40'
+          )}
+          title={`Worktree: ${branchLabel}`}
+        >
+          <GitBranch size={12} className="text-text-3" />
+          <span className="max-w-[96px] truncate font-mono text-[10px] text-text-2">{branchLabel}</span>
+        </span>
+      )}
 
       {/* Task progress indicator (compact) */}
       <span className={cn(isLoading && 'opacity-40')}>
@@ -640,7 +760,9 @@ const SessionTab = memo(function SessionTab({
     prevProps.threadState.thread.cwd === nextProps.threadState.thread.cwd &&
     prevProps.sessionTitle === nextProps.sessionTitle &&
     prevProps.sessionTasksJson === nextProps.sessionTasksJson &&
-    prevProps.sessionStatus === nextProps.sessionStatus
+    prevProps.sessionStatus === nextProps.sessionStatus &&
+    prevProps.sessionMode === nextProps.sessionMode &&
+    prevProps.worktreeBranch === nextProps.worktreeBranch
   )
 })
 

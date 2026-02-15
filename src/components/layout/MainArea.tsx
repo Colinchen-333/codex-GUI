@@ -13,6 +13,7 @@ import {
 } from '../../stores/settings'
 import { ChatView } from '../chat/ChatView'
 import { logError, parseError } from '../../lib/errorUtils'
+import { APP_EVENTS } from '../../lib/appEvents'
 import { SessionTabs } from '../sessions/SessionTabs'
 import { TerminalPanel } from '../terminal/TerminalPanel'
 import { log } from '../../lib/logger'
@@ -198,8 +199,8 @@ export function MainArea() {
   // Listen for terminal toggle events (from KeyboardShortcuts Cmd+J)
   useEffect(() => {
     const handleToggle = () => setTerminalVisible((prev) => !prev)
-    window.addEventListener('codex:toggle-terminal', handleToggle)
-    return () => window.removeEventListener('codex:toggle-terminal', handleToggle)
+    window.addEventListener(APP_EVENTS.TOGGLE_TERMINAL, handleToggle)
+    return () => window.removeEventListener(APP_EVENTS.TOGGLE_TERMINAL, handleToggle)
   }, [])
 
   useEffect(() => {

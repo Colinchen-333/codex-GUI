@@ -30,6 +30,7 @@ import { useAppStore } from '../../stores/app'
 import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
+import { APP_EVENTS, dispatchAppEvent } from '../../lib/appEvents'
 import { useToast } from './useToast'
 import { useSessionsStore } from '../../stores/sessions'
 
@@ -104,9 +105,7 @@ export function CommandPalette({
           toast.error('No project selected')
           return
         }
-        window.dispatchEvent(
-          new CustomEvent('codex:open-project-settings', { detail: { projectId } })
-        )
+        dispatchAppEvent(APP_EVENTS.OPEN_PROJECT_SETTINGS, { projectId })
       },
       group: 'Actions',
     },
@@ -114,14 +113,14 @@ export function CommandPalette({
       id: 'import-codex-cli-session',
       label: 'Import Codex CLI Session',
       icon: <Download size={16} />,
-      action: () => window.dispatchEvent(new CustomEvent('codex:open-import-codex-sessions')),
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_IMPORT_CODEX_SESSIONS),
       group: 'Actions',
     },
     {
       id: 'open-commit-dialog',
       label: 'Commit Changes',
       icon: <GitCommit size={16} />,
-      action: () => window.dispatchEvent(new CustomEvent('codex:open-commit-dialog')),
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG),
       group: 'Actions',
     },
     {
@@ -250,7 +249,7 @@ export function CommandPalette({
       label: 'Toggle Terminal',
       icon: <Terminal size={16} />,
       shortcut: ['⌘', 'J'],
-      action: () => window.dispatchEvent(new CustomEvent('codex:toggle-terminal')),
+      action: () => dispatchAppEvent(APP_EVENTS.TOGGLE_TERMINAL),
       group: 'Actions',
     },
     {
@@ -272,7 +271,7 @@ export function CommandPalette({
       label: 'Toggle Review Pane',
       icon: <GitBranch size={16} />,
       shortcut: ['⌘', '/'],
-      action: () => window.dispatchEvent(new CustomEvent('codex:toggle-review-panel')),
+      action: () => dispatchAppEvent(APP_EVENTS.TOGGLE_REVIEW_PANEL),
       group: 'Actions',
     },
     {

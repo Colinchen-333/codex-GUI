@@ -11,6 +11,7 @@ import { logError } from '../../lib/errorUtils'
 import { HostNavigationListener } from '../navigation/HostNavigationListener'
 import { KeyboardShortcuts } from '../KeyboardShortcuts'
 import { useAppStore } from '../../stores/app'
+import { APP_EVENTS } from '../../lib/appEvents'
 
 export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
@@ -29,15 +30,15 @@ export function AppShell() {
   // Listen for review panel toggle events (from KeyboardShortcuts Cmd+/)
   useEffect(() => {
     const handleToggle = () => setRightPanelOpen((prev) => !prev)
-    window.addEventListener('codex:toggle-review-panel', handleToggle)
-    return () => window.removeEventListener('codex:toggle-review-panel', handleToggle)
+    window.addEventListener(APP_EVENTS.TOGGLE_REVIEW_PANEL, handleToggle)
+    return () => window.removeEventListener(APP_EVENTS.TOGGLE_REVIEW_PANEL, handleToggle)
   }, [])
 
   // Cross-component request to open the commit dialog (for example: from command palette)
   useEffect(() => {
     const handleOpen = () => setCommitDialogOpen(true)
-    window.addEventListener('codex:open-commit-dialog', handleOpen)
-    return () => window.removeEventListener('codex:open-commit-dialog', handleOpen)
+    window.addEventListener(APP_EVENTS.OPEN_COMMIT_DIALOG, handleOpen)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_COMMIT_DIALOG, handleOpen)
   }, [])
 
   return (

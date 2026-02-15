@@ -16,6 +16,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, Filter, PanelLeftOpen } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
 import { log } from '../../lib/logger'
+import { APP_EVENTS } from '../../lib/appEvents'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { useAppStore } from '../../stores/app'
@@ -66,8 +67,8 @@ export function Sidebar() {
 
   useEffect(() => {
     const onOpenImport = () => setImportDialogOpen(true)
-    window.addEventListener('codex:open-import-codex-sessions', onOpenImport)
-    return () => window.removeEventListener('codex:open-import-codex-sessions', onOpenImport)
+    window.addEventListener(APP_EVENTS.OPEN_IMPORT_CODEX_SESSIONS, onOpenImport)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_IMPORT_CODEX_SESSIONS, onOpenImport)
   }, [])
 
   useEffect(() => {
@@ -80,8 +81,8 @@ export function Sidebar() {
       }
       handleOpenProjectSettings(projectId)
     }
-    window.addEventListener('codex:open-project-settings', onOpenProjectSettings)
-    return () => window.removeEventListener('codex:open-project-settings', onOpenProjectSettings)
+    window.addEventListener(APP_EVENTS.OPEN_PROJECT_SETTINGS, onOpenProjectSettings)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_PROJECT_SETTINGS, onOpenProjectSettings)
   }, [handleOpenProjectSettings, selectedProjectId, showToast])
 
   useEffect(() => {

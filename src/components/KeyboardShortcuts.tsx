@@ -16,6 +16,7 @@ import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useUndoRedoStore } from '../stores/undoRedo'
 import { logError } from '../lib/errorUtils'
 import { selectGlobalNextPendingApproval } from '../stores/thread/selectors'
+import { APP_EVENTS, dispatchAppEvent } from '../lib/appEvents'
 
 // Double-escape timeout (like CLI)
 const DOUBLE_ESCAPE_TIMEOUT_MS = 1500
@@ -240,7 +241,7 @@ export function KeyboardShortcuts() {
         meta: true,
         description: 'Toggle terminal',
         handler: () => {
-          window.dispatchEvent(new CustomEvent('codex:toggle-terminal'))
+          dispatchAppEvent(APP_EVENTS.TOGGLE_TERMINAL)
         },
       },
       // Clear thread (Cmd/Ctrl + L)
@@ -263,7 +264,7 @@ export function KeyboardShortcuts() {
         meta: true,
         description: 'Toggle review pane',
         handler: () => {
-          window.dispatchEvent(new CustomEvent('codex:toggle-review-panel'))
+          dispatchAppEvent(APP_EVENTS.TOGGLE_REVIEW_PANEL)
         },
       },
       // Jump to next approval (Cmd/Ctrl + Shift + A)

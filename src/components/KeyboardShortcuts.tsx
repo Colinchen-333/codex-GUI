@@ -133,10 +133,12 @@ export function KeyboardShortcuts() {
         description: 'Open settings',
         handler: () => navigate('/settings'),
       },
-      // Focus input (Cmd/Ctrl + K)
+      // Note: Cmd/Ctrl + K is reserved for the Command Palette (handled by useCommandPalette).
+      // Focus input (Cmd/Ctrl + Shift + K)
       {
         key: 'k',
         meta: true,
+        shift: true,
         description: 'Focus input',
         handler: () => useAppStore.getState().triggerFocusInput(),
       },
@@ -186,11 +188,11 @@ export function KeyboardShortcuts() {
         description: 'Stop generation (double-press) / Close dialogs',
         handler: handleEscape,
       },
-      // New thread (Cmd/Ctrl + N)
+      // New session (Cmd/Ctrl + N)
       {
         key: 'n',
         meta: true,
-        description: 'New thread',
+        description: 'New session',
         handler: () => {
           const projectId = useProjectsStore.getState().selectedProjectId
           if (!projectId) {

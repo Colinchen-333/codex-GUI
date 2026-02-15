@@ -53,7 +53,7 @@ export interface CommandExecutionContentType {
 export interface FileChangeContentType {
   changes: Array<{
     path: string
-    kind: string
+    kind: 'add' | 'modify' | 'delete' | 'rename'
     diff: string
     oldPath?: string
   }>
@@ -61,6 +61,7 @@ export interface FileChangeContentType {
   approved?: boolean
   applied?: boolean
   snapshotId?: string
+  output?: string
   reason?: string
 }
 

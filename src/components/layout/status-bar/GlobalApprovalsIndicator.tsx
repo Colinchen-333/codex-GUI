@@ -7,36 +7,17 @@
 import { memo, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { AlertTriangle } from 'lucide-react'
-import { useThreadStore, type ThreadState } from '../../../stores/thread'
+import { useThreadStore } from '../../../stores/thread'
 import { useAppStore } from '../../../stores/app'
-import type { PendingApproval } from '../../../stores/thread/types'
+import { selectGlobalPendingApprovalSummary } from '../../../stores/thread/selectors'
 import { cn } from '../../../lib/utils'
-
-type PendingSummary = { count: number; next: PendingApproval | null }
-
-function selectGlobalPendingSummary(state: ThreadState): PendingSummary {
-  let count = 0
-  let next: PendingApproval | null = null
-
-  for (const threadState of Object.values(state.threads)) {
-    if (!threadState) continue
-    const pending = threadState.pendingApprovals
-    if (!pending || pending.length === 0) continue
-    count += pending.length
-    for (const approval of pending) {
-      if (!next || approval.createdAt < next.createdAt) next = approval
-    }
-  }
-
-  return { count, next }
-}
 
 export const GlobalApprovalsIndicator = memo(function GlobalApprovalsIndicator({
   className,
 }: {
   className?: string
 }) {
-  const { count, next } = useThreadStore(useShallow(selectGlobalPendingSummary))
+  const { count, next } = useThreadStore(useShallow(selectGlobalPendingApprovalSummary))
 
   const handleJump = useCallback(() => {
     if (!next) return
@@ -63,4 +44,3 @@ export const GlobalApprovalsIndicator = memo(function GlobalApprovalsIndicator({
     </button>
   )
 })
-

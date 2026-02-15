@@ -258,6 +258,37 @@ export function selectGlobalPendingApprovalCount(state: ThreadState): number {
   return count
 }
 
+export type GlobalPendingApprovalSummary = {
+  count: number
+  next: ThreadState['pendingApprovals'][number] | null
+}
+
+/**
+ * Select a global (cross-thread) summary of pending approvals:
+ * - total count across all threads
+ * - the earliest (by createdAt) pending approval, if any
+ */
+export function selectGlobalPendingApprovalSummary(state: ThreadState): GlobalPendingApprovalSummary {
+  let count = 0
+  let next: ThreadState['pendingApprovals'][number] | null = null
+
+  for (const threadState of Object.values(state.threads)) {
+    if (!threadState) continue
+    const pending = threadState.pendingApprovals
+    if (!pending || pending.length === 0) continue
+    count += pending.length
+    for (const approval of pending) {
+      if (!next || approval.createdAt < next.createdAt) next = approval
+    }
+  }
+
+  return { count, next }
+}
+
+export function selectGlobalNextPendingApproval(state: ThreadState): ThreadState['pendingApprovals'][number] | null {
+  return selectGlobalPendingApprovalSummary(state).next
+}
+
 export function selectPendingApprovalsForThread(threadId: string) {
   return (state: ThreadState): ThreadState['pendingApprovals'] => {
     return state.threads[threadId]?.pendingApprovals ?? EMPTY_PENDING_APPROVALS

@@ -328,7 +328,7 @@ export function DiffPage() {
     }
     if (loadState === 'error') {
       return (
-        <div className="flex flex-1 items-center justify-center text-sm text-red-600">
+        <div className="flex flex-1 items-center justify-center text-sm text-status-error">
           Failed to decode diff data.
         </div>
       )
@@ -377,8 +377,8 @@ export function DiffPage() {
                   >
                     <div className="flex min-w-0 items-center gap-2 text-sm text-text-1">
                       <span className="truncate font-semibold">{diff.path}</span>
-                      <span className="text-xs font-semibold text-emerald-600">+{diffStats.additions}</span>
-                      <span className="text-xs font-semibold text-red-500">-{diffStats.deletions}</span>
+                      <span className="text-xs font-semibold text-status-success">+{diffStats.additions}</span>
+                      <span className="text-xs font-semibold text-status-error">-{diffStats.deletions}</span>
                     </div>
                     <ChevronUp size={14} className={cn('text-text-3 transition-transform', isCollapsed && 'rotate-180')} />
                   </button>
@@ -503,8 +503,8 @@ export function DiffPage() {
           <ChevronDown size={16} className="text-text-3" />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-emerald-600">+{stats.additions}</span>
-          <span className="text-xs text-red-500">-{stats.deletions}</span>
+          <span className="text-xs text-status-success">+{stats.additions}</span>
+          <span className="text-xs text-status-error">-{stats.deletions}</span>
           <button
             className="rounded-full border border-stroke/20 bg-surface-hover/[0.08] px-3 py-1 text-xs font-semibold text-text-1"
           >

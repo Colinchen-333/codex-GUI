@@ -12,6 +12,7 @@ import { Textarea } from '../ui/Textarea'
 import { Select } from '../ui/Select'
 import { Switch } from '../ui/Switch'
 import { useToast } from '../ui/useToast'
+import { isTauriAvailable } from '../../lib/tauri'
 
 type PRStep = 'form' | 'creating' | 'done'
 type GhStatus = 'checking' | 'ready' | 'not-installed' | 'not-authenticated'
@@ -25,6 +26,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
   const { selectedProjectId, projects } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const { toast } = useToast()
+  const tauriAvailable = isTauriAvailable()
 
   // Form state
   const [title, setTitle] = useState('')
@@ -51,6 +53,11 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
 
   const initialize = useCallback(async () => {
     if (!selectedProject?.path) return
+    if (!tauriAvailable) {
+      setGhStatus('not-installed')
+      setError('Unavailable in web mode')
+      return
+    }
 
     setGhStatus('checking')
     setError(null)
@@ -88,7 +95,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
       setError(err instanceof Error ? err.message : 'Failed to initialize')
       setGhStatus('not-installed')
     }
-  }, [selectedProject])
+  }, [selectedProject, tauriAvailable])
 
   useEffect(() => {
     if (isOpen) {
@@ -150,6 +157,46 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
     .map((b) => ({ value: b.name, label: b.name }))
 
   if (!isOpen) return null
+
+  if (!tauriAvailable) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+        onClick={handleBackdropClick}
+        role="presentation"
+      >
+        <div
+          ref={containerRef}
+          className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-pr-dialog-title"
+          tabIndex={-1}
+        >
+          <div className="flex items-center justify-between p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-hover/[0.08]">
+                <GitPullRequest size={18} className="text-text-2" />
+              </div>
+              <h2 id="create-pr-dialog-title" className="text-[16px] font-semibold text-text-1">
+                Create Pull Request
+              </h2>
+            </div>
+            <IconButton ref={closeButtonRef} size="sm" onClick={onClose} aria-label="Close">
+              <X size={16} />
+            </IconButton>
+          </div>
+
+          <div className="px-5 pb-5">
+            <div className="rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning-muted px-3 py-2">
+              <p className="text-[12px] text-status-warning">Unavailable in web mode</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

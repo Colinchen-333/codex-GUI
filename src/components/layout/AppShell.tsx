@@ -19,6 +19,7 @@ import { useThreadStore } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
 import { useToast } from '../ui/useToast'
 import { PanelLeftOpen } from 'lucide-react'
+import { isTauriAvailable } from '../../lib/tauri'
 
 export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
@@ -52,19 +53,30 @@ export function AppShell() {
 
   // Cross-component request to open the commit dialog (for example: from command palette)
   useEffect(() => {
-    const handleOpen = () => setCommitDialogOpen(true)
+    const handleOpen = () => {
+      if (!isTauriAvailable()) {
+        toast.error('Unavailable in web mode')
+        return
+      }
+      setCommitDialogIntent('commit')
+      setCommitDialogOpen(true)
+    }
     window.addEventListener(APP_EVENTS.OPEN_COMMIT_DIALOG, handleOpen)
     return () => window.removeEventListener(APP_EVENTS.OPEN_COMMIT_DIALOG, handleOpen)
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     const handleOpen = () => {
+      if (!isTauriAvailable()) {
+        toast.error('Unavailable in web mode')
+        return
+      }
       setCommitDialogIntent('pr')
       setCommitDialogOpen(true)
     }
     window.addEventListener(APP_EVENTS.OPEN_CREATE_PR_DIALOG, handleOpen)
     return () => window.removeEventListener(APP_EVENTS.OPEN_CREATE_PR_DIALOG, handleOpen)
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     const handleOpen = () => setNewSessionDialogOpen(true)

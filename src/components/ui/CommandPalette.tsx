@@ -105,7 +105,12 @@ export function CommandPalette({
       label: 'Project Settings',
       icon: <Settings size={16} />,
       action: () => {
-        const projectId = useProjectsStore.getState().selectedProjectId
+        const { selectedProjectId, projects } = useProjectsStore.getState()
+        let projectId = selectedProjectId
+        if (focusedCwd) {
+          const match = projects.find((p) => focusedCwd.startsWith(p.path))
+          if (match) projectId = match.id
+        }
         if (!projectId) {
           toast.error('No project selected')
           return

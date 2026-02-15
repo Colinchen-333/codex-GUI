@@ -34,6 +34,7 @@ export interface AgentMessageContentType {
 }
 
 export interface CommandExecutionContentType {
+  callId: string
   command: string | string[]
   cwd: string
   output?: string
@@ -43,6 +44,7 @@ export interface CommandExecutionContentType {
   durationMs?: number
   isRunning?: boolean
   needsApproval?: boolean
+  approved?: boolean
   reason?: string
   commandActions?: string[]
   proposedExecpolicyAmendment?: { command: string[] } | null

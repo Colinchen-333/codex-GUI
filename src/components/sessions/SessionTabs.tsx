@@ -25,6 +25,7 @@ import { cn } from '../../lib/utils'
 import { copyTextToClipboard } from '../../lib/clipboard'
 import { useAppStore } from '../../stores/app'
 import { useThreadStore, type SingleThreadState } from '../../stores/thread'
+import { selectAllThreads } from '../../stores/thread/selectors'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { openInTerminal, openInVSCode, revealInFinder } from '../../lib/hostActions'
@@ -49,7 +50,8 @@ interface SessionTabsProps {
 }
 
 export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, onOpenCommitDialog, terminalVisible, onToggleTerminal }: SessionTabsProps) {
-  const threads = useThreadStore((state) => state.threads)
+  const threadStates = useThreadStore(selectAllThreads)
+  const threads = useMemo(() => Object.fromEntries(threadStates.map(t => [t.thread.id, t])), [threadStates])
   const focusedThreadId = useThreadStore((state) => state.focusedThreadId)
   const switchThread = useThreadStore((state) => state.switchThread)
   const canAddSession = useThreadStore((state) => state.canAddSession)
@@ -184,7 +186,7 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
   }
 
   const threadEntries = Object.entries(threads)
-  const threadIds = useMemo(() => threadEntries.map(([id]) => id), [threadEntries])
+  const threadIds = useMemo(() => threadStates.map(t => t.thread.id), [threadStates])
 
   useEffect(() => {
     threadIdsRef.current = threadIds

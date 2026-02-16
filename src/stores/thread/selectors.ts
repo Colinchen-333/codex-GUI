@@ -43,10 +43,21 @@ export function selectFocusedThreadId(state: ThreadState): string | null {
 /**
  * Select all threads as an array.
  * Returns threads in insertion order (sorted by creation).
+ * Memoized: returns the same array reference when threads/focusedThreadId haven't changed.
  */
+// Cache for selectAllThreads to prevent new array on every call
+let _cachedThreadsRef: Record<string, SingleThreadState> | null = null
+let _cachedFocusedId: string | null = null
+let _cachedSorted: SingleThreadState[] = []
+
 export function selectAllThreads(state: ThreadState): SingleThreadState[] {
   const { threads, focusedThreadId } = state
-  return Object.values(threads).sort((a, b) => {
+  if (threads === _cachedThreadsRef && focusedThreadId === _cachedFocusedId) {
+    return _cachedSorted
+  }
+  _cachedThreadsRef = threads
+  _cachedFocusedId = focusedThreadId ?? null
+  _cachedSorted = Object.values(threads).sort((a, b) => {
     // Focused thread first
     if (a.thread.id === focusedThreadId) return -1
     if (b.thread.id === focusedThreadId) return 1
@@ -55,6 +66,7 @@ export function selectAllThreads(state: ThreadState): SingleThreadState[] {
     const bTime = b.thread.createdAt ?? 0
     return bTime - aTime
   })
+  return _cachedSorted
 }
 
 /**

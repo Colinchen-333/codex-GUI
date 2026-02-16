@@ -12,6 +12,7 @@ import { useProjectsStore } from '../../stores/projects'
 import { useModelsStore, modelSupportsReasoning } from '../../stores/models'
 import { projectApi, terminalApi, type GitBranch as GitBranchType } from '../../lib/api'
 import { useToast } from '../ui/useToast'
+import { Switch } from '../ui/Switch'
 import { SlashCommandPopup } from './SlashCommandPopup'
 import { FileMentionPopup } from './FileMentionPopup'
 import { type SlashCommand } from '../../lib/slashCommands'
@@ -596,21 +597,12 @@ export default memo(function ChatInputArea({
                         <ListTodo size={16} className="text-text-3" />
                         Plan mode
                       </div>
-                      <button
-                        className={cn(
-                          'relative h-5 w-10 rounded-full transition-colors',
-                          planModeEnabled ? 'bg-primary/80' : 'bg-surface-hover/[0.2]'
-                        )}
-                        onClick={() => setPlanModeEnabled((prev) => !prev)}
+                      <Switch
+                        checked={planModeEnabled}
+                        onChange={() => setPlanModeEnabled((prev) => !prev)}
+                        size="sm"
                         aria-label="Toggle plan mode"
-                      >
-                        <span
-                          className={cn(
-                            'absolute top-0.5 h-4 w-4 rounded-full bg-switch-knob shadow transition-transform',
-                            planModeEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                          )}
-                        />
-                      </button>
+                      />
                     </div>
                   </div>
                 )}
@@ -640,7 +632,10 @@ export default memo(function ChatInputArea({
                     aria-label="Select model"
                   >
                     {models.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-xs text-text-3">Loading models...</div>
+                      <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-text-3">
+                        <Loader2 size={14} className="animate-spin" />
+                        Loading models...
+                      </div>
                     ) : (
                       models.map((model) => {
                         const isSelected = model.id === (modelOverride || settings.model) || model.model === (modelOverride || settings.model)

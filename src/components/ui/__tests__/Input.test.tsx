@@ -104,7 +104,9 @@ describe('Input', () => {
   describe('accessibility', () => {
     it('has focus ring styles', () => {
       render(<Input data-testid="input" />)
-      expect(screen.getByTestId('input')).toHaveClass('focus:ring-2')
+      expect(screen.getByTestId('input')).toHaveClass(
+        'focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]'
+      )
     })
 
     it('forwards ref correctly', () => {

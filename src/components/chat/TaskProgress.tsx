@@ -245,19 +245,19 @@ export function TaskProgressCompact({
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
       {/* Mini progress bar */}
-      <div className="w-12 h-1 bg-muted rounded-full overflow-hidden">
+      <div className="w-12 h-1 bg-surface-hover/[0.12] rounded-full overflow-hidden">
         <div
-          className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-out"
+          className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
           style={{ width: `${percentage}%` }}
         />
       </div>
 
       {/* Percentage */}
-      <span className="text-xs text-muted-foreground tabular-nums">{percentage}%</span>
+      <span className="text-xs text-text-3 tabular-nums">{percentage}%</span>
 
       {/* Step info */}
       {totalSteps > 0 && (
-        <span className="text-xs text-muted-foreground/70">
+        <span className="text-xs text-text-3 opacity-70">
           ({currentStep}/{totalSteps})
         </span>
       )}
@@ -295,12 +295,12 @@ export function TaskProgressIndicator({
     >
       {/* Animated dot */}
       <div className="relative w-2 h-2">
-        <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75" />
-        <div className="absolute inset-0 bg-blue-500 rounded-full" />
+        <div className="absolute inset-0 bg-primary rounded-full animate-ping opacity-50" />
+        <div className="absolute inset-0 bg-primary rounded-full" />
       </div>
 
       {/* Small percentage */}
-      <span className="text-xs text-blue-500 font-medium tabular-nums">{percentage}%</span>
+      <span className="text-xs text-primary font-semibold tabular-nums">{percentage}%</span>
     </div>
   )
 }

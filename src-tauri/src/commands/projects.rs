@@ -1529,25 +1529,42 @@ pub async fn git_diff_branch(project_path: String, base_branch: String) -> Resul
     .await
 }
 
-/// Check if GitHub CLI (gh) is installed and authenticated
+/// Check if GitHub CLI (gh) is installed and authenticated.
+/// Returns one of: "ready", "not-installed", "not-authenticated".
 #[tauri::command]
-pub async fn check_gh_cli(project_path: String) -> Result<bool> {
+pub async fn check_gh_cli(project_path: String) -> Result<String> {
     crate::utils::spawn_blocking_io(move || {
         let canonical_path = crate::utils::validate_and_canonicalize_path(&project_path)?;
 
-        // Check if gh is installed and authenticated via `gh auth status`
-        let output = std::process::Command::new("gh")
-            .args(["auth", "status"])
+        // Step 1: Check if gh is installed
+        let version_output = std::process::Command::new("gh")
+            .arg("--version")
             .current_dir(&canonical_path)
             .output();
 
-        match output {
-            Ok(o) => Ok(o.status.success()),
-            // gh not found in PATH
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
-            Err(err) => Err(crate::Error::Other(format!(
-                "Failed to check gh CLI: {err}"
-            ))),
+        match version_output {
+            Ok(_) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                return Ok("not-installed".to_string())
+            }
+            Err(err) => {
+                return Err(crate::Error::Other(format!(
+                    "Failed to check gh CLI: {err}"
+                )))
+            }
+        }
+
+        // Step 2: Check auth status via `gh auth status`
+        let auth_output = std::process::Command::new("gh")
+            .args(["auth", "status"])
+            .current_dir(&canonical_path)
+            .output()
+            .map_err(|err| crate::Error::Other(format!("Failed to check gh CLI: {err}")))?;
+
+        if auth_output.status.success() {
+            Ok("ready".to_string())
+        } else {
+            Ok("not-authenticated".to_string())
         }
     })
     .await

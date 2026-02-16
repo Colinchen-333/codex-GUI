@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useMemo, useCallback, useReducer } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, useReducer, type ReactNode } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { ArrowUp, ChevronDown, FolderOpen, GitBranch, GitCommit, Mic, Plus, ShieldAlert, Sparkles } from 'lucide-react'
+import { ArrowUp, ChevronDown, FolderOpen, GitBranch, GitCommit, ShieldAlert, Sparkles } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
+import { useAppStore } from '../../stores/app'
 import { useProjectsStore } from '../../stores/projects'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
@@ -12,6 +13,7 @@ import {
 } from '../../stores/settings'
 import { ChatView } from '../chat/ChatView'
 import { logError, parseError } from '../../lib/errorUtils'
+import { APP_EVENTS } from '../../lib/appEvents'
 import { SessionTabs } from '../sessions/SessionTabs'
 import { TerminalPanel } from '../terminal/TerminalPanel'
 import { log } from '../../lib/logger'
@@ -25,15 +27,12 @@ interface AppShellContext {
 }
 
 interface LandingSuggestion {
-  emoji: string
+  icon: ReactNode
   prompt: string
 }
 
-const LANDING_SUGGESTIONS: LandingSuggestion[] = [
-  { emoji: '🎮', prompt: 'Build a classic Snake game in this repo.' },
-  { emoji: '📜', prompt: 'Create a one-page PDF that summarizes this app.' },
-  { emoji: '📰', prompt: "Summarize last week's PRs by teammate and theme." },
-]
+// Avoid fake suggestions: this launcher only includes real actions and user-provided prompts.
+const LANDING_SUGGESTIONS: LandingSuggestion[] = []
 
 // Timeout for resume operations to prevent permanent blocking
 const RESUME_TIMEOUT_MS = 30000
@@ -200,8 +199,8 @@ export function MainArea() {
   // Listen for terminal toggle events (from KeyboardShortcuts Cmd+J)
   useEffect(() => {
     const handleToggle = () => setTerminalVisible((prev) => !prev)
-    window.addEventListener('codex:toggle-terminal', handleToggle)
-    return () => window.removeEventListener('codex:toggle-terminal', handleToggle)
+    window.addEventListener(APP_EVENTS.TOGGLE_TERMINAL, handleToggle)
+    return () => window.removeEventListener(APP_EVENTS.TOGGLE_TERMINAL, handleToggle)
   }, [])
 
   useEffect(() => {
@@ -400,6 +399,7 @@ interface NewThreadLandingProps {
 
 function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingProps) {
   const { projects, addProject } = useProjectsStore()
+  const setSnapshotsOpen = useAppStore((state) => state.setSnapshotsOpen)
   const settings = useSettingsStore((state) => state.settings)
   const startThread = useThreadStore((state) => state.startThread)
   const sendMessage = useThreadStore((state) => state.sendMessage)
@@ -451,7 +451,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
 
       const message = prompt.trim()
       if (!message) {
-        showToast('Enter a prompt to start the thread', 'info')
+        showToast('Enter a prompt to start the session', 'info')
         return
       }
 
@@ -475,7 +475,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
       } catch (error) {
         const parsed = parseError(error)
         setLocalError(parsed)
-        showToast(`Failed to start thread: ${parsed}`, 'error')
+        showToast(`Failed to start session: ${parsed}`, 'error')
       }
     },
     [
@@ -501,29 +501,40 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
   const displayError = localError || globalError
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-token-bg-primary">
-      <div className="h-12 shrink-0 border-b border-token-border bg-token-surface-tertiary/50 px-6">
+    <div className="flex flex-1 flex-col overflow-hidden bg-background">
+      <div className="h-12 shrink-0 border-b border-stroke/20 bg-surface-solid/70 px-6">
         <div className="flex h-full items-center justify-between">
-          <h1 className="text-[28px] font-semibold text-token-foreground">New thread</h1>
+          <h1 className="text-[28px] font-semibold text-text-1">New session</h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => void handleAddProject()}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-surface-tertiary px-3 text-[12px] font-medium text-token-foreground transition-colors hover:bg-token-list-hover-background"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke/20 bg-surface-solid px-3 text-[12px] font-medium text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
             >
               <FolderOpen size={13} />
               Open
-              <ChevronDown size={12} className="text-token-text-tertiary" />
+              <ChevronDown size={12} className="text-text-3" />
             </button>
             <button
               type="button"
               onClick={onOpenCommitDialog}
               disabled={!project}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-surface-tertiary px-3 text-[12px] font-medium text-token-foreground transition-colors hover:bg-token-list-hover-background disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke/20 bg-surface-solid px-3 text-[12px] font-medium text-text-1 transition-colors hover:bg-surface-hover/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <GitCommit size={13} />
               Commit
-              <ChevronDown size={12} className="text-token-text-tertiary" />
+              <ChevronDown size={12} className="text-text-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSnapshotsOpen(true)}
+              disabled={!project}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke/20 bg-surface-solid px-3 text-[12px] font-medium text-text-1 transition-colors hover:bg-surface-hover/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
+              title="Open snapshots"
+            >
+              <GitBranch size={13} />
+              Snapshots
+              <ChevronDown size={12} className="text-text-3" />
             </button>
           </div>
         </div>
@@ -532,10 +543,10 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
       <div className="flex flex-1 items-center justify-center px-6 py-8">
         <div className="w-full max-w-[940px]">
           <div className="mb-10 text-center">
-            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-token-border bg-token-surface-tertiary text-token-text-tertiary">
+            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-stroke/20 bg-surface-solid text-text-3">
               <Sparkles size={20} />
             </div>
-            <h2 className="text-5xl font-bold tracking-tight text-token-foreground">Let's build</h2>
+            <h2 className="text-5xl font-bold tracking-tight text-text-1">Let's build</h2>
             <button
               type="button"
               onClick={() => {
@@ -545,29 +556,35 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                   void handleAddProject()
                 }
               }}
-              className="mt-1 inline-flex items-center gap-1 text-4xl font-semibold text-token-text-tertiary transition-colors hover:text-token-foreground"
+              className="mt-1 inline-flex items-center gap-1 text-4xl font-semibold text-text-3 transition-colors hover:text-text-1"
             >
               {displayProjectName}
               <ChevronDown size={22} />
             </button>
           </div>
 
-          <div className="mb-3 text-right text-[13px] font-medium text-token-text-tertiary">Explore more</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {LANDING_SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion.prompt}
-                type="button"
-                onClick={() => void startSessionWithPrompt(suggestion.prompt)}
-                className="rounded-3xl border border-token-border bg-token-surface-tertiary p-5 text-left transition-colors hover:bg-token-list-hover-background"
-              >
-                <div className="mb-3 text-xl">{suggestion.emoji}</div>
-                <p className="text-[16px] font-medium leading-7 text-token-foreground">{suggestion.prompt}</p>
-              </button>
-            ))}
-          </div>
+          {LANDING_SUGGESTIONS.length > 0 && (
+            <>
+              <div className="mb-3 text-right text-[13px] font-medium text-text-3">Explore more</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {LANDING_SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion.prompt}
+                    type="button"
+                    onClick={() => void startSessionWithPrompt(suggestion.prompt)}
+                    className="rounded-3xl border border-stroke/20 bg-surface-solid p-5 text-left transition-colors hover:bg-surface-hover/[0.06]"
+                  >
+                    <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stroke/20 bg-surface-hover/[0.06]">
+                      {suggestion.icon}
+                    </div>
+                    <p className="text-[16px] font-medium leading-7 text-text-1">{suggestion.prompt}</p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
-          <div className="mt-8 rounded-3xl border border-token-border bg-token-surface-tertiary p-3 shadow-[var(--shadow-1)]">
+          <div className="mt-8 rounded-3xl border border-stroke/20 bg-surface-solid p-3 shadow-[var(--shadow-1)]">
             <textarea
               ref={draftRef}
               rows={2}
@@ -580,36 +597,17 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                 }
               }}
               placeholder="Ask Codex anything, @ to add files, / for commands"
-              className="w-full resize-none border-0 bg-transparent px-2 py-1 text-[16px] leading-7 text-token-foreground placeholder:text-token-text-tertiary focus:outline-none"
+              className="w-full resize-none border-0 bg-transparent px-2 py-1 text-[16px] leading-7 text-text-1 placeholder:text-text-3 focus:outline-none"
             />
 
             <div className="mt-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[12px]">
-                <button
-                  type="button"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-token-border bg-token-bg-primary px-2.5 text-token-description-foreground transition-colors hover:bg-token-list-hover-background"
-                >
-                  <Plus size={13} />
-                </button>
-                <span className="inline-flex h-8 items-center rounded-full border border-token-border bg-token-bg-primary px-3 text-token-description-foreground">
-                  GPT-5.3-Codex
-                  <ChevronDown size={12} className="ml-1 text-token-text-tertiary" />
-                </span>
-                <span className="inline-flex h-8 items-center rounded-full border border-token-border bg-token-bg-primary px-3 text-token-description-foreground">
-                  Extra High
-                  <ChevronDown size={12} className="ml-1 text-token-text-tertiary" />
-                </span>
+              <div className="flex items-center gap-2 text-[12px] text-text-3">
+                Tip: Press <span className="rounded-md border border-stroke/20 bg-background px-1.5 py-0.5 font-mono text-[11px] text-text-2">Cmd</span>
+                <span className="text-text-3">+</span>
+                <span className="rounded-md border border-stroke/20 bg-background px-1.5 py-0.5 font-mono text-[11px] text-text-2">K</span> for the command palette.
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-token-border bg-token-bg-primary text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
-                  title="Voice input"
-                >
-                  <Mic size={15} />
-                </button>
-
                 <button
                   type="button"
                   onClick={handleSubmitDraft}
@@ -617,10 +615,10 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                   className={cn(
                     'inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors',
                     isLoading
-                      ? 'cursor-not-allowed bg-token-list-hover-background text-token-text-tertiary'
-                      : 'bg-token-foreground text-token-bg-primary hover:bg-token-foreground/85'
+                      ? 'cursor-not-allowed bg-surface-hover/[0.08] text-text-3'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
                   )}
-                  title="Start thread"
+                  title="Start session"
                 >
                   <ArrowUp size={16} />
                 </button>
@@ -628,13 +626,12 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between px-1 text-[12px] text-token-text-tertiary">
+          <div className="mt-3 flex items-center justify-between px-1 text-[12px] text-text-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-1">
                 Local
-                <ChevronDown size={11} />
               </span>
-              <span className="inline-flex items-center gap-1 text-orange-500">
+              <span className="inline-flex items-center gap-1 text-status-warning">
                 <ShieldAlert size={11} />
                 Full access
               </span>
@@ -642,7 +639,6 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
             <span className="inline-flex items-center gap-1">
               <GitBranch size={11} />
               main
-              <ChevronDown size={11} />
             </span>
           </div>
 

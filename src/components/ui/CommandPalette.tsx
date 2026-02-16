@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Command } from 'cmdk'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -6,6 +6,7 @@ import {
   Settings,
   MessageSquare,
   GitBranch,
+  History,
   Inbox,
   Sparkles,
   Plus,
@@ -16,17 +17,56 @@ import {
   FolderOpen,
   Bug,
   Terminal,
+  Code2,
   TextCursorInput,
+  AlertTriangle,
+  GitCommit,
+  Download,
+  Info,
+  Upload,
+  Pencil,
+  X,
+  Square,
+  FileText,
+  RefreshCw,
+  GitPullRequest,
+  Coffee,
 } from 'lucide-react'
 
 import { useTheme } from '../../hooks/useTheme'
 import { useAppStore } from '../../stores/app'
+import { useProjectsStore } from '../../stores/projects'
+import { useThreadStore, selectFocusedThread } from '../../stores/thread'
+import { selectGlobalNextPendingApproval } from '../../stores/thread/selectors'
+import { APP_EVENTS, dispatchAppEvent } from '../../lib/appEvents'
+import { openInTerminal, openInVSCode, revealInFinder } from '../../lib/hostActions'
+import { buildDiagnosticsReportJson } from '../../lib/diagnostics'
+import { copyTextToClipboard } from '../../lib/clipboard'
+import { isTauriAvailable } from '../../lib/tauri'
+import { serverApi, systemApi } from '../../lib/api'
+import { useToast } from './useToast'
+import { useSessionsStore } from '../../stores/sessions'
+import { getEffectiveWorkingDirectory, mergeProjectSettings, useSettingsStore } from '../../stores/settings'
+import { cn } from '../../lib/utils'
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+
+function normalizeShortcutKey(key: string): string {
+  if (isMac) return key
+  if (key === '⌘') return 'Ctrl'
+  if (key === '⇧') return 'Shift'
+  if (key === '⌥') return 'Alt'
+  return key
+}
 
 interface CommandItem {
   id: string
   label: string
   icon: React.ReactNode
   shortcut?: string[]
+  disabled?: boolean
+  meta?: React.ReactNode
+  searchText?: string
   action: () => void
   group: string
 }
@@ -51,27 +91,514 @@ export function CommandPalette({
   const [search, setSearch] = useState('')
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
+  const sessions = useSessionsStore((state) => state.sessions)
+  const sessionSearchResults = useSessionsStore((state) => state.searchResults)
+  const isSessionSearching = useSessionsStore((state) => state.isSearching)
+  const selectedSessionId = useSessionsStore((state) => state.selectedSessionId)
+  const selectedProjectId = useProjectsStore((state) => state.selectedProjectId)
+  const projects = useProjectsStore((state) => state.projects)
+  const threads = useThreadStore((state) => state.threads)
+  const focusedThreadId = useThreadStore((state) => state.focusedThreadId)
+  const focusedCwd = useThreadStore((state) => selectFocusedThread(state)?.thread.cwd ?? null)
+
+  const tauriAvailable = isTauriAvailable()
+  const activeThreadState = focusedThreadId ? threads[focusedThreadId] : null
+  const isActiveRunning = activeThreadState?.turnStatus === 'running'
+
+  const selectedSession = useMemo(() => {
+    if (!selectedSessionId) return null
+    return sessions.find((s) => s.sessionId === selectedSessionId) ?? null
+  }, [selectedSessionId, sessions])
+
+  const selectedWorktreePath =
+    selectedSession?.mode === 'worktree' ? (selectedSession.worktreePath ?? null) : null
+
+  const recentProjects = useMemo(() => {
+    return [...projects]
+      .sort((a, b) => {
+        const aTime = a.lastOpenedAt || a.createdAt
+        const bTime = b.lastOpenedAt || b.createdAt
+        return bTime - aTime
+      })
+      .slice(0, 10)
+  }, [projects])
+
+  const recentSessions = useMemo(() => {
+    return [...sessions]
+      .sort((a, b) => {
+        const aTime = a.lastAccessedAt || a.createdAt
+        const bTime = b.lastAccessedAt || b.createdAt
+        return bTime - aTime
+      })
+      .slice(0, 12)
+  }, [sessions])
+
+  const sessionTitleById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const session of sessions) {
+      if (session.title) map.set(session.sessionId, session.title)
+    }
+    return map
+  }, [sessions])
+
+  const handleClose = useCallback(() => {
+    setSearch('')
+    useSessionsStore.getState().clearSearch()
+    onClose()
+  }, [onClose])
 
   const handleAction = useCallback((action: () => void) => {
-    action()
-    onClose()
-    setSearch('')
-  }, [onClose])
+    void action()
+    handleClose()
+  }, [handleClose])
+
+  const getProjectLabel = useCallback(
+    (projectId: string | null | undefined): string => {
+      if (!projectId) return 'Project'
+      const project = projects.find((p) => p.id === projectId)
+      return project?.displayName || project?.path.split('/').pop() || projectId
+    },
+    [projects]
+  )
+
+  const getWorktreeSuffix = useCallback((session: { mode?: string; worktreeBranch?: string | null }): string => {
+    if (session.mode !== 'worktree') return ''
+    const branch = session.worktreeBranch?.trim()
+    return ` \u00b7 ${branch || 'worktree'}`
+  }, [])
+
+  const renderSessionMeta = useCallback((session: {
+    isFavorite?: boolean
+    isArchived?: boolean
+    status?: string
+  }): React.ReactNode => {
+    const chips: Array<{ label: string; className: string }> = []
+
+    if (session.isFavorite) chips.push({ label: 'PINNED', className: 'border-stroke/20 bg-surface-hover/[0.08] text-text-2' })
+    if (session.isArchived) chips.push({ label: 'ARCHIVED', className: 'border-stroke/20 bg-surface-hover/[0.06] text-text-3' })
+
+    switch (session.status) {
+      case 'running':
+        chips.push({ label: 'RUNNING', className: 'border-status-info/30 bg-status-info/10 text-status-info' })
+        break
+      case 'failed':
+        chips.push({ label: 'FAILED', className: 'border-status-error/30 bg-status-error-muted text-status-error' })
+        break
+      case 'interrupted':
+        chips.push({ label: 'STOPPED', className: 'border-status-warning/30 bg-status-warning/10 text-status-warning' })
+        break
+      case 'completed':
+        chips.push({ label: 'DONE', className: 'border-status-success/30 bg-status-success/10 text-status-success' })
+        break
+      default:
+        break
+    }
+
+    if (chips.length === 0) return null
+
+    return (
+      <div className="hidden sm:flex items-center gap-1">
+        {chips.slice(0, 3).map((chip) => (
+          <span
+            key={chip.label}
+            className={cn(
+              'inline-flex items-center rounded-xs border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide',
+              chip.className
+            )}
+          >
+            {chip.label}
+          </span>
+        ))}
+      </div>
+    )
+  }, [])
+
+  useEffect(() => {
+    const q = search.trim()
+    if (q.length < 2) {
+      useSessionsStore.getState().clearSearch()
+      return
+    }
+    const timerId = setTimeout(() => {
+      void useSessionsStore.getState().searchSessions(q)
+    }, 200)
+    return () => clearTimeout(timerId)
+  }, [search])
+
+  const q = search.trim()
 
   const commands: CommandItem[] = [
     {
-      id: 'new-thread',
-      label: 'New thread',
+      id: 'new-session-dialog',
+      label: 'New Session...',
       icon: <Plus size={16} />,
       shortcut: ['⌘', 'N'],
-      action: () => onNewThread?.(),
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_NEW_SESSION_DIALOG),
       group: 'Actions',
+    },
+    {
+      id: 'new-session-quick',
+      label: 'New Session (Quick)',
+      icon: <Plus size={16} />,
+      action: async () => {
+        if (onNewThread) {
+          onNewThread()
+          return
+        }
+        const { selectedProjectId, projects } = useProjectsStore.getState()
+        if (!selectedProjectId) {
+          toast.error('No project selected')
+          return
+        }
+        if (!useThreadStore.getState().canAddSession()) {
+          toast.error('Maximum sessions reached')
+          return
+        }
+        const project = projects.find((p) => p.id === selectedProjectId)
+        if (!project) {
+          toast.error('Project not found')
+          return
+        }
+
+        const settings = useSettingsStore.getState().settings
+        const effective = mergeProjectSettings(settings, project.settingsJson)
+        const cwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
+        try {
+          void useSessionsStore.getState().selectSession(null)
+          const threadId = await useThreadStore
+            .getState()
+            .startThread(selectedProjectId, cwd, effective.model, effective.sandboxMode, effective.approvalPolicy)
+          void useSessionsStore.getState().selectSession(threadId)
+          toast.success('New session started')
+          void navigate('/')
+        } catch (err) {
+          toast.error('Failed to start new session', { message: String(err) })
+        }
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'open-project-settings',
+      label: 'Project Settings',
+      icon: <Settings size={16} />,
+      action: () => {
+        const { selectedProjectId, projects } = useProjectsStore.getState()
+        let projectId = selectedProjectId
+        if (focusedCwd) {
+          const match = projects.find((p) => focusedCwd.startsWith(p.path))
+          if (match) projectId = match.id
+        }
+        if (!projectId) {
+          toast.error('No project selected')
+          return
+        }
+        dispatchAppEvent(APP_EVENTS.OPEN_PROJECT_SETTINGS, { projectId })
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'import-codex-cli-session',
+      label: 'Import Codex CLI Session',
+      icon: <Download size={16} />,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_IMPORT_CODEX_SESSIONS),
+      group: 'Actions',
+    },
+    {
+      id: 'export-session',
+      label: 'Export Session',
+      icon: <Upload size={16} />,
+      disabled: !focusedThreadId,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_EXPORT_SESSION),
+      group: 'Actions',
+    },
+    {
+      id: 'rename-session',
+      label: 'Rename Session',
+      icon: <Pencil size={16} />,
+      disabled: !focusedThreadId,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_RENAME_SESSION),
+      group: 'Actions',
+    },
+    {
+      id: 'close-session',
+      label: 'Close Session',
+      icon: <X size={16} />,
+      disabled: !focusedThreadId,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_CLOSE_SESSION),
+      group: 'Actions',
+    },
+    {
+      id: 'stop-session',
+      label: 'Stop Session',
+      icon: <Square size={16} />,
+      disabled: !focusedThreadId || !isActiveRunning,
+      action: async () => {
+        try {
+          await useThreadStore.getState().interrupt()
+        } catch {
+          toast.error('Failed to stop session')
+        }
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'copy-diagnostics-report',
+      label: 'Copy Diagnostics Report',
+      icon: <FileText size={16} />,
+      action: async () => {
+        try {
+          const json = await buildDiagnosticsReportJson()
+          const ok = await copyTextToClipboard(json)
+          if (ok) toast.success('Copied diagnostics report')
+          else toast.error('Copy failed')
+        } catch (err) {
+          toast.error('Failed to build diagnostics report', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'reveal-logs-folder',
+      label: 'Reveal Logs Folder',
+      icon: <FolderOpen size={16} />,
+      disabled: !tauriAvailable,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          const paths = await systemApi.getAppPaths()
+          if (!paths.logDir) {
+            toast.error('Log folder not available')
+            return
+          }
+          await revealInFinder(paths.logDir)
+        } catch (err) {
+          toast.error('Failed to reveal logs folder', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'reveal-app-data-folder',
+      label: 'Reveal App Data Folder',
+      icon: <FolderOpen size={16} />,
+      disabled: !tauriAvailable,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          const paths = await systemApi.getAppPaths()
+          if (!paths.appDataDir) {
+            toast.error('App data folder not available')
+            return
+          }
+          await revealInFinder(paths.appDataDir)
+        } catch (err) {
+          toast.error('Failed to reveal app data folder', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'toggle-keep-awake',
+      label: 'Toggle Keep Awake',
+      icon: <Coffee size={16} />,
+      disabled: !tauriAvailable,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          const active = await systemApi.isKeepAwakeActive()
+          if (active) {
+            await systemApi.stopKeepAwake()
+            toast.success('Keep awake disabled')
+          } else {
+            await systemApi.startKeepAwake()
+            toast.success('Keep awake enabled')
+          }
+        } catch (err) {
+          toast.error('Failed to toggle keep awake', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'restart-engine',
+      label: 'Restart Engine',
+      icon: <RefreshCw size={16} />,
+      disabled: !tauriAvailable,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        try {
+          await serverApi.restart()
+          toast.success('Engine restart requested')
+        } catch (err) {
+          toast.error('Failed to restart engine', { message: String(err) })
+        }
+      },
+      group: 'Diagnostics',
+    },
+    {
+      id: 'open-commit-dialog',
+      label: 'Commit Changes',
+      icon: <GitCommit size={16} />,
+      disabled: !tauriAvailable || !selectedProjectId,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG),
+      group: 'Actions',
+    },
+    {
+      id: 'create-pr',
+      label: 'Create Pull Request',
+      icon: <GitPullRequest size={16} />,
+      disabled: !tauriAvailable || !selectedProjectId,
+      action: () => dispatchAppEvent(APP_EVENTS.OPEN_CREATE_PR_DIALOG),
+      group: 'Actions',
+    },
+    {
+      id: 'reveal-in-finder',
+      label: 'Reveal in Finder',
+      icon: <FolderOpen size={16} />,
+      disabled: !tauriAvailable || !focusedCwd,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        if (!focusedCwd) {
+          toast.error('No active session')
+          return
+        }
+        try {
+          await revealInFinder(focusedCwd)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to reveal in Finder')
+        }
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'open-in-terminal',
+      label: 'Open in Terminal',
+      icon: <Terminal size={16} />,
+      disabled: !tauriAvailable || !focusedCwd,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        if (!focusedCwd) {
+          toast.error('No active session')
+          return
+        }
+        try {
+          await openInTerminal(focusedCwd)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to open in Terminal')
+        }
+      },
+      group: 'Actions',
+    },
+    {
+      id: 'open-in-vscode',
+      label: 'Open in VS Code',
+      icon: <Code2 size={16} />,
+      disabled: !tauriAvailable || !focusedCwd,
+      action: async () => {
+        if (!isTauriAvailable()) {
+          toast.error('Unavailable in web mode')
+          return
+        }
+        if (!focusedCwd) {
+          toast.error('No active session')
+          return
+        }
+        try {
+          await openInVSCode(focusedCwd)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to open in VS Code')
+        }
+      },
+      group: 'Actions',
+    },
+    ...(selectedWorktreePath
+      ? ([
+          {
+            id: 'reveal-worktree-in-finder',
+            label: 'Reveal Worktree in Finder',
+            icon: <FolderOpen size={16} />,
+            disabled: !tauriAvailable,
+            action: async () => {
+              if (!isTauriAvailable()) {
+                toast.error('Unavailable in web mode')
+                return
+              }
+              try {
+                await revealInFinder(selectedWorktreePath)
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to reveal worktree in Finder')
+              }
+            },
+            group: 'Actions',
+          },
+          {
+            id: 'open-worktree-in-terminal',
+            label: 'Open Worktree in Terminal',
+            icon: <Terminal size={16} />,
+            disabled: !tauriAvailable,
+            action: async () => {
+              if (!isTauriAvailable()) {
+                toast.error('Unavailable in web mode')
+                return
+              }
+              try {
+                await openInTerminal(selectedWorktreePath)
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to open worktree in Terminal')
+              }
+            },
+            group: 'Actions',
+          },
+          {
+            id: 'open-worktree-in-vscode',
+            label: 'Open Worktree in VS Code',
+            icon: <Code2 size={16} />,
+            disabled: !tauriAvailable,
+            action: async () => {
+              if (!isTauriAvailable()) {
+                toast.error('Unavailable in web mode')
+                return
+              }
+              try {
+                await openInVSCode(selectedWorktreePath)
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to open worktree in VS Code')
+              }
+            },
+            group: 'Actions',
+          },
+        ] as CommandItem[])
+      : []),
+    {
+      id: 'open-snapshots',
+      label: 'Open Snapshots',
+      icon: <History size={16} />,
+      action: () => useAppStore.getState().setSnapshotsOpen(true),
+      group: 'Navigation',
     },
     {
       id: 'go-home',
       label: 'Go to Home',
       icon: <MessageSquare size={16} />,
-      shortcut: ['⌘', '1'],
       action: () => navigate('/'),
       group: 'Navigation',
     },
@@ -79,7 +606,6 @@ export function CommandPalette({
       id: 'go-inbox',
       label: 'Go to Inbox',
       icon: <Inbox size={16} />,
-      shortcut: ['⌘', '2'],
       action: () => navigate('/inbox'),
       group: 'Navigation',
     },
@@ -87,7 +613,6 @@ export function CommandPalette({
       id: 'go-skills',
       label: 'Go to Skills',
       icon: <Sparkles size={16} />,
-      shortcut: ['⌘', '3'],
       action: () => navigate('/skills'),
       group: 'Navigation',
     },
@@ -121,6 +646,20 @@ export function CommandPalette({
       group: 'Navigation',
     },
     {
+      id: 'go-settings-git',
+      label: 'Git Settings',
+      icon: <GitBranch size={16} />,
+      action: () => navigate('/settings/git'),
+      group: 'Navigation',
+    },
+    {
+      id: 'go-settings-worktrees',
+      label: 'Worktrees Settings',
+      icon: <GitBranch size={16} />,
+      action: () => navigate('/settings/worktrees'),
+      group: 'Navigation',
+    },
+    {
       id: 'toggle-theme',
       label: theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode',
       icon: theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />,
@@ -132,21 +671,19 @@ export function CommandPalette({
       label: 'Toggle Terminal',
       icon: <Terminal size={16} />,
       shortcut: ['⌘', 'J'],
-      action: () => window.dispatchEvent(new CustomEvent('codex:toggle-terminal')),
+      action: () => dispatchAppEvent(APP_EVENTS.TOGGLE_TERMINAL),
       group: 'Actions',
     },
     {
       id: 'clear-thread',
-      label: 'Clear Thread',
+      label: 'Clear Session',
       icon: <TextCursorInput size={16} />,
       shortcut: ['⌘', 'L'],
       action: () => {
-        void import('../../stores/thread').then(({ useThreadStore }) => {
-          const { focusedThreadId, clearThread } = useThreadStore.getState()
-          if (focusedThreadId) {
-            clearThread()
-          }
-        })
+        const { focusedThreadId, clearThread } = useThreadStore.getState()
+        if (focusedThreadId) {
+          clearThread()
+        }
         useAppStore.getState().triggerFocusInput()
       },
       group: 'Actions',
@@ -156,9 +693,134 @@ export function CommandPalette({
       label: 'Toggle Review Pane',
       icon: <GitBranch size={16} />,
       shortcut: ['⌘', '/'],
-      action: () => window.dispatchEvent(new CustomEvent('codex:toggle-review-panel')),
+      action: () => dispatchAppEvent(APP_EVENTS.TOGGLE_REVIEW_PANEL),
       group: 'Actions',
     },
+    {
+      id: 'jump-next-approval',
+      label: 'Jump to Next Approval',
+      icon: <AlertTriangle size={16} />,
+      shortcut: ['⌘', '⇧', 'A'],
+      action: () => {
+        const next = selectGlobalNextPendingApproval(useThreadStore.getState())
+        if (!next) {
+          toast.info('No pending approvals')
+          return
+        }
+        useThreadStore.getState().switchThread(next.threadId)
+        useAppStore.getState().setScrollToItemId(next.itemId)
+      },
+      group: 'Approvals',
+    },
+    ...(q.length >= 2
+      ? [
+          ...(isSessionSearching
+            ? [
+                {
+                  id: 'session-search-loading',
+                  label: `Searching "${q}"...`,
+                  icon: <Search size={16} />,
+                  disabled: true,
+                  action: () => {},
+                  group: 'Session Search',
+                } satisfies CommandItem,
+              ]
+            : sessionSearchResults.length === 0
+              ? [
+                  {
+                    id: 'session-search-empty',
+                    label: `No sessions found for "${q}"`,
+                    icon: <Search size={16} />,
+                    disabled: true,
+                    action: () => {},
+                    group: 'Session Search',
+                  } satisfies CommandItem,
+                ]
+              : []),
+        ]
+      : []),
+    ...(sessionSearchResults.length > 0
+      ? sessionSearchResults.slice(0, 10).map((session) => {
+            const projectName = getProjectLabel(session.projectId)
+            const title = session.title || session.firstMessage || `Session ${session.sessionId.slice(0, 8)}`
+            const worktreeSuffix = getWorktreeSuffix(session)
+            return {
+              id: `search-session:${session.sessionId}`,
+              label: `${title} (${projectName}${worktreeSuffix})`,
+              icon: <MessageSquare size={16} />,
+              meta: renderSessionMeta(session),
+              searchText: `${projectName} ${session.sessionId} ${session.status ?? ''} ${session.isFavorite ? 'pinned' : ''} ${session.isArchived ? 'archived' : ''} ${session.worktreeBranch ?? ''}`,
+              action: () => {
+                const projectsStore = useProjectsStore.getState()
+                const currentProjectId = projectsStore.selectedProjectId
+                if (session.projectId && session.projectId !== currentProjectId) {
+                  void useThreadStore.getState().closeAllThreads()
+                  void projectsStore.selectProject(session.projectId)
+                }
+                void useSessionsStore.getState().selectSession(session.sessionId)
+                void navigate('/')
+              },
+              group: 'Session Search',
+            }
+          })
+      : []),
+    ...recentProjects.map((project) => {
+      const label = project.displayName || project.path.split('/').pop() || project.path
+      return {
+        id: `select-project:${project.id}`,
+        label: `Switch project: ${label}`,
+        icon: <FolderOpen size={16} />,
+        action: () => {
+          const projectsStore = useProjectsStore.getState()
+          const currentProjectId = projectsStore.selectedProjectId
+          if (project.id === currentProjectId) {
+            toast.info('Project already selected')
+            return
+          }
+          void useThreadStore.getState().closeAllThreads()
+          void projectsStore.selectProject(project.id)
+          void useSessionsStore.getState().selectSession(null)
+          void navigate('/')
+        },
+        group: 'Projects',
+      }
+    }),
+    ...recentSessions.map((session) => {
+      const title = session.title || `Session ${session.sessionId.slice(0, 8)}`
+      const projectName = getProjectLabel(session.projectId)
+      const worktreeSuffix = getWorktreeSuffix(session)
+      return {
+        id: `select-session:${session.sessionId}`,
+        label: `Switch to: ${title} (${projectName}${worktreeSuffix})`,
+        icon: <MessageSquare size={16} />,
+        meta: renderSessionMeta(session),
+        searchText: `${projectName} ${session.sessionId} ${session.status ?? ''} ${session.isFavorite ? 'pinned' : ''} ${session.isArchived ? 'archived' : ''} ${session.worktreeBranch ?? ''}`,
+        action: () => {
+          const projectsStore = useProjectsStore.getState()
+          const currentProjectId = projectsStore.selectedProjectId
+          if (session.projectId && session.projectId !== currentProjectId) {
+            void useThreadStore.getState().closeAllThreads()
+            void projectsStore.selectProject(session.projectId)
+          }
+          void useSessionsStore.getState().selectSession(session.sessionId)
+          void navigate('/')
+        },
+        group: 'Sessions',
+      }
+    }),
+    ...Object.values(threads).slice(0, 12).map((threadState) => {
+      const threadId = threadState.thread.id
+      const title = sessionTitleById.get(threadId) || threadState.thread.cwd?.split('/').pop() || threadId.slice(0, 8)
+      const meta = sessions.find((s) => s.sessionId === threadId) ?? null
+      return {
+        id: `switch-session:${threadId}`,
+        label: `Switch to: ${title}`,
+        icon: <MessageSquare size={16} />,
+        meta: meta ? renderSessionMeta({ ...meta, status: threadState.turnStatus === 'running' ? 'running' : meta.status }) : null,
+        action: () => useThreadStore.getState().switchThread(threadId),
+        group: 'Active Sessions',
+      }
+    }),
     {
       id: 'keyboard-shortcuts',
       label: 'Keyboard Shortcuts',
@@ -174,22 +836,23 @@ export function CommandPalette({
       action: () => onOpenHelp?.(),
       group: 'Help',
     },
+    {
+      id: 'about',
+      label: 'About',
+      icon: <Info size={16} />,
+      action: () => useAppStore.getState().setAboutOpen(true),
+      group: 'Help',
+    },
   ]
 
   const groups = [...new Set(commands.map((c) => c.group))]
-
-  useEffect(() => {
-    if (!isOpen) {
-      setSearch('')
-    }
-  }, [isOpen])
 
   if (!isOpen) return null
 
   return (
     <div
       className="command-menu-dialog fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center pt-[20vh] bg-overlay backdrop-blur-sm codex-dialog-overlay"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <Command
         className="codex-dialog w-full max-w-[560px] overflow-hidden"
@@ -219,26 +882,33 @@ export function CommandPalette({
                 .map((command) => (
                   <Command.Item
                     key={command.id}
-                    value={command.label}
-                    onSelect={() => handleAction(command.action)}
-                    className="justify-between"
+                    value={command.searchText ? `${command.label} ${command.searchText}` : command.label}
+                    disabled={command.disabled}
+                    onSelect={() => {
+                      if (command.disabled) return
+                      handleAction(command.action)
+                    }}
+                    className={cn('justify-between', command.disabled && 'opacity-60 cursor-not-allowed')}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-text-3">{command.icon}</span>
                       <span className="text-[13px]">{command.label}</span>
                     </div>
-                    {command.shortcut && (
-                      <div className="flex items-center gap-1">
-                        {command.shortcut.map((key, i) => (
-                          <kbd
-                            key={i}
-                            className="min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-xs bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono"
-                          >
-                            {key}
-                          </kbd>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {command.meta}
+                      {command.shortcut && (
+                        <div className="flex items-center gap-1">
+                          {command.shortcut.map((key, i) => (
+                            <kbd
+                              key={i}
+                              className="min-w-[20px] h-5 flex items-center justify-center px-1.5 rounded-xs bg-surface-hover/[0.08] text-[11px] text-text-3 font-mono"
+                            >
+                              {normalizeShortcutKey(key)}
+                            </kbd>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </Command.Item>
                 ))}
             </Command.Group>
@@ -274,9 +944,12 @@ export function useCommandPalette() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
+        e.stopPropagation()
         setIsOpen((prev) => !prev)
       }
       if (e.key === 'Escape' && isOpen) {
+        e.preventDefault()
+        e.stopPropagation()
         setIsOpen(false)
       }
     }

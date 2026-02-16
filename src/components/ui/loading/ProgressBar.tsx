@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 
 /**
@@ -70,10 +71,10 @@ const SIZE_MAP: Record<ProgressBarSize, { container: string; bar: string }> = {
  */
 const VARIANT_MAP: Record<ProgressBarVariant, string> = {
   default: 'bg-surface-selected/[0.28]',
-  primary: 'bg-surface-selected/[0.28]',
-  success: 'bg-emerald-400/70',
-  warning: 'bg-amber-400/70',
-  destructive: 'bg-rose-400/70',
+  primary: 'bg-primary',
+  success: 'bg-status-success',
+  warning: 'bg-status-warning',
+  destructive: 'bg-status-error',
 }
 
 /**
@@ -81,10 +82,10 @@ const VARIANT_MAP: Record<ProgressBarVariant, string> = {
  */
 const BG_VARIANT_MAP: Record<ProgressBarVariant, string> = {
   default: 'bg-surface-hover/[0.12]',
-  primary: 'bg-surface-hover/[0.12]',
-  success: 'bg-emerald-400/10',
-  warning: 'bg-amber-400/10',
-  destructive: 'bg-rose-400/10',
+  primary: 'bg-primary/15',
+  success: 'bg-status-success-muted',
+  warning: 'bg-status-warning-muted',
+  destructive: 'bg-status-error-muted',
 }
 
 /**
@@ -253,6 +254,7 @@ export function CircularProgress({
     : circumference - (percentage / 100) * circumference
 
   const center = size / 2
+  const textVariantClass = VARIANT_MAP[variant].replace('bg-', 'text-')
 
   return (
     <div
@@ -275,9 +277,8 @@ export function CircularProgress({
           strokeWidth={strokeWidth}
           className={cn(
             'opacity-20',
-            variant === 'default' ? 'text-foreground' : `text-${variant}`
+            textVariantClass
           )}
-          style={{ color: VARIANT_MAP[variant].replace('bg-', 'text-') }}
         />
 
         {/* Progress circle */}
@@ -294,12 +295,11 @@ export function CircularProgress({
           className={cn(
             'transition-all duration-300 ease-out',
             isIndeterminate && 'animate-pulse',
-            VARIANT_MAP[variant].replace('bg-', 'text-')
+            textVariantClass
           )}
           style={{
             transform: 'rotate(-90deg)',
             transformOrigin: 'center',
-            color: VARIANT_MAP[variant].replace('bg-', 'text-'),
           }}
         />
       </svg>
@@ -358,17 +358,17 @@ export function ProgressSteps({ steps, className }: ProgressStepsProps) {
                 step.status === 'completed' && 'bg-status-success border-status-success text-status-success-foreground',
                 step.status === 'active' && 'bg-primary border-primary text-primary-foreground',
                 step.status === 'error' && 'bg-destructive border-destructive text-destructive-foreground',
-                step.status === 'pending' && 'bg-background border-border text-muted-foreground'
+                step.status === 'pending' && 'bg-surface-solid border-stroke/20 text-text-3'
               )}
             >
-              {step.status === 'completed' ? '✓' : index + 1}
+              {step.status === 'completed' ? <Check size={16} aria-hidden="true" /> : index + 1}
             </div>
 
             {/* Step label */}
             <span
               className={cn(
                 'mt-2 text-xs text-center',
-                step.status === 'active' ? 'text-foreground font-medium' : 'text-muted-foreground'
+                step.status === 'active' ? 'text-text-1 font-semibold' : 'text-text-3'
               )}
             >
               {step.label}
@@ -380,7 +380,7 @@ export function ProgressSteps({ steps, className }: ProgressStepsProps) {
             <div
               className={cn(
                 'flex-1 h-0.5 mx-2 transition-colors',
-                step.status === 'completed' ? 'bg-green-500' : 'bg-border'
+                step.status === 'completed' ? 'bg-status-success' : 'bg-stroke/20'
               )}
             />
           )}

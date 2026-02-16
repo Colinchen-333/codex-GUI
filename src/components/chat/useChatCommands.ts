@@ -116,7 +116,7 @@ export function useChatCommands({
         `Approval: ${settings.approvalPolicy}`,
         `Sandbox: ${settings.sandboxMode}`,
         `Tokens: ${tokenUsage.totalTokens}`,
-        activeThread ? `Thread: ${activeThread.id}` : 'Thread: none',
+        activeThread ? `Session: ${activeThread.id}` : 'Session: none',
       ]
       addInfoItem('Status', parts.join('\n'))
     },

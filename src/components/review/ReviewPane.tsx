@@ -182,11 +182,11 @@ function getDiffStats(diff?: FileDiff | null) {
 function getStatusBadge(status?: GitFileStatus): { label: string; color: string } | null {
   if (!status) return null
   switch (status.status) {
-    case 'M': return { label: 'M', color: 'text-blue-400' }
-    case 'A': return { label: 'A', color: 'text-emerald-400' }
-    case 'D': return { label: 'D', color: 'text-red-400' }
-    case 'R': return { label: 'R', color: 'text-purple-400' }
-    case '?': return { label: 'U', color: 'text-text-3' }
+    case 'M': return { label: 'M', color: 'text-status-info' }
+    case 'A': return { label: 'A', color: 'text-status-success' }
+    case 'D': return { label: 'D', color: 'text-status-error' }
+    case 'R': return { label: 'R', color: 'text-status-info' }
+    case '?': return { label: 'U', color: 'text-status-warning' }
     default:  return { label: status.status, color: 'text-text-3' }
   }
 }
@@ -405,7 +405,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
     const ext = path.split('.').pop()?.toLowerCase()
     if (ext === 'json') {
       return (
-        <span className="inline-flex h-4 w-4 items-center justify-center rounded-[4px] bg-surface-hover/[0.12] text-[9px] font-mono text-text-3/80">
+        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-surface-hover/[0.12] text-[9px] font-mono text-text-3/80">
           {'{}'}
         </span>
       )
@@ -459,8 +459,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
               Commit
             </Button>
             <div className="flex items-center gap-2 text-xs font-mono tabular-nums">
-              <span className="text-emerald-500 font-semibold">+{stats.additions.toLocaleString()}</span>
-              <span className="text-red-500 font-semibold">-{stats.deletions.toLocaleString()}</span>
+              <span className="text-status-success font-semibold">+{stats.additions.toLocaleString()}</span>
+              <span className="text-status-error font-semibold">-{stats.deletions.toLocaleString()}</span>
             </div>
             <IconButton size="sm" onClick={onClose} title="Close panel">
               <X size={14} />
@@ -500,7 +500,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
             {/* Stage all / Unstage all */}
             <div className="flex items-center gap-1">
               <button
-                className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-surface-hover/[0.08] text-text-2 hover:bg-emerald-900/30 hover:text-emerald-400 transition-colors"
+                className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-surface-hover/[0.08] text-text-2 hover:bg-status-success-muted hover:text-status-success transition-colors"
                 onClick={() => void handleStageAll()}
                 title="Stage all"
               >
@@ -508,7 +508,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                 Stage all
               </button>
               <button
-                className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-surface-hover/[0.08] text-text-2 hover:bg-red-900/30 hover:text-red-400 transition-colors"
+                className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-surface-hover/[0.08] text-text-2 hover:bg-status-error-muted hover:text-status-error transition-colors"
                 onClick={() => void handleUnstageAll()}
                 title="Unstage all"
               >
@@ -525,23 +525,27 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
         {/* Diff view (left/main area) */}
         <div className="flex-[3] flex flex-col overflow-hidden border-r border-stroke/10">
           {loadState === 'loading' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-text-3">
-              Loading...
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-3">
+              <RefreshCw size={20} className="animate-spin" />
+              <p className="text-sm">Loading diff...</p>
             </div>
           )}
           {loadState === 'not-git' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-text-3">
-              Not a git repository
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-3">
+              <GitCommit size={20} />
+              <p className="text-sm">Not a git repository</p>
             </div>
           )}
           {loadState === 'empty' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-text-3">
-              No changes
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-3">
+              <FileCode size={20} />
+              <p className="text-sm">No changes</p>
             </div>
           )}
           {loadState === 'error' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-red-500">
-              Failed to load diff
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              <X size={20} className="text-status-error" />
+              <p className="text-sm text-status-error">Failed to load diff</p>
             </div>
           )}
           {loadState === 'idle' && selectedDiff && (
@@ -560,8 +564,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                   })()}
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-emerald-500">+{selectedDiffStats.additions}</span>
-                  <span className="text-red-500">-{selectedDiffStats.deletions}</span>
+                  <span className="text-status-success">+{selectedDiffStats.additions}</span>
+                  <span className="text-status-error">-{selectedDiffStats.deletions}</span>
                 </div>
               </div>
               <div className="flex-1 overflow-auto">
@@ -654,8 +658,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                     )}
                     {fileDiffStats && (
                       <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums">
-                        <span className="text-emerald-500">+{fileDiffStats.additions}</span>
-                        <span className="text-red-500">-{fileDiffStats.deletions}</span>
+                        <span className="text-status-success">+{fileDiffStats.additions}</span>
+                        <span className="text-status-error">-{fileDiffStats.deletions}</span>
                       </span>
                     )}
                   </span>

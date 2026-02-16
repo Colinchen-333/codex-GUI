@@ -38,7 +38,7 @@ export const AccountInfoSection = memo(function AccountInfoSection() {
   }, [])
 
   return (
-    <div className="flex items-center gap-2 pr-3 border-r border-border/30 text-text-2">
+    <div className="flex items-center gap-2 pr-3 border-r border-stroke/20 text-text-2">
       <ShieldCheck
         size={12}
         className={accountInfo?.account ? 'text-text-2' : 'text-text-3'}

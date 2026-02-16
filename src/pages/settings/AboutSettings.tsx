@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import { serverApi, type ServerStatus } from '../../lib/api'
 import { logError } from '../../lib/errorUtils'
+import { APP_NAME, APP_VERSION } from '../../lib/appMeta'
 import {
   SettingsSection,
   SettingsCard,
@@ -36,7 +37,7 @@ export const AboutSettings = memo(function AboutSettings() {
       >
         <SettingsCard>
           <div className="text-center py-4">
-            <h2 className="text-xl font-semibold text-text-1 mb-1">Codex Desktop</h2>
+            <h2 className="text-xl font-semibold text-text-1 mb-1">{APP_NAME}</h2>
             <p className="text-sm text-text-3">
               A desktop interface for the Codex AI coding assistant
             </p>
@@ -44,7 +45,7 @@ export const AboutSettings = memo(function AboutSettings() {
 
           <SettingsList>
             <SettingsRow title="App Version">
-              <span className="text-sm font-mono text-text-2">1.0.0</span>
+              <span className="text-sm font-mono text-text-2">{APP_VERSION}</span>
             </SettingsRow>
             <SettingsRow title="Engine Version">
               <span className="text-sm font-mono text-text-2">
@@ -75,7 +76,7 @@ export const AboutSettings = memo(function AboutSettings() {
               description="View the project on GitHub."
             >
               <a
-                href="https://github.com/anthropics/codex"
+                href="https://github.com/Colinchen-333/codex-GUI"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-primary hover:underline"
@@ -88,7 +89,7 @@ export const AboutSettings = memo(function AboutSettings() {
               description="Read the official documentation."
             >
               <a
-                href="https://github.com/anthropics/codex#readme"
+                href="https://github.com/Colinchen-333/codex-GUI#readme"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-primary hover:underline"

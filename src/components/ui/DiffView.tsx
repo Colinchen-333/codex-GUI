@@ -1,5 +1,5 @@
 import { useState, useMemo, memo, useCallback } from 'react'
-import { Check, X, ChevronUp, MessageSquarePlus, Plus, GitBranch, Undo2 } from 'lucide-react'
+import { Check, X, ChevronDown, ChevronRight, ChevronUp, MessageSquarePlus, Plus, GitBranch, Undo2 } from 'lucide-react'
 import { List } from 'react-window'
 import { cn } from '../../lib/utils'
 import { parseDiff, type HunkAction, type DiffHunk, type DiffLine, type FileDiff, type DiffComment, buildHunkPatch, buildFilePatch } from './DiffView.utils'
@@ -131,10 +131,10 @@ export function DiffView({
   }
 
   const kindColor = {
-    add: 'text-green-500',
-    modify: 'text-yellow-500',
-    delete: 'text-red-500',
-    rename: 'text-blue-500',
+    add: 'text-status-success',
+    modify: 'text-status-warning',
+    delete: 'text-status-error',
+    rename: 'text-primary',
   }
 
   const totalLines = useMemo(() =>
@@ -180,6 +180,20 @@ export function DiffView({
         <div
           className="flex items-center justify-between bg-surface-hover/[0.06] px-3 py-2 cursor-pointer hover:bg-surface-hover/[0.12]"
           onClick={onToggleCollapse}
+          role={onToggleCollapse ? 'button' : undefined}
+          tabIndex={onToggleCollapse ? 0 : undefined}
+          onKeyDown={
+            onToggleCollapse
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onToggleCollapse()
+                  }
+                }
+              : undefined
+          }
+          aria-expanded={onToggleCollapse ? !collapsed : undefined}
+          aria-label={onToggleCollapse ? `Toggle diff: ${diff.path}` : undefined}
         >
           <div className="flex items-center gap-2">
             <span className={cn('font-mono text-sm', kindColor[diff.kind])}>
@@ -192,7 +206,9 @@ export function DiffView({
               </span>
             )}
             {totalLines > 500 && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded ml-2">Large</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded ml-2 border border-status-warning/30 bg-status-warning-muted text-status-warning">
+                Large
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -201,7 +217,7 @@ export function DiffView({
               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 {onStageFile && (
                   <button
-                    className="flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-surface-hover/[0.12] text-text-2 hover:bg-green-900/40 hover:text-green-400 transition-colors"
+                    className="flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-surface-hover/[0.12] text-text-2 hover:bg-status-success-muted hover:text-status-success transition-colors"
                     title="Stage file"
                     onClick={handleStageFile}
                   >
@@ -214,8 +230,8 @@ export function DiffView({
                     className={cn(
                       'flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors',
                       confirmRevertFile
-                        ? 'bg-red-900/50 text-red-300'
-                        : 'bg-surface-hover/[0.12] text-text-2 hover:bg-red-900/40 hover:text-red-400'
+                        ? 'bg-status-error-muted text-status-error'
+                        : 'bg-surface-hover/[0.12] text-text-2 hover:bg-status-error-muted hover:text-status-error'
                     )}
                     title={confirmRevertFile ? 'Click again to confirm revert' : 'Revert file'}
                     onClick={handleRevertFile}
@@ -255,8 +271,8 @@ export function DiffView({
                 </button>
               </>
             )}
-            <span className="text-text-3">
-              {collapsed ? '▶' : '▼'}
+            <span className="text-text-3" aria-hidden="true">
+              {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
             </span>
           </div>
         </div>
@@ -361,7 +377,7 @@ function HunkActions({ hunkIndex, hunkState, enableHunkActions, onHunkAction }: 
       {hunkState !== 'accept' && (
         <button
           onClick={() => onHunkAction(hunkIndex, 'accept')}
-          className="p-1 rounded hover:bg-green-200/60 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400"
+          className="p-1 rounded hover:bg-status-success-muted text-status-success transition-colors"
           title="Accept this change"
         >
           <Check size={14} />
@@ -370,7 +386,7 @@ function HunkActions({ hunkIndex, hunkState, enableHunkActions, onHunkAction }: 
       {hunkState !== 'reject' && (
         <button
           onClick={() => onHunkAction(hunkIndex, 'reject')}
-          className="p-1 rounded hover:bg-red-200/60 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400"
+          className="p-1 rounded hover:bg-status-error-muted text-status-error transition-colors"
           title="Reject this change"
         >
           <X size={14} />
@@ -416,7 +432,7 @@ function ChunkStageActions({
     <div className="flex items-center gap-1">
       {onStageHunk && (
         <button
-          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded bg-surface-hover/[0.12] text-text-2 hover:bg-green-900/40 hover:text-green-400 transition-colors"
+          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded bg-surface-hover/[0.12] text-text-2 hover:bg-status-success-muted hover:text-status-success transition-colors"
           title="Stage this hunk"
           onClick={() => {
             const patch = buildHunkPatch(filePath, hunk, oldPath)
@@ -432,8 +448,8 @@ function ChunkStageActions({
           className={cn(
             'flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded transition-colors',
             isConfirming
-              ? 'bg-red-900/50 text-red-300'
-              : 'bg-surface-hover/[0.12] text-text-2 hover:bg-red-900/40 hover:text-red-400'
+              ? 'bg-status-error-muted text-status-error'
+              : 'bg-surface-hover/[0.12] text-text-2 hover:bg-status-error-muted hover:text-status-error'
           )}
           title={isConfirming ? 'Click again to confirm' : 'Revert this hunk'}
           onClick={() => {
@@ -503,16 +519,16 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
 }: UnifiedDiffRowProps) {
   const line = lines[index]
   const oldNumberClass =
-    line.type === 'remove' ? 'text-red-600 dark:text-red-400' : 'text-text-3/70'
+    line.type === 'remove' ? 'text-status-error' : 'text-text-3/70'
   const newNumberClass =
-    line.type === 'add' ? 'text-green-600 dark:text-green-500' : 'text-text-3/70'
+    line.type === 'add' ? 'text-status-success' : 'text-text-3/70'
   const singleNumber =
     line.type === 'remove' ? line.oldLineNumber : line.newLineNumber ?? line.oldLineNumber
   const singleNumberClass =
     line.type === 'remove'
-      ? 'text-red-600 dark:text-red-400'
+      ? 'text-status-error'
       : line.type === 'add'
-        ? 'text-green-600 dark:text-green-500'
+        ? 'text-status-success'
         : 'text-text-3/70'
   const singleNumberColumnClass = cn(
     'w-9 flex-shrink-0 text-right pr-3 select-none',
@@ -521,9 +537,9 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
 
   const contentClass =
     line.type === 'add'
-      ? 'text-green-800 dark:text-green-300'
+      ? 'text-status-success'
       : line.type === 'remove'
-        ? 'text-red-700 dark:text-red-300'
+        ? 'text-status-error'
         : 'text-text-1'
 
   return (
@@ -531,20 +547,20 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
       style={style}
       className={cn(
         'flex border-l-2 min-h-[26px] leading-[26px]',
-        line.type === 'add' && 'bg-green-50 dark:bg-green-950/30',
-        line.type === 'remove' && 'bg-red-50 dark:bg-red-950/30',
-        line.type === 'add' && 'border-green-500/70',
-        line.type === 'remove' && 'border-red-500/70',
+        line.type === 'add' && 'bg-status-success-muted',
+        line.type === 'remove' && 'bg-status-error-muted',
+        line.type === 'add' && 'border-status-success/70',
+        line.type === 'remove' && 'border-status-error/70',
         line.type === 'context' && 'border-transparent'
       )}
     >
       {/* Line numbers */}
       {lineNumberMode === 'dual' ? (
         <>
-          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30', oldNumberClass)}>
+          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20', oldNumberClass)}>
             {line.oldLineNumber || ''}
           </div>
-          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30', newNumberClass)}>
+          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20', newNumberClass)}>
             {line.newLineNumber || ''}
           </div>
         </>
@@ -559,8 +575,8 @@ const VirtualizedDiffLine = memo(function VirtualizedDiffLine({
         <div
           className={cn(
             'w-6 flex-shrink-0 text-center select-none',
-            line.type === 'add' && 'text-green-600 dark:text-green-500',
-            line.type === 'remove' && 'text-red-600 dark:text-red-500'
+            line.type === 'add' && 'text-status-success',
+            line.type === 'remove' && 'text-status-error'
           )}
         >
           {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
@@ -586,31 +602,31 @@ const VirtualizedSplitLine = memo(function VirtualizedSplitLine({
   const oldLine = oldLines[index]
   const newLine = newLines[index]
   const oldNumberClass =
-    oldLine?.type === 'remove' ? 'text-red-600 dark:text-red-400' : 'text-text-3/70'
+    oldLine?.type === 'remove' ? 'text-status-error' : 'text-text-3/70'
   const newNumberClass =
-    newLine?.type === 'add' ? 'text-green-600 dark:text-green-500' : 'text-text-3/70'
+    newLine?.type === 'add' ? 'text-status-success' : 'text-text-3/70'
   const oldContentClass =
-    oldLine?.type === 'remove' ? 'text-red-700 dark:text-red-300' : 'text-text-1'
+    oldLine?.type === 'remove' ? 'text-status-error' : 'text-text-1'
   const newContentClass =
-    newLine?.type === 'add' ? 'text-green-800 dark:text-green-300' : 'text-text-1'
+    newLine?.type === 'add' ? 'text-status-success' : 'text-text-1'
 
   return (
     <div style={style} className="grid grid-cols-2 min-h-[26px] leading-[26px]">
       {/* Left (old) */}
       <div
         className={cn(
-          'flex border-r border-border',
-          oldLine?.type === 'remove' && 'bg-red-50 dark:bg-red-950/30'
+          'flex border-r border-stroke/20',
+          oldLine?.type === 'remove' && 'bg-status-error-muted'
         )}
       >
-        <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30', oldNumberClass)}>
+        <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20', oldNumberClass)}>
           {oldLine?.oldLineNumber || ''}
         </div>
         {showSigns && (
           <div
             className={cn(
               'w-6 flex-shrink-0 text-center select-none',
-              oldLine?.type === 'remove' && 'text-red-600 dark:text-red-500'
+              oldLine?.type === 'remove' && 'text-status-error'
             )}
           >
             {oldLine?.type === 'remove' ? '-' : ' '}
@@ -625,17 +641,17 @@ const VirtualizedSplitLine = memo(function VirtualizedSplitLine({
       <div
         className={cn(
           'flex',
-          newLine?.type === 'add' && 'bg-green-50 dark:bg-green-950/30'
+          newLine?.type === 'add' && 'bg-status-success-muted'
         )}
       >
-        <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30', newNumberClass)}>
+        <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20', newNumberClass)}>
           {newLine?.newLineNumber || ''}
         </div>
         {showSigns && (
           <div
             className={cn(
               'w-6 flex-shrink-0 text-center select-none',
-              newLine?.type === 'add' && 'text-green-600 dark:text-green-500'
+              newLine?.type === 'add' && 'text-status-success'
             )}
           >
             {newLine?.type === 'add' ? '+' : ' '}
@@ -671,11 +687,11 @@ function GapLine({
     <div className="flex items-center bg-surface-hover/[0.06] text-text-2 text-xs border-y border-stroke/20 border-l-2 border-transparent py-0.5">
       <div className={cn(
         'w-9 flex-shrink-0 flex items-center justify-end pr-3 text-text-3/70 select-none',
-        lineNumberMode === 'dual' && 'border-r border-border/30'
+        lineNumberMode === 'dual' && 'border-r border-stroke/20'
       )}>
         <ChevronUp size={12} />
       </div>
-      {lineNumberMode === 'dual' && <div className="w-9 flex-shrink-0 border-r border-border/30" />}
+      {lineNumberMode === 'dual' && <div className="w-9 flex-shrink-0 border-r border-stroke/20" />}
       {showSigns && <div className="w-6 flex-shrink-0" />}
       <div className="flex-1 px-2 text-text-2/80">{count} unmodified lines</div>
     </div>
@@ -765,8 +781,8 @@ function renderInlineSegments(segments: InlineSegment[], variant: 'add' | 'remov
       className={cn(
         segment.type === 'change' &&
           (variant === 'add'
-            ? 'bg-green-200/70 text-green-900 rounded-sm px-0.5'
-            : 'bg-red-200/70 text-red-900 rounded-sm px-0.5')
+            ? 'bg-status-success/15 text-status-success rounded-sm px-0.5'
+            : 'bg-status-error/15 text-status-error rounded-sm px-0.5')
       )}
     >
       {segment.text}
@@ -829,7 +845,7 @@ function UnifiedDiff({
             >
               {/* Hunk header */}
               {showHunkHeader && (
-                <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-border/50 flex items-center justify-between">
+                <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                   <span>@@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@</span>
                   <div className="flex items-center gap-2">
                     {enableChunkActions && filePath && (
@@ -857,16 +873,16 @@ function UnifiedDiff({
               {hunk.lines.map((line, lineIndex) => {
                 const inlineSegments = inlineMap.get(lineIndex)
                 const oldNumberClass =
-                  line.type === 'remove' ? 'text-red-600 dark:text-red-400' : 'text-text-3/70'
+                  line.type === 'remove' ? 'text-status-error' : 'text-text-3/70'
                 const newNumberClass =
-                  line.type === 'add' ? 'text-green-600 dark:text-green-500' : 'text-text-3/70'
+                  line.type === 'add' ? 'text-status-success' : 'text-text-3/70'
                 const singleNumber =
                   line.type === 'remove' ? line.oldLineNumber : line.newLineNumber ?? line.oldLineNumber
                 const singleNumberClass =
                   line.type === 'remove'
-                    ? 'text-red-600 dark:text-red-400'
+                    ? 'text-status-error'
                     : line.type === 'add'
-                      ? 'text-green-600 dark:text-green-500'
+                      ? 'text-status-success'
                       : 'text-text-3/70'
                 const singleNumberColumnClass = cn(
                   'w-9 flex-shrink-0 text-right pr-3 select-none',
@@ -878,9 +894,9 @@ function UnifiedDiff({
                   inlineComments?.target?.lineIndex === lineIndex
                 const contentClass =
                   line.type === 'add'
-                    ? 'text-green-800 dark:text-green-300'
+                    ? 'text-status-success'
                     : line.type === 'remove'
-                      ? 'text-red-700 dark:text-red-300'
+                      ? 'text-status-error'
                       : 'text-text-1'
 
                 return (
@@ -888,10 +904,10 @@ function UnifiedDiff({
                     <div
                       className={cn(
                         'group/line flex border-l-2 min-h-[26px] leading-[26px]',
-                        line.type === 'add' && 'bg-green-50 dark:bg-green-950/30',
-                        line.type === 'remove' && 'bg-red-50 dark:bg-red-950/30',
-                        line.type === 'add' && 'border-green-500/70',
-                        line.type === 'remove' && 'border-red-500/70',
+                        line.type === 'add' && 'bg-status-success-muted',
+                        line.type === 'remove' && 'bg-status-error-muted',
+                        line.type === 'add' && 'border-status-success/70',
+                        line.type === 'remove' && 'border-status-error/70',
                         line.type === 'context' && 'border-transparent',
                         isCommentTarget && 'ring-1 ring-inset ring-stroke/40'
                       )}
@@ -919,10 +935,10 @@ function UnifiedDiff({
                       {/* Line numbers */}
                       {lineNumberMode === 'dual' ? (
                         <>
-                          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30', oldNumberClass)}>
+                          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20', oldNumberClass)}>
                             {line.oldLineNumber || ''}
                           </div>
-                          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30', newNumberClass)}>
+                          <div className={cn('w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20', newNumberClass)}>
                             {line.newLineNumber || ''}
                           </div>
                         </>
@@ -936,8 +952,8 @@ function UnifiedDiff({
                         <div
                           className={cn(
                             'w-6 flex-shrink-0 text-center select-none',
-                            line.type === 'add' && 'text-green-600 dark:text-green-500',
-                            line.type === 'remove' && 'text-red-600 dark:text-red-500'
+                            line.type === 'add' && 'text-status-success',
+                            line.type === 'remove' && 'text-status-error'
                           )}
                         >
                           {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
@@ -962,9 +978,9 @@ function UnifiedDiff({
                     {isCommentTarget && inlineCommentsEnabled && inlineComments && (
                       <div className="flex bg-transparent border-l-2 border-transparent">
                         {inlineCommentsEnabled && <div className="w-5 flex-shrink-0" />}
-                        <div className={cn('w-9 flex-shrink-0', lineNumberMode === 'dual' && 'border-r border-border/30')} />
+                        <div className={cn('w-9 flex-shrink-0', lineNumberMode === 'dual' && 'border-r border-stroke/20')} />
                         {lineNumberMode === 'dual' && (
-                          <div className="w-9 flex-shrink-0 border-r border-border/30" />
+                          <div className="w-9 flex-shrink-0 border-r border-stroke/20" />
                         )}
                         {showSigns && <div className="w-6 flex-shrink-0" />}
                         <div className="flex-1 px-2 pb-2.5 pt-1.5">
@@ -1047,7 +1063,7 @@ function UnifiedDiff({
           >
             {/* Hunk header */}
             {showHunkHeader && (
-              <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-border/50 flex items-center justify-between">
+              <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                 <span>@@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@</span>
                 <div className="flex items-center gap-2">
                   {enableChunkActions && filePath && (
@@ -1136,9 +1152,9 @@ function SplitDiff({
               )}
             >
               {/* Left side (old) */}
-              <div className="border-r border-border">
+              <div className="border-r border-stroke/20">
                 {showHunkHeader && (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-border/50 flex items-center justify-between">
+                  <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                     <span>-{hunk.oldStart},{hunk.oldLines}</span>
                   </div>
                 )}
@@ -1149,13 +1165,13 @@ function SplitDiff({
                       key={lineIndex}
                       className={cn(
                         'flex',
-                        line.type === 'remove' && 'bg-red-50 dark:bg-red-950/30'
+                        line.type === 'remove' && 'bg-status-error-muted'
                       )}
                     >
                       <div
                         className={cn(
-                          'w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30',
-                          line.type === 'remove' ? 'text-red-600 dark:text-red-400' : 'text-text-3/70'
+                          'w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20',
+                          line.type === 'remove' ? 'text-status-error' : 'text-text-3/70'
                         )}
                       >
                         {line.oldLineNumber || ''}
@@ -1164,7 +1180,7 @@ function SplitDiff({
                         <div
                           className={cn(
                             'w-6 flex-shrink-0 text-center select-none',
-                            line.type === 'remove' && 'text-red-600 dark:text-red-500'
+                            line.type === 'remove' && 'text-status-error'
                           )}
                         >
                           {line.type === 'remove' ? '-' : ' '}
@@ -1173,7 +1189,7 @@ function SplitDiff({
                       <div
                         className={cn(
                           'flex-1 px-2 whitespace-pre overflow-x-auto',
-                          line.type === 'remove' ? 'text-red-700 dark:text-red-300' : 'text-text-1'
+                          line.type === 'remove' ? 'text-status-error' : 'text-text-1'
                         )}
                       >
                         {line.content}
@@ -1184,7 +1200,7 @@ function SplitDiff({
               {/* Right side (new) */}
               <div>
                 {showHunkHeader && (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-y border-border/50 flex items-center justify-between">
+                  <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-y border-stroke/20 flex items-center justify-between">
                     <span>+{hunk.newStart},{hunk.newLines}</span>
                     <div className="flex items-center gap-2">
                       {enableChunkActions && filePath && (
@@ -1213,12 +1229,12 @@ function SplitDiff({
                   .map((line, lineIndex) => (
                     <div
                       key={lineIndex}
-                      className={cn('flex', line.type === 'add' && 'bg-green-50 dark:bg-green-950/30')}
+                      className={cn('flex', line.type === 'add' && 'bg-status-success-muted')}
                     >
                       <div
                         className={cn(
-                          'w-9 flex-shrink-0 text-right pr-2 select-none border-r border-border/30',
-                          line.type === 'add' ? 'text-green-600 dark:text-green-500' : 'text-text-3/70'
+                          'w-9 flex-shrink-0 text-right pr-2 select-none border-r border-stroke/20',
+                          line.type === 'add' ? 'text-status-success' : 'text-text-3/70'
                         )}
                       >
                         {line.newLineNumber || ''}
@@ -1227,7 +1243,7 @@ function SplitDiff({
                         <div
                           className={cn(
                             'w-6 flex-shrink-0 text-center select-none',
-                            line.type === 'add' && 'text-green-600 dark:text-green-500'
+                            line.type === 'add' && 'text-status-success'
                           )}
                         >
                           {line.type === 'add' ? '+' : ' '}
@@ -1236,7 +1252,7 @@ function SplitDiff({
                       <div
                         className={cn(
                           'flex-1 px-2 whitespace-pre overflow-x-auto',
-                          line.type === 'add' ? 'text-green-800 dark:text-green-300' : 'text-text-1'
+                          line.type === 'add' ? 'text-status-success' : 'text-text-1'
                         )}
                       >
                         {line.content}
@@ -1272,11 +1288,11 @@ function SplitDiff({
           >
             {/* Headers - grid layout */}
             {showHunkHeader && (
-              <div className="grid grid-cols-2 border-y border-border/50">
-                <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 border-r border-border">
+              <div className="grid grid-cols-2 border-y border-stroke/20">
+                <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 border-r border-stroke/20">
                   <span>-{hunk.oldStart},{hunk.oldLines}</span>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 px-3 py-1 flex items-center justify-between">
+                <div className="bg-surface-hover/[0.06] text-text-2 px-3 py-1 flex items-center justify-between">
                   <span>+{hunk.newStart},{hunk.newLines}</span>
                   <div className="flex items-center gap-2">
                     {enableChunkActions && filePath && (

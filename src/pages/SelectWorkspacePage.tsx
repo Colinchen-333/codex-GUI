@@ -113,7 +113,7 @@ export function SelectWorkspacePage() {
                     onClick={() => toggleWorkspace(ws.id)}
                   >
                     <div className={cn(
-                      'flex h-[18px] w-[18px] items-center justify-center rounded-[3px] border',
+                      'flex h-[18px] w-[18px] items-center justify-center rounded-sm border',
                       selectedIds.has(ws.id)
                         ? 'bg-primary border-primary'
                         : 'border-stroke/50'

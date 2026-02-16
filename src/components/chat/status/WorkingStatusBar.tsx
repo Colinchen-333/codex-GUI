@@ -22,6 +22,7 @@ export const WorkingStatusBar = memo(function WorkingStatusBar() {
   const items = focusedThread?.items ?? {}
   const itemOrder = focusedThread?.itemOrder ?? []
   const escapePending = useAppStore((state: AppState) => state.escapePending)
+  const setScrollToItemId = useAppStore((state: AppState) => state.setScrollToItemId)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [tokenRate, setTokenRate] = useState(0)
   const prevTokensRef = useRef(0)
@@ -117,9 +118,15 @@ export const WorkingStatusBar = memo(function WorkingStatusBar() {
         <div className="flex items-center gap-3 flex-shrink-0 ml-2">
           {/* Pending approvals badge */}
           {pendingCount > 0 && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-hover/[0.16] text-text-2 text-[10px] font-medium">
+            <button
+              type="button"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-hover/[0.16] text-text-2 text-[10px] font-medium hover:bg-surface-hover/[0.2] transition-colors"
+              onClick={() => setScrollToItemId(pendingApprovals[0].itemId)}
+              title="Jump to pending approval"
+              aria-label="Jump to pending approval"
+            >
               {pendingCount} pending
-            </span>
+            </button>
           )}
           {/* Token rate */}
           {tokenRate > 0 && (

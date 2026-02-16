@@ -229,11 +229,11 @@ impl AppServerProcess {
     }
 
     /// Find the codex binary in PATH or common locations
-    fn find_codex_binary() -> Result<std::path::PathBuf> {
-        // Try to find in PATH
-        if let Ok(path) = which::which("codex") {
-            return Ok(path);
-        }
+    pub(crate) fn find_codex_binary() -> Result<std::path::PathBuf> {
+      // Try to find in PATH
+      if let Ok(path) = which::which("codex") {
+        return Ok(path);
+      }
 
         // Try common installation locations
         let home = dirs::home_dir().ok_or_else(|| Error::Other("Cannot find home directory".to_string()))?;

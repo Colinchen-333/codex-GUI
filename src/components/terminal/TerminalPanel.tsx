@@ -162,23 +162,25 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
 
   // Listen for Tauri events
   useEffect(() => {
+    let mounted = true
     const unlisteners: UnlistenFn[] = []
 
     const setup = async () => {
       const unStdout = await listen<string>('terminal:stdout', (event) => {
-        xtermRef.current?.writeln(event.payload)
+        if (mounted) xtermRef.current?.writeln(event.payload)
       })
-      unlisteners.push(unStdout)
+      if (mounted) unlisteners.push(unStdout); else unStdout()
 
       const unStderr = await listen<string>('terminal:stderr', (event) => {
-        xtermRef.current?.writeln(`\x1b[31m${event.payload}\x1b[0m`)
+        if (mounted) xtermRef.current?.writeln(`\x1b[31m${event.payload}\x1b[0m`)
       })
-      unlisteners.push(unStderr)
+      if (mounted) unlisteners.push(unStderr); else unStderr()
     }
 
     void setup()
 
     return () => {
+      mounted = false
       for (const fn of unlisteners) fn()
     }
   }, [])
@@ -262,7 +264,7 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
 
   return (
     <div
-      className="flex shrink-0 flex-col border-t border-token-border panel-slide-up"
+      className="flex shrink-0 flex-col border-t border-stroke/20 panel-slide-up"
       style={{ height }}
     >
       {/* Drag handle */}
@@ -275,7 +277,7 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
 
       <div
         ref={terminalRef}
-        className="flex-1 overflow-hidden bg-token-terminal-background px-2 py-1"
+        className="flex-1 overflow-hidden bg-background px-2 py-1"
       />
     </div>
   )

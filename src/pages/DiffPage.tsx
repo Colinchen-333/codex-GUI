@@ -8,18 +8,30 @@ import {
   Folder,
   FolderOpen,
   Image as ImageIcon,
-  MoreHorizontal,
   RotateCcw,
   Plus,
+  RefreshCw,
+  Copy,
+  Code2,
+  Check,
+  Minus,
+  GitCommit,
 } from 'lucide-react'
 import { DiffView, parseDiff, type FileDiff } from '../components/ui/DiffView'
 import { cn } from '../lib/utils'
 import { parseError } from '../lib/errorUtils'
-import { projectApi } from '../lib/api'
+import { projectApi, type GitFileStatus } from '../lib/api'
 import { useProjectsStore } from '../stores/projects'
 import { useToast } from '../components/ui/Toast'
+import { copyTextToClipboard } from '../lib/clipboard'
+import { openInVSCode } from '../lib/hostActions'
+import { isTauriAvailable } from '../lib/tauri'
+import { dispatchAppEvent, APP_EVENTS } from '../lib/appEvents'
+import { IconButton } from '../components/ui/IconButton'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 
 type LoadState = 'idle' | 'loading' | 'error' | 'not-git' | 'empty'
+type DiffMode = 'unstaged' | 'staged'
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 
@@ -175,33 +187,51 @@ export function DiffPage() {
   const { showToast } = useToast()
   const { selectedProjectId, projects } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
+  const tauriAvailable = isTauriAvailable()
 
+  const [diffMode, setDiffMode] = useState<DiffMode>('unstaged')
   const [loadState, setLoadState] = useState<LoadState>('idle')
   const [diffText, setDiffText] = useState<string>('')
   const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([])
+  const [gitStatus, setGitStatus] = useState<GitFileStatus[]>([])
   const [filterQuery, setFilterQuery] = useState('')
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set())
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const sidebarRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const filterInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchDiff = useCallback(async () => {
     if (!selectedProject) {
       setLoadState('empty')
       setDiffText('')
       setFileDiffs([])
+      setGitStatus([])
       return
     }
 
     setLoadState('loading')
     try {
-      const result = await projectApi.getGitDiff(selectedProject.path)
+      const result =
+        diffMode === 'staged'
+          ? await projectApi.getGitDiffStaged(selectedProject.path)
+          : await projectApi.getGitDiff(selectedProject.path)
       if (!result.isGitRepo) {
         setLoadState('not-git')
         setDiffText('')
         setFileDiffs([])
+        setGitStatus([])
         return
       }
+
+      try {
+        const status = await projectApi.gitStatus(selectedProject.path)
+        setGitStatus(status)
+      } catch {
+        setGitStatus([])
+      }
+
       if (!result.diff) {
         setLoadState('empty')
         setDiffText('')
@@ -217,14 +247,124 @@ export function DiffPage() {
       setLoadState('error')
       setDiffText('')
       setFileDiffs([])
+      setGitStatus([])
       console.error('Failed to load diff:', parseError(error))
     }
-  }, [selectedProject])
+  }, [diffMode, selectedProject])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetching data on mount/project change is intentional.
     void fetchDiff()
   }, [fetchDiff])
+
+  const requireTauri = useCallback((): boolean => {
+    if (tauriAvailable) return true
+    showToast('Unavailable in web mode', 'error')
+    return false
+  }, [showToast, tauriAvailable])
+
+  const handleCopyDiff = useCallback(async () => {
+    if (!diffText) return
+    try {
+      const ok = await copyTextToClipboard(diffText)
+      if (!ok) throw new Error('Clipboard unavailable')
+      showToast('Diff copied', 'success')
+    } catch {
+      showToast('Copy failed', 'error')
+    }
+  }, [diffText, showToast])
+
+  const handleOpenInVSCode = useCallback(async () => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    try {
+      await openInVSCode(selectedProject.path)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to open in VS Code', 'error')
+    }
+  }, [requireTauri, selectedProject, showToast])
+
+  const handleOpenFileInVSCode = useCallback(async (relativePath: string) => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    const absolutePath = `${selectedProject.path}/${relativePath}`
+    try {
+      await openInVSCode(absolutePath)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to open file in VS Code', 'error')
+    }
+  }, [requireTauri, selectedProject, showToast])
+
+  const statusByPath = useMemo(() => {
+    const map = new Map<string, GitFileStatus>()
+    for (const file of gitStatus) {
+      map.set(file.path, file)
+    }
+    return map
+  }, [gitStatus])
+
+  const copyPath = useCallback(async (path: string) => {
+    try {
+      const ok = await copyTextToClipboard(path)
+      if (!ok) throw new Error('Clipboard unavailable')
+      showToast('Path copied', 'success')
+    } catch {
+      showToast('Copy failed', 'error')
+    }
+  }, [showToast])
+
+  const stageOrUnstageFile = useCallback(async (path: string) => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+
+    try {
+      if (diffMode === 'staged') {
+        await projectApi.gitUnstageFiles(selectedProject.path, [path])
+        showToast('Unstaged file', 'success')
+      } else {
+        await projectApi.gitStageFiles(selectedProject.path, [path])
+        showToast('Staged file', 'success')
+      }
+      await fetchDiff()
+    } catch (err) {
+      showToast(`${diffMode === 'staged' ? 'Unstage' : 'Stage'} failed: ${parseError(err)}`, 'error')
+    }
+  }, [diffMode, fetchDiff, requireTauri, selectedProject, showToast])
+
+  const handleStageAll = useCallback(async () => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    try {
+      const status = await projectApi.gitStatus(selectedProject.path)
+      const filesToStage = status.filter((f) => !f.isStaged).map((f) => f.path)
+      if (filesToStage.length === 0) {
+        showToast('Nothing to stage', 'info')
+        return
+      }
+      await projectApi.gitStageFiles(selectedProject.path, filesToStage)
+      showToast(`Staged ${filesToStage.length} file(s)`, 'success')
+      await fetchDiff()
+    } catch (err) {
+      showToast(`Stage all failed: ${parseError(err)}`, 'error')
+    }
+  }, [fetchDiff, requireTauri, selectedProject, showToast])
+
+  const handleUnstageAll = useCallback(async () => {
+    if (!selectedProject) return
+    if (!requireTauri()) return
+    try {
+      const status = await projectApi.gitStatus(selectedProject.path)
+      const filesToUnstage = status.filter((f) => f.isStaged).map((f) => f.path)
+      if (filesToUnstage.length === 0) {
+        showToast('Nothing to unstage', 'info')
+        return
+      }
+      await projectApi.gitUnstageFiles(selectedProject.path, filesToUnstage)
+      showToast(`Unstaged ${filesToUnstage.length} file(s)`, 'success')
+      await fetchDiff()
+    } catch (err) {
+      showToast(`Unstage all failed: ${parseError(err)}`, 'error')
+    }
+  }, [fetchDiff, requireTauri, selectedProject, showToast])
 
   const stats = useMemo(() => {
     let additions = 0
@@ -255,6 +395,87 @@ export function DiffPage() {
     if (selectedPath && visibleDiffs.some((diff) => diff.path === selectedPath)) return selectedPath
     return visibleDiffs[0]?.path ?? null
   }, [selectedPath, visibleDiffs])
+
+  const focusFilter = useCallback(() => {
+    filterInputRef.current?.focus()
+    filterInputRef.current?.select()
+  }, [])
+
+  const copySelectedPath = useCallback(async () => {
+    if (!resolvedSelectedPath) {
+      showToast('No file selected', 'info')
+      return
+    }
+    await copyPath(resolvedSelectedPath)
+  }, [copyPath, resolvedSelectedPath, showToast])
+
+  const openSelected = useCallback(async () => {
+    if (resolvedSelectedPath) {
+      await handleOpenFileInVSCode(resolvedSelectedPath)
+      return
+    }
+    await handleOpenInVSCode()
+  }, [handleOpenFileInVSCode, handleOpenInVSCode, resolvedSelectedPath])
+
+  const toggleStageSelected = useCallback(async () => {
+    if (!resolvedSelectedPath) {
+      showToast('No file selected', 'info')
+      return
+    }
+    await stageOrUnstageFile(resolvedSelectedPath)
+  }, [resolvedSelectedPath, showToast, stageOrUnstageFile])
+
+  const refresh = useCallback(() => {
+    void fetchDiff()
+  }, [fetchDiff])
+
+  const selectRelativeFile = useCallback((delta: number) => {
+    if (visibleDiffs.length === 0) return
+    const current = resolvedSelectedPath
+    const currentIndex = current ? visibleDiffs.findIndex((d) => d.path === current) : -1
+    const startIndex = currentIndex >= 0 ? currentIndex : 0
+    const nextIndex = (startIndex + delta + visibleDiffs.length) % visibleDiffs.length
+    const nextPath = visibleDiffs[nextIndex]?.path
+    if (nextPath) {
+      setSelectedPath(nextPath)
+    }
+  }, [resolvedSelectedPath, visibleDiffs])
+
+  const selectFirstFile = useCallback(() => {
+    const first = visibleDiffs[0]?.path
+    if (first) setSelectedPath(first)
+  }, [visibleDiffs])
+
+  const selectLastFile = useCallback(() => {
+    const last = visibleDiffs[visibleDiffs.length - 1]?.path
+    if (last) setSelectedPath(last)
+  }, [visibleDiffs])
+
+  useKeyboardShortcuts(
+    useMemo(
+      () => [
+        { key: '/', description: 'Focus filter', handler: focusFilter },
+        { key: 'r', description: 'Refresh diff', handler: refresh },
+        { key: 'j', description: 'Next file', handler: () => selectRelativeFile(1) },
+        { key: 'k', description: 'Previous file', handler: () => selectRelativeFile(-1) },
+        { key: 'g', description: 'First file', handler: selectFirstFile },
+        { key: 'g', shift: true, description: 'Last file', handler: selectLastFile },
+        { key: 'c', description: 'Copy selected path', handler: () => void copySelectedPath() },
+        { key: 'o', description: 'Open selected file in VS Code', handler: () => void openSelected() },
+        { key: 's', description: 'Stage/unstage selected file', handler: () => void toggleStageSelected() },
+      ],
+      [
+        copySelectedPath,
+        focusFilter,
+        openSelected,
+        refresh,
+        selectFirstFile,
+        selectLastFile,
+        selectRelativeFile,
+        toggleStageSelected,
+      ]
+    )
+  )
 
   const expandedFromSelected = useMemo(() => {
     if (!resolvedSelectedPath) return new Set<string>()
@@ -290,11 +511,16 @@ export function DiffPage() {
     }
   }, [resolvedSelectedPath])
 
+  useEffect(() => {
+    if (!resolvedSelectedPath) return
+    sidebarRefs.current[resolvedSelectedPath]?.scrollIntoView({ block: 'nearest' })
+  }, [resolvedSelectedPath])
+
   const getFileIcon = (path: string) => {
     const ext = path.split('.').pop()?.toLowerCase()
     if (ext === 'json') {
       return (
-        <span className="inline-flex h-4 w-4 items-center justify-center rounded-[4px] bg-surface-hover/[0.12] text-[9px] font-mono text-text-3/80">
+        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-surface-hover/[0.12] text-[9px] font-mono text-text-3/80">
           {'{}'}
         </span>
       )
@@ -328,7 +554,7 @@ export function DiffPage() {
     }
     if (loadState === 'error') {
       return (
-        <div className="flex flex-1 items-center justify-center text-sm text-red-600">
+        <div className="flex flex-1 items-center justify-center text-sm text-status-error">
           Failed to decode diff data.
         </div>
       )
@@ -351,6 +577,9 @@ export function DiffPage() {
               const ext = diff.path.split('.').pop()?.toLowerCase()
               const isImage = ext ? IMAGE_EXTENSIONS.has(ext) : false
               const isCollapsed = collapsedFiles.has(diff.path)
+              const isSelected = diff.path === resolvedSelectedPath
+              const status = statusByPath.get(diff.path) ?? null
+              const showStage = diffMode === 'unstaged'
 
               return (
                 <div
@@ -358,10 +587,18 @@ export function DiffPage() {
                   ref={(node) => {
                     fileRefs.current[diff.path] = node
                   }}
-                  className="rounded-2xl border border-stroke/10 bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden"
+                  className={cn(
+                    'rounded-2xl border bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden',
+                    isSelected ? 'border-stroke/25 ring-2 ring-ring/25' : 'border-stroke/10'
+                  )}
                 >
-                  <button
-                    className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left bg-surface-hover/[0.06]"
+                  <div
+                    className={cn(
+                      'flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left bg-surface-hover/[0.06]',
+                      'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                    )}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setSelectedPath(diff.path)
                       setCollapsedFiles((prev) => {
@@ -374,14 +611,80 @@ export function DiffPage() {
                         return next
                       })
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedPath(diff.path)
+                        setCollapsedFiles((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(diff.path)) {
+                            next.delete(diff.path)
+                          } else {
+                            next.add(diff.path)
+                          }
+                          return next
+                        })
+                      }
+                    }}
                   >
                     <div className="flex min-w-0 items-center gap-2 text-sm text-text-1">
                       <span className="truncate font-semibold">{diff.path}</span>
-                      <span className="text-xs font-semibold text-emerald-600">+{diffStats.additions}</span>
-                      <span className="text-xs font-semibold text-red-500">-{diffStats.deletions}</span>
+                      <span className="text-xs font-semibold text-status-success">+{diffStats.additions}</span>
+                      <span className="text-xs font-semibold text-status-error">-{diffStats.deletions}</span>
+                      {status?.isStaged && (
+                        <span className="rounded-xs border border-stroke/20 bg-surface-hover/[0.08] px-1.5 py-0.5 text-[10px] font-semibold text-text-2">
+                          STAGED
+                        </span>
+                      )}
                     </div>
-                    <ChevronUp size={14} className={cn('text-text-3 transition-transform', isCollapsed && 'rotate-180')} />
-                  </button>
+                    <div className="flex items-center gap-1.5">
+                      <IconButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void handleOpenFileInVSCode(diff.path)
+                        }}
+                        disabled={!isTauriAvailable()}
+                        aria-label="Open file in VS Code"
+                        title="Open file in VS Code"
+                      >
+                        <Code2 size={14} />
+                      </IconButton>
+                      <IconButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void copyPath(diff.path)
+                        }}
+                        aria-label="Copy file path"
+                        title="Copy file path"
+                      >
+                        <Copy size={14} />
+                      </IconButton>
+                      <IconButton
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void stageOrUnstageFile(diff.path)
+                        }}
+                        disabled={!isTauriAvailable()}
+                        aria-label={showStage ? 'Stage file' : 'Unstage file'}
+                        title={showStage ? 'Stage file (git add)' : 'Unstage file (git reset HEAD --)'}
+                      >
+                        {showStage ? <Check size={14} /> : <Minus size={14} />}
+                      </IconButton>
+                      <ChevronUp
+                        size={14}
+                        className={cn('text-text-3 transition-transform', isCollapsed && 'rotate-180')}
+                      />
+                    </div>
+                  </div>
 
                   {!isCollapsed && (
                     <div className="border-t border-stroke/10">
@@ -390,9 +693,9 @@ export function DiffPage() {
                           <span className="min-w-0 flex-1 truncate">This file is too large to display here.</span>
                           <button
                             className="inline-flex items-center gap-1 text-text-2 hover:text-text-1"
-                            onClick={() => showToast('Open in editor not wired yet', 'info')}
+                            onClick={() => void handleOpenFileInVSCode(diff.path)}
                           >
-                            Open in editor
+                            Open in VS Code
                           </button>
                         </div>
                       ) : isImage ? (
@@ -403,9 +706,9 @@ export function DiffPage() {
                           </div>
                           <button
                             className="inline-flex items-center gap-1 text-text-2 hover:text-text-1"
-                            onClick={() => showToast('Open in editor not wired yet', 'info')}
+                            onClick={() => void handleOpenFileInVSCode(diff.path)}
                           >
-                            Open in editor
+                            Open in VS Code
                           </button>
                         </div>
                       ) : (
@@ -440,17 +743,35 @@ export function DiffPage() {
               className="w-full rounded-xl border border-stroke/10 bg-surface-solid px-3 py-2 text-xs text-text-2 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none"
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setFilterQuery('')
+                  ;(e.currentTarget as HTMLInputElement).blur()
+                }
+              }}
+              ref={filterInputRef}
             />
+            <div className="mt-2 text-[11px] text-text-3">
+              Hotkeys:{' '}
+              <span className="font-mono">/</span> filter, <span className="font-mono">j</span>/<span className="font-mono">k</span> navigate,{' '}
+              <span className="font-mono">s</span> stage, <span className="font-mono">o</span> open, <span className="font-mono">c</span> copy,{' '}
+              <span className="font-mono">r</span> refresh, <span className="font-mono">Esc</span> clear
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {flattened.map(({ node, depth }) => {
-              const isDir = node.type === 'dir'
-              const isExpanded = autoExpand || effectiveExpandedDirs.has(node.path)
-              const isSelected = node.path === resolvedSelectedPath
-              const indent = depth * 12
-              return (
-                <button
-                  key={`${node.type}-${node.path}`}
+	            {flattened.map(({ node, depth }) => {
+	              const isDir = node.type === 'dir'
+	              const isExpanded = autoExpand || effectiveExpandedDirs.has(node.path)
+	              const isSelected = node.path === resolvedSelectedPath
+	              const status = !isDir ? statusByPath.get(node.path) ?? null : null
+	              const indent = depth * 12
+	              return (
+	                <button
+	                  key={`${node.type}-${node.path}`}
+                    ref={(el) => {
+                      sidebarRefs.current[node.path] = el
+                    }}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors',
                     isSelected
@@ -481,14 +802,19 @@ export function DiffPage() {
                     )}
                     {isDir ? (
                       isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />
-                    ) : (
-                      getFileIcon(node.path)
-                    )}
-                    <span className="truncate">{node.name}</span>
-                  </span>
-                </button>
-              )
-            })}
+	                    ) : (
+	                      getFileIcon(node.path)
+	                    )}
+	                    <span className="truncate">{node.name}</span>
+	                    {!isDir && status?.isStaged && (
+	                      <span className="ml-1 rounded-xs border border-stroke/20 bg-surface-hover/[0.08] px-1 py-0.5 text-[10px] font-semibold text-text-3">
+	                        S
+	                      </span>
+	                    )}
+	                  </span>
+	                </button>
+	              )
+	            })}
           </div>
         </aside>
       </div>
@@ -499,30 +825,62 @@ export function DiffPage() {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-stroke/10 px-6 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-text-1">
-          <span>Uncommitted changes</span>
-          <ChevronDown size={16} className="text-text-3" />
+          <span>{diffMode === 'staged' ? 'Staged changes' : 'Unstaged changes'}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-emerald-600">+{stats.additions}</span>
-          <span className="text-xs text-red-500">-{stats.deletions}</span>
+          <span className="text-xs text-status-success">+{stats.additions}</span>
+          <span className="text-xs text-status-error">-{stats.deletions}</span>
+          <span className="text-xs text-text-3">{stats.filesChanged} file(s)</span>
           <button
-            className="rounded-full border border-stroke/20 bg-surface-hover/[0.08] px-3 py-1 text-xs font-semibold text-text-1"
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-semibold',
+              diffMode === 'unstaged'
+                ? 'border-stroke/20 bg-surface-hover/[0.08] text-text-1'
+                : 'border-transparent bg-transparent text-text-3 hover:text-text-1'
+            )}
+            onClick={() => setDiffMode('unstaged')}
           >
-            Unstaged · {stats.filesChanged}
+            Unstaged
           </button>
-          <button className="text-xs font-semibold text-text-3 hover:text-text-1">Staged</button>
+          <button
+            className={cn(
+              'text-xs font-semibold',
+              diffMode === 'staged' ? 'text-text-1' : 'text-text-3 hover:text-text-1'
+            )}
+            onClick={() => setDiffMode('staged')}
+          >
+            Staged
+          </button>
           <button
             className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
-            onClick={() => showToast('Open in editor not wired yet', 'info')}
-            title="Open in editor"
+            onClick={() => void fetchDiff()}
+            title="Refresh"
           >
-            <FolderOpen size={14} />
+            <RefreshCw size={14} />
           </button>
           <button
             className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
-            onClick={() => showToast('More actions not wired yet', 'info')}
+            onClick={() => void handleCopyDiff()}
+            title="Copy diff"
+            disabled={!diffText}
           >
-            <MoreHorizontal size={14} />
+            <Copy size={14} />
+          </button>
+          <button
+            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1 disabled:opacity-50 disabled:pointer-events-none"
+            onClick={() => void handleOpenInVSCode()}
+            disabled={!tauriAvailable}
+            title="Open in VS Code"
+          >
+            <Code2 size={14} />
+          </button>
+          <button
+            className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1 disabled:opacity-50 disabled:pointer-events-none"
+            onClick={() => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG)}
+            disabled={!tauriAvailable}
+            title={tauriAvailable ? 'Commit' : 'Unavailable in web mode'}
+          >
+            <GitCommit size={14} />
           </button>
         </div>
       </div>
@@ -533,19 +891,24 @@ export function DiffPage() {
         <div className="flex items-center justify-center border-t border-stroke/10 bg-surface-solid px-6 py-3 text-xs">
           <div className="flex items-center rounded-full border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)] overflow-hidden">
             <button
-              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1]"
-              onClick={() => showToast('Revert all is not wired yet', 'info')}
+              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1] disabled:opacity-50 disabled:pointer-events-none"
+              onClick={() => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG)}
+              disabled={!tauriAvailable}
             >
-              <RotateCcw size={14} />
-              Revert all
+              <GitCommit size={14} />
+              Commit
             </button>
             <div className="h-4 w-px bg-stroke/20" />
             <button
-              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1]"
-              onClick={() => showToast('Stage all is not wired yet', 'info')}
+              className="inline-flex items-center gap-1 px-4 py-2 font-semibold text-text-2 hover:bg-surface-hover/[0.1] disabled:opacity-50 disabled:pointer-events-none"
+              onClick={() => {
+                if (diffMode === 'staged') void handleUnstageAll()
+                else void handleStageAll()
+              }}
+              disabled={!tauriAvailable}
             >
-              <Plus size={14} />
-              Stage all
+              {diffMode === 'staged' ? <RotateCcw size={14} /> : <Plus size={14} />}
+              {diffMode === 'staged' ? 'Unstage all' : 'Stage all'}
             </button>
           </div>
         </div>

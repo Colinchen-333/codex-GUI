@@ -136,6 +136,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
     recognition.onerror = (event: SpeechRecognitionErrorEv) => {
       clearSilenceTimer()
+      recognitionRef.current?.stop()
 
       switch (event.error) {
         case 'not-allowed':

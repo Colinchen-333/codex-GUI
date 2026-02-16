@@ -3,7 +3,7 @@
  * Extracted from ChatView.tsx for better modularity
  */
 import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from 'react'
-import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, ListTodo, GitBranch, Check, MessageSquare, FileEdit, Zap, Search } from 'lucide-react'
+import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, ListTodo, GitBranch, Check, MessageSquare, FileEdit, Zap, Search, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectFileChanges } from '../../stores/thread/selectors'
@@ -96,10 +96,10 @@ const SendButton = memo(function SendButton({
       className={cn(
         'h-10 w-10 flex items-center justify-center rounded-full transition-all duration-100 shadow-[var(--shadow-1)]',
         isRunning
-          ? 'bg-token-foreground text-token-bg-primary hover:bg-token-foreground/85'
+          ? 'bg-status-warning text-status-warning-foreground hover:bg-status-warning/90'
           : !canSend
             ? 'bg-surface-hover/[0.08] text-text-3 cursor-not-allowed opacity-40'
-            : 'bg-token-foreground text-token-bg-primary hover:bg-token-foreground/85'
+            : 'bg-primary text-primary-foreground hover:bg-primary/90'
       )}
       onClick={isRunning ? onInterrupt : onSend}
       disabled={!isRunning && !canSend}
@@ -420,9 +420,9 @@ export default memo(function ChatInputArea({
 
   // Focus branch search when menu opens
   useEffect(() => {
-    if (isBranchMenuOpen) {
-      setTimeout(() => branchSearchRef.current?.focus(), 50)
-    }
+    if (!isBranchMenuOpen) return
+    const rafId = window.requestAnimationFrame(() => branchSearchRef.current?.focus())
+    return () => window.cancelAnimationFrame(rafId)
   }, [isBranchMenuOpen])
 
   // Approval policy helpers
@@ -489,8 +489,8 @@ export default memo(function ChatInputArea({
 
         <div
           className={cn(
-            'relative rounded-2xl bg-surface-solid border border-white/[0.08] transition-all duration-200 shadow-[var(--shadow-1)]',
-            'hover:border-white/[0.12]',
+            'relative rounded-2xl bg-surface-solid border border-stroke/20 transition-all duration-200 shadow-[var(--shadow-1)]',
+            'hover:border-stroke/30',
             isFocused && 'ring-2 ring-primary/5 border-primary/20 shadow-[var(--shadow-2)]',
             isDragging && 'scale-[1.01] ring-2 ring-primary/20 ring-offset-2'
           )}
@@ -534,7 +534,7 @@ export default memo(function ChatInputArea({
           <div className="px-4 pt-3">
             <textarea
               ref={inputRef}
-              className="w-full max-h-[220px] min-h-[80px] resize-none bg-transparent text-sm text-text-1 focus:outline-none placeholder:text-text-3/70"
+              className="w-full max-h-[220px] min-h-[80px] resize-none bg-transparent text-sm text-text-1 focus:outline-none placeholder:text-text-3"
               placeholder={placeholder}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -569,7 +569,7 @@ export default memo(function ChatInputArea({
               <div ref={addMenuRef} className="relative">
                 <button
                   className={cn(
-                    'h-8 w-8 rounded-full border border-white/[0.08] bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1',
+                    'h-8 w-8 rounded-full border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1',
                     isAddMenuOpen && 'bg-surface-hover/[0.14] text-text-1'
                   )}
                   onClick={() => setIsAddMenuOpen((prev) => !prev)}
@@ -651,7 +651,7 @@ export default memo(function ChatInputArea({
                             role="option"
                             aria-selected={isSelected}
                             className={cn(
-                              'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.08]',
+                              'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.12]',
                               isSelected && 'bg-surface-hover/[0.06]'
                             )}
                             onClick={() => handleSelectModel(model.id)}
@@ -712,7 +712,7 @@ export default memo(function ChatInputArea({
                           role="option"
                           aria-selected={isSelected}
                           className={cn(
-                            'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.08]',
+                            'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.12]',
                             isSelected && 'bg-surface-hover/[0.06]'
                           )}
                           onClick={() => handleSelectApproval(policy)}
@@ -768,7 +768,7 @@ export default memo(function ChatInputArea({
                 aria-expanded={isBranchMenuOpen}
                 aria-haspopup="listbox"
               >
-                <GitBranch size={14} />
+                {isSwitchingBranch ? <Loader2 size={14} className="animate-spin text-primary" /> : <GitBranch size={14} />}
                 <span>{gitBranch}</span>
                 <ChevronDown size={12} className={cn('transition-transform', isBranchMenuOpen && 'rotate-180')} />
               </button>
@@ -785,7 +785,7 @@ export default memo(function ChatInputArea({
                       <input
                         ref={branchSearchRef}
                         type="text"
-                        className="w-full rounded-lg bg-surface-hover/[0.08] py-1.5 pl-8 pr-3 text-xs text-text-1 placeholder:text-text-3/70 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        className="w-full rounded-lg bg-surface-hover/[0.08] py-1.5 pl-8 pr-3 text-xs text-text-1 placeholder:text-text-3 focus:outline-none focus:ring-1 focus:ring-primary/30"
                         placeholder="Find a branch..."
                         value={branchSearch}
                         onChange={(e) => setBranchSearch(e.target.value)}
@@ -806,7 +806,7 @@ export default memo(function ChatInputArea({
                           aria-selected={branch.isCurrent}
                           disabled={branch.isCurrent || isSwitchingBranch}
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover/[0.08]',
+                            'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover/[0.12]',
                             branch.isCurrent && 'bg-surface-hover/[0.06]',
                             isSwitchingBranch && !branch.isCurrent && 'opacity-50'
                           )}

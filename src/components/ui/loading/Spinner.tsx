@@ -46,10 +46,10 @@ const VARIANT_MAP: Record<
   NonNullable<SpinnerProps['variant']>,
   string
 > = {
-  default: 'text-muted-foreground',
+  default: 'text-text-3',
   primary: 'text-primary',
-  destructive: 'text-destructive',
-  success: 'text-green-500',
+  destructive: 'text-status-error',
+  success: 'text-status-success',
 }
 
 /**
@@ -130,7 +130,7 @@ export function SpinnerWithText({
       <Spinner size={size} variant={variant} />
       <span className={cn(
         'text-sm',
-        variant === 'default' ? 'text-muted-foreground' : VARIANT_MAP[variant]
+        variant === 'default' ? 'text-text-3' : VARIANT_MAP[variant]
       )}>
         {text}
       </span>
@@ -177,7 +177,7 @@ export function CenteredSpinner({
     >
       <Spinner size={size} variant={variant} />
       {message && (
-        <p className="mt-4 text-sm text-muted-foreground">{message}</p>
+        <p className="mt-4 text-sm text-text-3">{message}</p>
       )}
     </div>
   )

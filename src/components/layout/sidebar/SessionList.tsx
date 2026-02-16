@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback } from 'react'
-import { Star, Pin, PinOff, Archive, Pencil, Trash2, Copy, GitBranch } from 'lucide-react'
+import { Star, Pin, PinOff, Archive, Pencil, Trash2, Copy, GitBranch, FolderOpen, MessageSquare } from 'lucide-react'
 import { List } from 'react-window'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 import { cn, formatAbsoluteTime } from '../../../lib/utils'
@@ -103,17 +103,17 @@ function SessionRowInner({
   const projectPath = getProjectPath(session.projectId)
   const contextMenuItems: ContextMenuItem[] = [
     {
-      label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+      label: session.isFavorite ? 'Unpin session' : 'Pin session',
       icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
       onClick: () => onToggleFavorite(session.sessionId, session.isFavorite),
     },
     {
-      label: 'Rename thread',
+      label: 'Rename session',
       icon: <Pencil size={14} />,
       onClick: () => onRename(session.sessionId, displayName),
     },
     {
-      label: 'Archive thread',
+      label: 'Archive session',
       icon: <Archive size={14} />,
       onClick: () => onArchive(session.sessionId, displayName),
     },
@@ -361,18 +361,18 @@ export const SessionList = memo(function SessionList({
           const projectPath = getProjectPath(session.projectId)
           const contextMenuItems: ContextMenuItem[] = [
             {
-              label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+              label: session.isFavorite ? 'Unpin session' : 'Pin session',
               icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
               onClick: () =>
                 onToggleFavorite(session.sessionId, session.isFavorite),
             },
             {
-              label: 'Rename thread',
+              label: 'Rename session',
               icon: <Pencil size={14} />,
               onClick: () => onRename(session.sessionId, displayName),
             },
             {
-              label: 'Archive thread',
+              label: 'Archive session',
               icon: <Archive size={14} />,
               onClick: () => onArchive(session.sessionId, displayName),
             },
@@ -402,7 +402,7 @@ export const SessionList = memo(function SessionList({
             <ContextMenu key={session.sessionId} items={contextMenuItems}>
               <button
                 className={cn(
-                  'group w-full h-[36px] rounded-[6px] px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden flex flex-col justify-center',
+                  'group w-full h-[36px] rounded-md px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden flex flex-col justify-center',
                   isSelected
                     ? 'bg-surface-hover/[0.08] text-text-1'
                     : 'text-text-2 hover:bg-surface-hover/[0.04] hover:text-text-1',
@@ -446,7 +446,7 @@ export const SessionList = memo(function SessionList({
                   <span
                     className={cn(
                       'transition-colors',
-                      isRunning && 'animate-breathe-text text-blue-400',
+                      isRunning && 'animate-breathe-text text-primary',
                       isSelected && 'text-text-2'
                     )}
                   >
@@ -464,7 +464,7 @@ export const SessionList = memo(function SessionList({
                       <span className="opacity-50">·</span>
                       <span
                         className={cn(
-                          'px-1.5 py-0.5 rounded-[4px] bg-surface-hover/[0.06] text-[10px] truncate max-w-[120px]',
+                          'px-1.5 py-0.5 rounded bg-surface-hover/[0.06] text-[10px] truncate max-w-[120px]',
                           isSelected && 'bg-surface-hover/[0.1]'
                         )}
                       >
@@ -478,7 +478,7 @@ export const SessionList = memo(function SessionList({
                       <span className="opacity-50">·</span>
                       <span
                         className={cn(
-                          'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[4px] bg-primary/10 text-primary text-[10px] truncate max-w-[100px]',
+                          'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] truncate max-w-[100px]',
                         )}
                       >
                         <GitBranch size={9} className="flex-shrink-0" />
@@ -540,7 +540,7 @@ export const SessionList = memo(function SessionList({
       <div className="flex h-36 items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-3">
-            <span className="text-base">📁</span>
+            <FolderOpen size={16} className="text-text-2" aria-hidden="true" />
           </div>
           <p className="text-sm font-medium text-text-2">Select a project</p>
           <p className="text-xs text-text-3">Choose a project to see sessions</p>
@@ -584,7 +584,7 @@ export const SessionList = memo(function SessionList({
       <div className="flex h-40 items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-3">
-            <span className="text-base">💬</span>
+            <MessageSquare size={16} className="text-text-2" aria-hidden="true" />
           </div>
           <p className="text-sm font-medium text-text-2">
             {isGlobalSearch ? 'No matching sessions' : 'No sessions yet'}

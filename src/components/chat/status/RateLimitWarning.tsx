@@ -60,14 +60,14 @@ export const RateLimitWarning = memo(function RateLimitWarning() {
   const resetTime = formatResetTime(primary?.resetsAt)
 
   return (
-    <div className="mb-3 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
+    <div className="mb-3 px-4 py-3 rounded-2xl bg-status-warning-muted border border-status-warning/30 shadow-[var(--shadow-1)] animate-in fade-in slide-in-from-bottom-2 duration-150">
       <div className="flex items-start gap-3">
-        <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+        <AlertCircle size={18} className="text-status-warning shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-amber-600 dark:text-amber-400">
+          <div className="text-sm font-semibold text-status-warning">
             Heads up: Approaching rate limit
           </div>
-          <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+          <div className="text-xs text-text-3 mt-1 space-y-0.5">
             {primaryHigh && (
               <div>
                 Primary: {Math.round(primary!.usedPercent)}% used
@@ -76,13 +76,14 @@ export const RateLimitWarning = memo(function RateLimitWarning() {
             )}
             {secondaryHigh && <div>Secondary: {Math.round(secondary!.usedPercent)}% used</div>}
             {rateLimits.planType && (
-              <div className="text-muted-foreground/70">Plan: {rateLimits.planType}</div>
+              <div className="opacity-70">Plan: {rateLimits.planType}</div>
             )}
           </div>
         </div>
         <button
           onClick={() => setDismissed(true)}
-          className="text-muted-foreground hover:text-foreground shrink-0"
+          className="shrink-0 p-1 -m-1 rounded-md text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.06] transition-colors"
+          aria-label="Dismiss rate limit warning"
         >
           <X size={14} />
         </button>

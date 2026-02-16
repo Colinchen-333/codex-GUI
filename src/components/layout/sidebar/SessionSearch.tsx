@@ -1,6 +1,7 @@
 import { memo, useState, useRef, useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
 import { useSessionsStore } from '../../../stores/sessions'
+import { Input } from '../../ui/Input'
 
 interface SessionSearchProps {
   /** Whether search is visible (typically only on sessions tab) */
@@ -89,18 +90,14 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
   return (
     <div className="mb-3">
       <div className="relative">
-        <input
+        <Input
           type="text"
           placeholder="Search all sessions..."
-          className="h-9 w-full rounded-lg border border-token-input-border bg-token-input-background px-3 pr-8 text-[14px] text-token-input-foreground placeholder:text-token-input-placeholder-foreground focus:border-token-focus-border focus:outline-none focus:ring-2 focus:ring-primary/10"
+          className="pr-9"
           value={localSearchQuery}
           onChange={(e) => handleSearchChange(e.target.value)}
           aria-label="Search sessions"
-          aria-describedby={
-            isGlobalSearch && searchResults.length > 0
-              ? 'search-results-count'
-              : undefined
-          }
+          aria-describedby={isGlobalSearch && searchResults.length > 0 ? 'search-results-count' : undefined}
         />
         {isSearching && (
           <div
@@ -114,7 +111,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
         )}
         {localSearchQuery && !isSearching && (
           <button
-            className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-token-text-tertiary transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+            className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
             onClick={handleClearSearch}
             aria-label="Clear search"
           >
@@ -125,7 +122,7 @@ export const SessionSearch = memo(function SessionSearch({ visible }: SessionSea
       {isGlobalSearch && searchResults.length > 0 && (
         <div
           id="search-results-count"
-          className="mt-1.5 px-1 text-xs text-token-text-tertiary"
+          className="mt-1.5 px-1 text-xs text-text-3"
           aria-live="polite"
         >
           Found {searchResults.length} session(s) across all projects

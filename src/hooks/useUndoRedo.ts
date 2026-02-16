@@ -61,8 +61,8 @@ export function useUndoRedo() {
   /**
    * Perform undo based on operation type
    */
-  const performUndo = useCallback((operation: UndoableOperation | null) => {
-    if (!operation) return
+  const performUndo = useCallback((operation: UndoableOperation | null): boolean => {
+    if (!operation) return false
 
     const { previousState, threadId } = operation
 
@@ -73,7 +73,7 @@ export function useUndoRedo() {
         if (previousState.itemId) {
           deleteMessage(previousState.itemId, threadId)
         }
-        break
+        return true
       }
 
       case 'deleteMessage': {
@@ -86,7 +86,7 @@ export function useUndoRedo() {
             restoreItemOrder(previousState.itemOrder, threadId)
           }
         }
-        break
+        return true
       }
 
       case 'editMessage': {
@@ -99,7 +99,7 @@ export function useUndoRedo() {
             threadId
           )
         }
-        break
+        return true
       }
 
       case 'revertSnapshot': {
@@ -108,7 +108,7 @@ export function useUndoRedo() {
         toast.info('Snapshot undo not supported', {
           message: 'Snapshot restoration cannot be undone. Please restore a different snapshot.',
         })
-        break
+        return false
       }
 
       case 'clearThread': {
@@ -117,16 +117,18 @@ export function useUndoRedo() {
         if (previousState.threadState) {
           restoreThreadState(previousState.threadState, threadId)
         }
-        break
+        return true
       }
     }
+
+    return false
   }, [toast])
 
   /**
    * Perform redo based on operation type
    */
-  const performRedo = useCallback((operation: UndoableOperation | null) => {
-    if (!operation) return
+  const performRedo = useCallback((operation: UndoableOperation | null): boolean => {
+    if (!operation) return false
 
     const { threadId } = operation
 
@@ -136,7 +138,7 @@ export function useUndoRedo() {
         // This would require storing the original message content
         // For now, we'll just show a message
         toast.info('Message resend', { message: 'Please resend the message manually.' })
-        break
+        return false
       }
 
       case 'deleteMessage': {
@@ -145,22 +147,24 @@ export function useUndoRedo() {
         if (operation.previousState.itemId) {
           deleteMessage(operation.previousState.itemId, threadId)
         }
-        break
+        return true
       }
 
       case 'editMessage': {
         // Redo: Apply the edit again
         // This would require storing the edited content
         toast.info('Edit redo', { message: 'Please edit the message again.' })
-        break
+        return false
       }
 
       case 'revertSnapshot':
       case 'clearThread': {
         toast.info('Redo not supported', { message: 'This operation cannot be redone.' })
-        break
+        return false
       }
     }
+
+    return false
   }, [toast])
 
   /**
@@ -176,9 +180,10 @@ export function useUndoRedo() {
     if (!operation) return
 
     // Perform the undo based on operation type
-    performUndo(operation)
-
-    toast.success('Undo successful', { message: `Undone: ${operation.description}` })
+    const ok = performUndo(operation)
+    if (ok) {
+      toast.success('Undo successful', { message: `Undone: ${operation.description}` })
+    }
   }, [canUndo, undoOperation, performUndo, toast])
 
   /**
@@ -194,9 +199,10 @@ export function useUndoRedo() {
     if (!operation) return
 
     // Perform the redo based on operation type
-    performRedo(operation)
-
-    toast.success('Redo successful', { message: `Redone: ${operation.description}` })
+    const ok = performRedo(operation)
+    if (ok) {
+      toast.success('Redo successful', { message: `Redone: ${operation.description}` })
+    }
   }, [canRedo, redoOperation, performRedo, toast])
 
   return useMemo(

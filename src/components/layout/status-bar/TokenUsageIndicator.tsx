@@ -38,14 +38,14 @@ export const TokenUsageIndicator = memo(function TokenUsageIndicator({
 
   // Color based on usage (inverted - show remaining)
   const getColor = (remainPct: number) => {
-    if (remainPct <= 10) return 'bg-rose-400/70'
-    if (remainPct <= 30) return 'bg-amber-400/70'
+    if (remainPct <= 10) return 'bg-status-error/70'
+    if (remainPct <= 30) return 'bg-status-warning/70'
     return 'bg-surface-selected/[0.28]'
   }
 
   const getTextColor = (remainPct: number) => {
-    if (remainPct <= 10) return 'text-rose-400/80'
-    if (remainPct <= 30) return 'text-amber-400/80'
+    if (remainPct <= 10) return 'text-status-error/80'
+    if (remainPct <= 30) return 'text-status-warning/80'
     return 'text-text-3'
   }
 

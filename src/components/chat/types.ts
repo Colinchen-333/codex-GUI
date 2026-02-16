@@ -34,6 +34,7 @@ export interface AgentMessageContentType {
 }
 
 export interface CommandExecutionContentType {
+  callId: string
   command: string | string[]
   cwd: string
   output?: string
@@ -43,6 +44,7 @@ export interface CommandExecutionContentType {
   durationMs?: number
   isRunning?: boolean
   needsApproval?: boolean
+  approved?: boolean
   reason?: string
   commandActions?: string[]
   proposedExecpolicyAmendment?: { command: string[] } | null
@@ -51,7 +53,7 @@ export interface CommandExecutionContentType {
 export interface FileChangeContentType {
   changes: Array<{
     path: string
-    kind: string
+    kind: 'add' | 'modify' | 'delete' | 'rename'
     diff: string
     oldPath?: string
   }>
@@ -59,6 +61,7 @@ export interface FileChangeContentType {
   approved?: boolean
   applied?: boolean
   snapshotId?: string
+  output?: string
   reason?: string
 }
 
@@ -87,7 +90,7 @@ export interface WebSearchContentType {
 }
 
 export interface ReviewContentType {
-  phase: 'started' | 'complete'
+  phase: 'started' | 'completed'
   text: string
 }
 

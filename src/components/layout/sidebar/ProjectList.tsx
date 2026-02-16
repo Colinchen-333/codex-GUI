@@ -43,7 +43,7 @@ export const ProjectList = memo(function ProjectList({
       <div className="flex h-36 items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-surface-hover/[0.12] text-text-2">
-            <span className="text-lg">📁</span>
+            <FolderOpen size={18} className="text-text-2" aria-hidden="true" />
           </div>
           <p className="text-sm font-semibold text-text-1">No projects yet</p>
           <p className="text-xs text-text-3">Add a project to get started</p>
@@ -98,7 +98,7 @@ export const ProjectList = memo(function ProjectList({
           <ContextMenu key={project.id} items={contextMenuItems}>
             <button
               className={cn(
-                'group flex w-full flex-col justify-center h-[36px] rounded-[6px] px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden',
+                'group flex w-full flex-col justify-center h-[36px] rounded-md px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden',
                 isSelected
                   ? 'bg-surface-hover/[0.08] text-text-1'
                   : 'text-text-2 hover:bg-surface-hover/[0.04] hover:text-text-1'

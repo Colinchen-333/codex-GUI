@@ -7,28 +7,33 @@ import { useFocusTrap } from '../../hooks/useFocusTrap'
 import { Button } from '../ui/Button'
 import { IconButton } from '../ui/IconButton'
 import { useToast } from '../ui/useToast'
-import { CreatePRDialog } from './CreatePRDialog'
+import { CreatePRDialog } from '../LazyComponents'
+import { isTauriAvailable } from '../../lib/tauri'
 
 type CommitStep = 'review' | 'pushing' | 'done'
 
 interface CommitDialogProps {
   isOpen: boolean
+  initialIntent?: 'commit' | 'pr'
   onClose: () => void
 }
 
 const STATUS_ICONS: Record<string, { icon: React.ReactNode; color: string }> = {
-  M: { icon: <FileText size={14} />, color: 'text-blue-400' },
-  A: { icon: <Plus size={14} />, color: 'text-emerald-400' },
-  D: { icon: <Minus size={14} />, color: 'text-red-400' },
-  R: { icon: <FileText size={14} />, color: 'text-purple-400' },
-  '?': { icon: <CircleDot size={14} />, color: 'text-yellow-400' },
+  M: { icon: <FileText size={14} />, color: 'text-status-info' },
+  A: { icon: <Plus size={14} />, color: 'text-status-success' },
+  D: { icon: <Minus size={14} />, color: 'text-status-error' },
+  R: { icon: <FileText size={14} />, color: 'text-status-info' },
+  '?': { icon: <CircleDot size={14} />, color: 'text-status-warning' },
 }
 
-export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
+export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: CommitDialogProps) {
   const { selectedProjectId, projects, gitInfo } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const projectGitInfo = selectedProjectId ? gitInfo[selectedProjectId] : null
   const { toast } = useToast()
+  const tauriAvailable = isTauriAvailable()
+  const isMac =
+    typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
 
   const [commitMessage, setCommitMessage] = useState('')
   const [files, setFiles] = useState<GitFileStatus[]>([])
@@ -46,16 +51,28 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
   const [pushCompleted, setPushCompleted] = useState(false)
 
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const commitMessageRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useFocusTrap<HTMLDivElement>({
     isActive: isOpen,
     onEscape: onClose,
-    initialFocusRef: closeButtonRef,
+    initialFocus: tauriAvailable && !!selectedProject?.path ? commitMessageRef : closeButtonRef,
     restoreFocus: true,
   })
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowPRDialog(false)
+      return
+    }
+    if (initialIntent === 'pr') {
+      setShowPRDialog(true)
+    }
+  }, [initialIntent, isOpen])
 
   const stagedFiles = files.filter((f) => f.isStaged)
   const unstagedFiles = files.filter((f) => !f.isStaged)
   const selectedCount = selectedFiles.size
+  const primaryActionLabel = remoteInfo?.remote ? 'Commit & Push' : 'Commit'
 
   const fetchStatus = useCallback(async () => {
     if (!selectedProject?.path) return
@@ -84,14 +101,42 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
 
   useEffect(() => {
     if (isOpen) {
-      void fetchStatus()
+      if (tauriAvailable) void fetchStatus()
       setCommitMessage('')
       setStep('review')
       setCommitSha(null)
-      setError(null)
+      setError(tauriAvailable ? null : 'Unavailable in web mode')
       setPushCompleted(false)
     }
-  }, [isOpen, fetchStatus])
+  }, [isOpen, fetchStatus, tauriAvailable])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.isComposing) return
+      if (step !== 'review') return
+      if (selectedCount === 0) return
+      if (isCommitting) return
+
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+      if (!modifier) return
+      if (e.key !== 'Enter') return
+
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+
+      if (remoteInfo?.remote) {
+        void handleCommitAndPush()
+      } else {
+        void handleCommit()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [handleCommit, handleCommitAndPush, isCommitting, isMac, isOpen, remoteInfo?.remote, selectedCount, step])
 
   const handleToggleFile = (file: GitFileStatus) => {
     const key = `${file.isStaged ? 'staged' : 'unstaged'}:${file.path}`
@@ -123,8 +168,11 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
     })
   }
 
-  const handleCommit = async () => {
-    if (!selectedProject?.path || selectedCount === 0) return
+  const handleCommit = useCallback(async () => {
+    if (!selectedProject?.path || selectedFiles.size === 0) return
+
+    const stagedFiles = files.filter((f) => f.isStaged)
+    const unstagedFiles = files.filter((f) => !f.isStaged)
 
     setIsCommitting(true)
     setError(null)
@@ -165,9 +213,9 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
     } finally {
       setIsCommitting(false)
     }
-  }
+  }, [commitMessage, files, selectedFiles, selectedProject?.path, toast])
 
-  const handlePush = async () => {
+  const handlePush = useCallback(async () => {
     if (!selectedProject?.path || !remoteInfo?.remote || !remoteInfo?.branch) return
 
     setIsPushing(true)
@@ -193,10 +241,13 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
     } finally {
       setIsPushing(false)
     }
-  }
+  }, [remoteInfo?.branch, remoteInfo?.remote, selectedProject?.path, toast])
 
-  const handleCommitAndPush = async () => {
-    if (!selectedProject?.path || selectedCount === 0) return
+  const handleCommitAndPush = useCallback(async () => {
+    if (!selectedProject?.path || selectedFiles.size === 0) return
+
+    const stagedFiles = files.filter((f) => f.isStaged)
+    const unstagedFiles = files.filter((f) => !f.isStaged)
 
     setIsCommitting(true)
     setError(null)
@@ -257,7 +308,7 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
       setIsCommitting(false)
       setIsPushing(false)
     }
-  }
+  }, [commitMessage, files, remoteInfo?.branch, remoteInfo?.remote, selectedFiles, selectedProject?.path, toast])
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -274,7 +325,7 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
       <label
         key={key}
         className={cn(
-          'flex items-center gap-2.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] cursor-pointer transition-colors',
+          'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors',
           isSelected ? 'bg-surface-hover/[0.08]' : 'hover:bg-surface-hover/[0.04]'
         )}
       >
@@ -286,7 +337,7 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
         />
         <div
           className={cn(
-            'h-4 w-4 rounded-[var(--radius-xs)] border flex-shrink-0 flex items-center justify-center transition-all',
+            'h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center transition-all',
             isSelected
               ? 'border-primary bg-primary'
               : 'border-stroke/40 bg-surface-solid'
@@ -309,6 +360,86 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
 
   if (!isOpen) return null
 
+  if (!tauriAvailable) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+        onClick={handleBackdropClick}
+        role="presentation"
+      >
+        <div
+          ref={containerRef}
+          className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="commit-dialog-title"
+          tabIndex={-1}
+        >
+          <div className="flex items-center justify-between p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-hover/[0.08]">
+                <GitCommitIcon size={18} className="text-text-2" />
+              </div>
+              <h2 id="commit-dialog-title" className="text-[16px] font-semibold text-text-1">
+                Commit Changes
+              </h2>
+            </div>
+            <IconButton ref={closeButtonRef} size="sm" onClick={onClose} aria-label="Close">
+              <X size={16} />
+            </IconButton>
+          </div>
+
+          <div className="px-5 pb-5">
+            <div className="rounded-sm border border-status-warning/30 bg-status-warning-muted px-3 py-2">
+              <p className="text-[12px] text-status-warning">Unavailable in web mode</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!selectedProject?.path) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+        onClick={handleBackdropClick}
+        role="presentation"
+      >
+        <div
+          ref={containerRef}
+          className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="commit-dialog-title"
+          tabIndex={-1}
+        >
+          <div className="flex items-center justify-between p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-hover/[0.08]">
+                <GitCommitIcon size={18} className="text-text-2" />
+              </div>
+              <h2 id="commit-dialog-title" className="text-[16px] font-semibold text-text-1">
+                Commit Changes
+              </h2>
+            </div>
+            <IconButton ref={closeButtonRef} size="sm" onClick={onClose} aria-label="Close">
+              <X size={16} />
+            </IconButton>
+          </div>
+
+          <div className="px-5 pb-5">
+            <div className="rounded-sm border border-status-warning/30 bg-status-warning-muted px-3 py-2">
+              <p className="text-[12px] text-status-warning">No project selected</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
@@ -317,7 +448,7 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
     >
       <div
         ref={containerRef}
-        className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+        className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -343,7 +474,7 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
         <div className="flex items-center justify-between px-5 pt-4">
           <div className="flex items-center gap-3">
             <span className="text-[13px] text-text-3">Branch</span>
-            <div className="flex items-center gap-1.5 rounded-[var(--radius-xs)] border border-stroke/20 bg-surface-hover/[0.05] px-2 py-0.5">
+            <div className="flex items-center gap-1.5 rounded border border-stroke/20 bg-surface-hover/[0.05] px-2 py-0.5">
               <GitBranch size={12} className="text-text-2" />
               <span className="text-[12px] font-medium text-text-1">
                 {projectGitInfo?.branch || remoteInfo?.branch || 'main'}
@@ -353,18 +484,18 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
           <div className="flex items-center gap-2 text-[12px] font-medium">
             <span className="text-text-3">{files.length} files</span>
             {remoteInfo && remoteInfo.ahead > 0 && (
-              <span className="text-emerald-400">{remoteInfo.ahead} ahead</span>
+              <span className="text-status-success">{remoteInfo.ahead} ahead</span>
             )}
             {remoteInfo && remoteInfo.behind > 0 && (
-              <span className="text-red-400">{remoteInfo.behind} behind</span>
+              <span className="text-status-error">{remoteInfo.behind} behind</span>
             )}
           </div>
         </div>
 
         {/* Error banner */}
         {error && (
-          <div className="mx-5 mt-3 rounded-[var(--radius-sm)] border border-status-error/30 bg-status-error-muted px-3 py-2">
-            <p className="text-[12px] text-red-400">{error}</p>
+          <div className="mx-5 mt-3 rounded-sm border border-status-error/30 bg-status-error-muted px-3 py-2">
+            <p className="text-[12px] text-status-error">{error}</p>
           </div>
         )}
 
@@ -469,32 +600,43 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
                 value={commitMessage}
                 onChange={(e) => setCommitMessage(e.target.value)}
                 placeholder="Leave blank to use default message"
-                className="w-full h-[72px] rounded-[var(--radius-sm)] border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2 text-[13px] text-text-1 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none resize-none"
+                className="w-full h-[72px] rounded-sm border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2 text-[13px] text-text-1 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none resize-none"
+                ref={commitMessageRef}
               />
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2 p-5">
-              <Button
-                onClick={handleCommit}
-                disabled={selectedCount === 0 || isCommitting}
-                loading={isCommitting}
-                variant="secondary"
-                className="flex-1"
-              >
-                <GitCommitIcon size={14} />
-                Commit ({selectedCount})
-              </Button>
-              <Button
-                onClick={handleCommitAndPush}
-                disabled={selectedCount === 0 || isCommitting || !remoteInfo?.remote}
-                loading={isCommitting}
-                variant="primary"
-                className="flex-1"
-              >
-                <Upload size={14} />
-                Commit & Push
-              </Button>
+            <div className="p-5 pt-3">
+              <div className="mb-2 flex items-center justify-between text-[11px] text-text-3">
+                <span>
+                  <span className="font-mono">{isMac ? 'Cmd' : 'Ctrl'}+Enter</span> to {primaryActionLabel}
+                </span>
+                <span>
+                  <span className="font-mono">Esc</span> to close
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleCommit}
+                  disabled={selectedCount === 0 || isCommitting}
+                  loading={isCommitting}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  <GitCommitIcon size={14} />
+                  Commit ({selectedCount})
+                </Button>
+                <Button
+                  onClick={handleCommitAndPush}
+                  disabled={selectedCount === 0 || isCommitting || !remoteInfo?.remote}
+                  loading={isCommitting}
+                  variant="primary"
+                  className="flex-1"
+                >
+                  <Upload size={14} />
+                  Commit & Push
+                </Button>
+              </div>
             </div>
           </>
         )}
@@ -514,8 +656,8 @@ export function CommitDialog({ isOpen, onClose }: CommitDialogProps) {
         {step === 'done' && (
           <div className="px-5 py-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
-                <Check size={16} className="text-emerald-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-status-success-muted">
+                <Check size={16} className="text-status-success" />
               </div>
               <div>
                 <p className="text-[14px] text-text-1 font-medium">

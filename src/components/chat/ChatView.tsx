@@ -9,6 +9,7 @@
  * - useChatCommands: Command context builder hook
  */
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import { ArrowDown } from 'lucide-react'
 import type { ListImperativeAPI } from 'react-window'
 // useThreadStore imported for potential future use - currently using props
 import { useProjectsStore, type ProjectsState } from '../../stores/projects'
@@ -24,6 +25,7 @@ import ChatInputArea from './ChatInputArea'
 import { DragOverlay, useChatImageUpload } from './ChatImageUpload'
 import { useChatCommands } from './useChatCommands'
 import { useMessageSubmission } from './useMessageSubmission'
+import { cn } from '../../lib/utils'
 
 export function ChatView() {
   // Store selectors
@@ -36,6 +38,8 @@ export function ChatView() {
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [showReviewSelector, setShowReviewSelector] = useState(false)
+
+  const [showScrollButton, setShowScrollButton] = useState(false)
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -52,6 +56,24 @@ export function ChatView() {
     handleDragLeave,
     handleDrop,
   } = useChatImageUpload(setAttachedImages, setIsDragging)
+
+  const handleAutoScrollChange = useCallback((isAutoScrolling: boolean) => {
+    setShowScrollButton(!isAutoScrolling)
+  }, [])
+
+  const handleScrollToBottom = useCallback(() => {
+    const thread = useThreadStore.getState()
+    const focusedId = thread.focusedThreadId
+    const focusedThreadData = focusedId ? thread.threads[focusedId] : null
+    const count = focusedThreadData?.itemOrder?.length ?? 0
+    if (virtualListRef.current && count > 0) {
+      virtualListRef.current.scrollToRow({
+        index: count - 1,
+        align: 'end',
+        behavior: 'smooth',
+      })
+    }
+  }, [])
 
   const {
     buildCommandContext,
@@ -83,6 +105,9 @@ export function ChatView() {
 
   const escapePending = useAppStore((state: AppState) => state.escapePending)
   const escapeToastShownRef = useRef(false)
+  const scrollToItemId = useAppStore((state: AppState) => state.scrollToItemId)
+  const clearScrollToItemId = useAppStore((state: AppState) => state.clearScrollToItemId)
+  const focusRafRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (escapePending && !escapeToastShownRef.current) {
@@ -93,6 +118,58 @@ export function ChatView() {
       escapeToastShownRef.current = false
     }
   }, [escapePending, showToast])
+
+  const focusApprovalPromptForItem = useCallback((itemId: string) => {
+    if (focusRafRef.current) {
+      window.cancelAnimationFrame(focusRafRef.current)
+      focusRafRef.current = null
+    }
+
+    const escaped =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(itemId) : itemId
+    const base = `[data-item-id="${escaped}"]`
+    const selectors = [
+      `${base} [aria-label="Approval options"]`,
+      `${base} [aria-label="File change approval options"]`,
+    ]
+
+    let attempts = 0
+    const tryFocus = () => {
+      attempts += 1
+      const el = document.querySelector(selectors.join(', ')) as HTMLElement | null
+      if (el) {
+        el.focus({ preventScroll: true })
+        focusRafRef.current = null
+        return
+      }
+      if (attempts >= 12) {
+        focusRafRef.current = null
+        return
+      }
+      focusRafRef.current = window.requestAnimationFrame(tryFocus)
+    }
+
+    focusRafRef.current = window.requestAnimationFrame(tryFocus)
+  }, [])
+
+  // Cross-component scroll requests (for example: jumping to pending approvals)
+  useEffect(() => {
+    if (!scrollToItemId || !focusedThread) return
+    const index = focusedThread.itemOrder.indexOf(scrollToItemId)
+    if (index < 0) return
+    const rafId = window.requestAnimationFrame(() => {
+      virtualListRef.current?.scrollToRow({ index, align: 'start', behavior: 'instant' })
+      clearScrollToItemId()
+      focusApprovalPromptForItem(scrollToItemId)
+    })
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      if (focusRafRef.current) {
+        window.cancelAnimationFrame(focusRafRef.current)
+        focusRafRef.current = null
+      }
+    }
+  }, [scrollToItemId, focusedThread, clearScrollToItemId, focusApprovalPromptForItem])
 
   // Handle review target selection from dialog
   // P0 Fix: Added proper error handling and use activeThread from hook to avoid stale closure
@@ -130,7 +207,14 @@ export function ChatView() {
   }, [focusedThread])
 
   const handleQuickContinue = useCallback(() => {
-    setInputValue('继续')
+    setInputValue('Continue')
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }, [setInputValue])
+
+  const handleSuggestionClick = useCallback((text: string) => {
+    setInputValue(text)
     requestAnimationFrame(() => {
       inputRef.current?.focus()
     })
@@ -144,7 +228,7 @@ export function ChatView() {
             className="rounded-full border border-stroke/20 bg-surface-hover/[0.08] px-4 py-2 text-sm font-semibold text-text-2 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.14]"
             onClick={handleQuickContinue}
           >
-            继续
+            Continue
           </button>
         </div>
       )}
@@ -162,7 +246,23 @@ export function ChatView() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onAutoScrollChange={handleAutoScrollChange}
+        onSuggestionClick={handleSuggestionClick}
       />
+
+      {/* Scroll to bottom button */}
+      <button
+        onClick={handleScrollToBottom}
+        className={cn(
+          'absolute bottom-28 right-6 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-stroke bg-surface-solid shadow-lg transition-all duration-200',
+          showScrollButton
+            ? 'opacity-100 translate-y-0'
+            : 'pointer-events-none opacity-0 translate-y-2'
+        )}
+        aria-label="Scroll to bottom"
+      >
+        <ArrowDown size={16} className="text-text-2" />
+      </button>
 
       {/* Input Area */}
       <ChatInputArea

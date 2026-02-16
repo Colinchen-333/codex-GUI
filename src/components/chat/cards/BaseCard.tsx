@@ -394,7 +394,7 @@ export const CardOutput = memo(function CardOutput({
         'overflow-auto rounded-lg p-3 font-mono text-xs scrollbar-thin scrollbar-thumb-border whitespace-pre-wrap',
         maxHeight,
         error
-          ? 'bg-red-50/40 dark:bg-red-900/10 text-red-700 dark:text-red-300'
+          ? 'bg-status-error-muted text-status-error'
           : 'bg-surface-hover/[0.08] text-text-2',
         className
       )}

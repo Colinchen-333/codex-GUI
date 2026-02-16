@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { log } from './logger'
 import { withCache, clearCache, clearAllCache, CACHE_KEYS, CACHE_TTL } from './apiCache'
+import { isTauriAvailable } from './tauri'
 
 // ==================== Timeout Utility ====================
 
@@ -17,18 +18,19 @@ async function invokeWithTimeout<T>(
   args?: Record<string, unknown>,
   timeoutMs: number = 30000
 ): Promise<T> {
+  // Avoid leaving dangling timers around on successful invocations.
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       reject(new Error(`Request timeout after ${timeoutMs}ms: ${command}`))
     }, timeoutMs)
   })
 
-  return Promise.race([invoke<T>(command, args), timeoutPromise])
-}
-
-function isTauriAvailable(): boolean {
-  if (typeof window === 'undefined') return false
-  return typeof (window as { __TAURI__?: { core?: { invoke?: unknown } } }).__TAURI__?.core?.invoke === 'function'
+  try {
+    return await Promise.race([invoke<T>(command, args), timeoutPromise])
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
 }
 
 function invokeOrFallback<T>(
@@ -55,7 +57,7 @@ export interface Project {
 }
 
 // Thread mode for session creation
-export type ThreadMode = 'local' | 'worktree' | 'cloud'
+export type ThreadMode = 'local' | 'worktree'
 
 // Session status types for agent state tracking
 export type SessionStatus = 'idle' | 'running' | 'completed' | 'failed' | 'interrupted'
@@ -222,6 +224,17 @@ export interface LoginResponse {
   authUrl: string | null
 }
 
+export interface AppPaths {
+  appDataDir: string | null
+  logDir: string | null
+}
+
+export interface LogTailResponse {
+  file: string | null
+  content: string
+  truncated: boolean
+}
+
 export interface ReasoningEffortOption {
   reasoningEffort: string
   description: string
@@ -329,6 +342,8 @@ export interface GitRemoteInfo {
   behind: number
 }
 
+export type GhCliStatus = 'ready' | 'not-installed' | 'not-authenticated'
+
 export interface WorktreeInfo {
   path: string
   branch: string
@@ -394,11 +409,15 @@ export const projectApi = {
   gitDiffBranch: (projectPath: string, baseBranch: string) =>
     invokeWithTimeout<string>('git_diff_branch', { projectPath, baseBranch }, 20000),
   listFiles: (path: string, query?: string, limit?: number) =>
-    invoke<FileEntry[]>('list_project_files', { path, query, limit }),
+    isTauriAvailable()
+      ? invoke<FileEntry[]>('list_project_files', { path, query, limit })
+      : Promise.reject(new Error('Unavailable in web mode')),
   validateDirectory: (path: string) =>
     invoke<string>('validate_project_directory', { path }),
   readProjectFile: (projectId: string, relativePath: string) =>
-    invoke<number[]>('read_project_file', { projectId, relativePath }),
+    isTauriAvailable()
+      ? invoke<number[]>('read_project_file', { projectId, relativePath })
+      : Promise.reject(new Error('Unavailable in web mode')),
   getGitBranches: (path: string) => invoke<GitBranch[]>('get_git_branches', { path }),
   getGitCommits: (path: string, limit?: number) =>
     invoke<GitCommit[]>('get_git_commits', { path, limit }),
@@ -420,7 +439,7 @@ export const projectApi = {
     ),
   // PR operations
   checkGhCli: (projectPath: string) =>
-    invokeOrFallback<boolean>(false, 'check_gh_cli', { projectPath }),
+    invokeOrFallback<GhCliStatus>('not-installed', 'check_gh_cli', { projectPath }),
   getCurrentBranch: (projectPath: string) =>
     invoke<string>('get_current_branch', { projectPath }),
   createPullRequest: (
@@ -735,6 +754,9 @@ export const systemApi = {
   startKeepAwake: () => invoke<void>('start_keep_awake'),
   stopKeepAwake: () => invoke<void>('stop_keep_awake'),
   isKeepAwakeActive: () => invokeOrFallback<boolean>(false, 'is_keep_awake_active'),
+  getAppPaths: () => invokeOrFallback<AppPaths>({ appDataDir: null, logDir: null }, 'get_app_paths'),
+  getLogTail: (maxBytes?: number) =>
+    invokeOrFallback<LogTailResponse>({ file: null, content: '', truncated: false }, 'get_log_tail', { maxBytes }),
 }
 
 // ==================== Codex CLI Import Types ====================

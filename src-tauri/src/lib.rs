@@ -90,7 +90,7 @@ pub fn run() {
                     tracing::warn!("Failed to apply Sidebar vibrancy: {}", err);
                     let _ = apply_vibrancy(
                         &window,
-                        NSVisualEffectMaterial::AppearanceBased,
+                        NSVisualEffectMaterial::UnderWindowBackground,
                         None,
                         None,
                     );
@@ -218,6 +218,9 @@ pub fn run() {
             commands::system::start_keep_awake,
             commands::system::stop_keep_awake,
             commands::system::is_keep_awake_active,
+            // Diagnostics
+            commands::system::get_app_paths,
+            commands::system::get_log_tail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

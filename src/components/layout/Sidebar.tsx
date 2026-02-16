@@ -11,11 +11,12 @@
  */
 
 import { useEffect, useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
-import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, Filter, PanelLeftOpen } from 'lucide-react'
+import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftClose, Filter, Check } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
 import { log } from '../../lib/logger'
+import { APP_EVENTS } from '../../lib/appEvents'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { useAppStore } from '../../stores/app'
@@ -26,7 +27,10 @@ import { useToast } from '../ui/Toast'
 import { SessionSearch, GroupedSessionList, SidebarDialogs, useSidebarDialogs } from './sidebar/index'
 import { ImportCodexSessionDialog } from '../LazyComponents'
 import type { CodexSessionSummary } from '../../lib/api'
-import { formatSessionTime } from '../../lib/utils'
+import { cn, formatSessionTime } from '../../lib/utils'
+import { Dropdown } from '../ui/Dropdown'
+
+type OpenProjectSettingsEventDetail = { projectId?: string | null }
 
 function InboxBadge() {
   const unreadCount = useAutomationsStore((state) =>
@@ -42,9 +46,27 @@ function InboxBadge() {
 
 export function Sidebar() {
   const { setSidebarTab: setActiveTab } = useAppStore()
+  const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed)
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [sessionFilters, setSessionFilters] = useState(() => {
+    const defaults = { pinnedOnly: false, runningOnly: false, showArchived: false }
+    try {
+      if (typeof localStorage === 'undefined') return defaults
+      const raw = localStorage.getItem('codex:session-filters')
+      if (!raw) return defaults
+      const parsed = JSON.parse(raw) as Partial<typeof defaults>
+      return {
+        pinnedOnly: typeof parsed.pinnedOnly === 'boolean' ? parsed.pinnedOnly : defaults.pinnedOnly,
+        runningOnly: typeof parsed.runningOnly === 'boolean' ? parsed.runningOnly : defaults.runningOnly,
+        showArchived: typeof parsed.showArchived === 'boolean' ? parsed.showArchived : defaults.showArchived,
+      }
+    } catch {
+      return defaults
+    }
+  })
   const {
     sessions,
     selectedSessionId,
@@ -60,12 +82,47 @@ export function Sidebar() {
   const settings = useSettingsStore((state) => state.settings)
   const { showToast } = useToast()
   const dialogs = useSidebarDialogs()
+  const handleOpenProjectSettings = dialogs.handleOpenProjectSettings
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('codex:session-filters', JSON.stringify(sessionFilters))
+    } catch {
+      // Ignore quota errors.
+    }
+  }, [sessionFilters])
+
+  useEffect(() => {
+    const onOpenImport = () => setImportDialogOpen(true)
+    window.addEventListener(APP_EVENTS.OPEN_IMPORT_CODEX_SESSIONS, onOpenImport)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_IMPORT_CODEX_SESSIONS, onOpenImport)
+  }, [])
+
+  useEffect(() => {
+    const onOpenProjectSettings = (event: Event) => {
+      const custom = event as CustomEvent<OpenProjectSettingsEventDetail>
+      const projectId = custom.detail?.projectId ?? selectedProjectId
+      if (!projectId) {
+        showToast('No project selected', 'error')
+        return
+      }
+      handleOpenProjectSettings(projectId)
+    }
+    window.addEventListener(APP_EVENTS.OPEN_PROJECT_SETTINGS, onOpenProjectSettings)
+    return () => window.removeEventListener(APP_EVENTS.OPEN_PROJECT_SETTINGS, onOpenProjectSettings)
+  }, [handleOpenProjectSettings, selectedProjectId, showToast])
 
   useEffect(() => {
     if (selectedProjectId) void fetchSessions(selectedProjectId)
   }, [fetchSessions, selectedProjectId])
 
   const displaySessions = searchQuery ? searchResults : sessions
+  const filteredSessions = displaySessions.filter((s) => {
+    if (!sessionFilters.showArchived && s.isArchived) return false
+    if (sessionFilters.pinnedOnly && !s.isFavorite) return false
+    if (sessionFilters.runningOnly && s.status !== 'running') return false
+    return true
+  })
   const displayProjectName = selectedProjectId
     ? projects.find((p) => p.id === selectedProjectId)?.displayName
       || projects.find((p) => p.id === selectedProjectId)?.path.split('/').pop()
@@ -175,7 +232,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="sidebar-vibrancy relative flex h-full w-token-sidebar min-w-token-sidebar shrink-0 flex-col overflow-hidden border-r border-token-border"
+      className="sidebar-vibrancy relative flex h-full w-token-sidebar min-w-token-sidebar shrink-0 flex-col overflow-hidden border-r border-stroke/20"
       data-tauri-drag-region
     >
       <div className="pointer-events-none absolute inset-0">
@@ -191,67 +248,76 @@ export function Sidebar() {
         </div>
         <button
           type="button"
-          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-token-border bg-token-surface-tertiary text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+          onClick={toggleSidebarCollapsed}
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+          className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
         >
-          <PanelLeftOpen size={14} />
+          <PanelLeftClose size={14} />
         </button>
       </div>
 
       {selectedSession && (
         <div className="relative z-10 px-3 pb-2">
-          <div className="flex h-10 items-center justify-between rounded-md px-2 text-[11px] text-token-description-foreground">
-            <div className="min-w-0 truncate pr-2 text-[13px] font-semibold text-token-foreground">
-              {selectedSession.title || displayProjectName || 'Thread'}
+          <div className="flex h-10 items-center justify-between rounded-md px-2 text-[11px] text-text-2">
+            <div className="min-w-0 truncate pr-2 text-[13px] font-semibold text-text-1">
+              {selectedSession.title || displayProjectName || 'Session'}
             </div>
-            <div className="shrink-0 text-[11px] text-token-text-tertiary">
+            <div className="shrink-0 text-[11px] text-text-3">
               {formatSessionTime(selectedSession.lastAccessedAt || selectedSession.createdAt)}
             </div>
           </div>
         </div>
       )}
 
-      <div className="relative z-10 h-toolbar-sm flex items-center px-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-token-text-tertiary">
+      <div className="relative z-10 h-toolbar-sm flex items-center px-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-text-3">
         Workspace
       </div>
 
       <nav className="relative z-10 space-y-0.5 px-2 pb-2">
         <button
           onClick={handleNewSession}
-          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
         >
-          <MessageSquarePlus
-            size={19}
-            className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
-            strokeWidth={1.8}
-          />
-          <span className="text-[16px] tracking-tight">New thread</span>
-        </button>
+            <MessageSquarePlus
+              size={19}
+              className="text-text-2 transition-colors group-hover:text-text-1"
+              strokeWidth={1.8}
+            />
+            <span className="text-[16px] tracking-tight">New session</span>
+          </button>
         <button
           type="button"
           onClick={() => navigate('/inbox?automationMode=create')}
-          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className={cn(
+            "group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]",
+            location.pathname === '/inbox' && location.search.includes('automationMode=create') && 'bg-surface-hover/[0.08]'
+          )}
         >
           <div className="flex items-center gap-2.5">
             <Zap
               size={19}
-              className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+              className="text-text-2 transition-colors group-hover:text-text-1"
               strokeWidth={1.8}
             />
             <span className="text-[16px] tracking-tight">Automations</span>
           </div>
-          <span className="rounded border border-token-border px-1.5 py-0.5 text-[10px] font-medium text-token-text-tertiary">
+          <span className="rounded border border-stroke/20 px-1.5 py-0.5 text-[10px] font-medium text-text-3">
             Beta
           </span>
         </button>
         <button
           type="button"
           onClick={() => navigate('/inbox')}
-          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className={cn(
+            "group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]",
+            location.pathname === '/inbox' && !location.search.includes('automationMode=create') && 'bg-surface-hover/[0.08]'
+          )}
         >
           <div className="flex items-center gap-2.5">
             <Bell
               size={19}
-              className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+              className="text-text-2 transition-colors group-hover:text-text-1"
               strokeWidth={1.8}
             />
             <span className="text-[16px] tracking-tight">Inbox</span>
@@ -261,39 +327,74 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => navigate('/skills')}
-          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-token-foreground transition-colors hover:bg-token-list-hover-background"
+          className={cn(
+            "group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]",
+            location.pathname === '/skills' && 'bg-surface-hover/[0.08]'
+          )}
         >
           <Layers
             size={19}
-            className="text-token-description-foreground transition-colors group-hover:text-token-foreground"
+            className="text-text-2 transition-colors group-hover:text-text-1"
             strokeWidth={1.8}
           />
           <span className="text-[16px] tracking-tight">Skills</span>
         </button>
       </nav>
 
-      <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
-        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-token-text-tertiary">
-          Threads
-        </span>
-        <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
-          <IconButton
-            onClick={handleAddProject}
-            size="sm"
-            title="Add project folder"
-            className="h-6 w-6 text-token-text-tertiary hover:bg-token-list-hover-background hover:text-token-foreground"
-          >
-            <FolderPlus size={13} strokeWidth={1.5} />
-          </IconButton>
-          <IconButton
-            size="sm"
-            title="Filter"
-            className="h-6 w-6 text-token-text-tertiary hover:bg-token-list-hover-background hover:text-token-foreground"
-          >
-            <Filter size={13} strokeWidth={1.5} />
-          </IconButton>
-        </div>
-      </div>
+	      <div className="relative z-10 group flex items-center justify-between px-3 pb-2 pt-2">
+	        <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-text-3">
+	          Sessions
+	        </span>
+	        <div className="flex gap-0.5 opacity-90 transition-opacity group-hover:opacity-100">
+	          <IconButton
+	            onClick={handleAddProject}
+	            size="sm"
+	            title="Add project folder"
+	            className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
+	          >
+	            <FolderPlus size={13} strokeWidth={1.5} />
+	          </IconButton>
+            <Dropdown.Root>
+              <Dropdown.Trigger
+                className="relative inline-flex h-6 w-6 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
+                title="Filter sessions"
+                aria-label="Filter sessions"
+              >
+                <Filter size={13} strokeWidth={1.5} />
+                {(sessionFilters.pinnedOnly || sessionFilters.runningOnly || sessionFilters.showArchived) && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary" />
+                )}
+              </Dropdown.Trigger>
+              <Dropdown.Content side="bottom" align="end" sideOffset={8}>
+                <Dropdown.Label>Filters</Dropdown.Label>
+                <Dropdown.Item
+                  onClick={() => setSessionFilters((prev) => ({ ...prev, pinnedOnly: !prev.pinnedOnly }))}
+                >
+                  {sessionFilters.pinnedOnly ? <Check size={14} /> : <span className="w-[14px]" />}
+                  Pinned only
+                </Dropdown.Item>
+                <Dropdown.Item
+                  onClick={() => setSessionFilters((prev) => ({ ...prev, runningOnly: !prev.runningOnly }))}
+                >
+                  {sessionFilters.runningOnly ? <Check size={14} /> : <span className="w-[14px]" />}
+                  Running only
+                </Dropdown.Item>
+                <Dropdown.Item
+                  onClick={() => setSessionFilters((prev) => ({ ...prev, showArchived: !prev.showArchived }))}
+                >
+                  {sessionFilters.showArchived ? <Check size={14} /> : <span className="w-[14px]" />}
+                  Show archived
+                </Dropdown.Item>
+                <Dropdown.Separator />
+                <Dropdown.Item
+                  onClick={() => setSessionFilters({ pinnedOnly: false, runningOnly: false, showArchived: false })}
+                >
+                  Clear filters
+                </Dropdown.Item>
+              </Dropdown.Content>
+            </Dropdown.Root>
+	        </div>
+	      </div>
 
       <div className="relative z-10 px-2">
         <SessionSearch visible={true} />
@@ -301,20 +402,24 @@ export function Sidebar() {
 
       <div className="relative z-10 flex-1 overflow-y-auto px-2">
         <GroupedSessionList
-          sessions={displaySessions}
+          sessions={filteredSessions}
           selectedSessionId={selectedSessionId}
           onSelectSession={handleSelectSession}
+          onOpenProjectSettings={handleOpenProjectSettings}
           isLoading={sessionsLoading || isSearching}
         />
       </div>
 
-      <div className="relative z-10 border-t border-token-border px-2 py-3">
+      <div className="relative z-10 border-t border-stroke/20 px-2 py-3">
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-[15px] text-token-description-foreground transition-colors hover:bg-token-list-hover-background hover:text-token-foreground"
+          className={cn(
+            "flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-[15px] text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1",
+            location.pathname.startsWith('/settings') && 'bg-surface-hover/[0.08] text-text-1'
+          )}
         >
-          <Settings size={17} className="text-token-text-tertiary" />
+          <Settings size={17} className="text-text-3" />
           <span className="text-[16px] tracking-tight">Settings</span>
         </button>
       </div>

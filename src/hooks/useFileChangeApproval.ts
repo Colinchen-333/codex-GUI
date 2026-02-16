@@ -16,6 +16,7 @@ import { useProjectsStore } from '../stores/projects'
 import { useToast } from '../components/ui/Toast'
 import { useOptimisticUpdate } from './useOptimisticUpdate'
 import { log } from '../lib/logger'
+import { focusNextApprovalInThreadOrInput } from '../lib/approvalNav'
 import type { FileChangeContentType } from '../components/chat/types'
 
 /**
@@ -148,6 +149,10 @@ export function useFileChangeApproval(
 
       // Capture thread ID at start to detect if it changes during async operations
       const threadIdAtStart = activeThread.id
+      const approvalCreatedAtAtStart =
+        (useThreadStore.getState() as unknown as {
+          threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
+        }).threads?.[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === itemId)?.createdAt
 
       // Try to create snapshot before applying changes
       let snapshotId: string | undefined
@@ -175,6 +180,8 @@ export function useFileChangeApproval(
 
       // Approve the changes (with or without snapshot ID)
       await respondToApproval(itemId, currentDecisionRef.current, { snapshotId })
+
+      focusNextApprovalInThreadOrInput(threadIdAtStart, approvalCreatedAtAtStart)
     },
     optimisticUpdate: () => {
       // Save previous state for rollback
@@ -249,7 +256,13 @@ export function useFileChangeApproval(
     isDecliningRef.current = true
     setIsDeclining(true)
     try {
+      const threadIdAtStart = activeThread.id
+      const approvalCreatedAtAtStart =
+        (useThreadStore.getState() as unknown as {
+          threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
+        }).threads?.[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === itemId)?.createdAt
       await respondToApproval(itemId, 'decline')
+      focusNextApprovalInThreadOrInput(threadIdAtStart, approvalCreatedAtAtStart)
     } finally {
       isDecliningRef.current = false
       setIsDeclining(false)

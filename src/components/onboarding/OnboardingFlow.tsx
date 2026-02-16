@@ -472,7 +472,7 @@ function ReadyStep({ onComplete }: { onComplete: () => void }) {
             'Select a project to start a new agent session',
             'Review and approve file changes before applying',
             'Run multiple agent sessions simultaneously',
-            'Use ⌘+Z to undo changes with snapshots'
+            'Use ⌘+Z / ⌘+⇧+Z to undo/redo message actions'
           ].map((tip, i) => (
             <li key={i} className="flex items-center gap-3 text-sm font-medium text-text-2">
               <div className="h-1.5 w-1.5 rounded-full bg-text-3/60" />

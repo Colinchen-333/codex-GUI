@@ -2,15 +2,19 @@
  * ReasoningCard - Shows AI's thinking process (only when completed, streaming is shown in WorkingStatusBar)
  */
 import { useState } from 'react'
-import { Brain, ChevronDown, ChevronRight } from 'lucide-react'
+import { Brain, ChevronDown, ChevronRight, Copy } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { copyTextToClipboard } from '../../../lib/clipboard'
 import { formatTimestamp, parseReasoningSummary } from '../utils'
+import { IconButton } from '../../ui/IconButton'
+import { useToast } from '../../ui/useToast'
 import type { MessageItemProps, ReasoningContentType } from '../types'
 
 export function ReasoningCard({ item }: MessageItemProps) {
   const content = item.content as ReasoningContentType
   const [isExpanded, setIsExpanded] = useState(false)
   const [showFullContent, setShowFullContent] = useState(false)
+  const { toast } = useToast()
 
   // Don't show card while streaming - it's displayed in WorkingStatusBar
   if (content.isStreaming) {
@@ -22,6 +26,17 @@ export function ReasoningCard({ item }: MessageItemProps) {
   // Parse summaries to remove **header** format
   const parsedSummaries = content.summary?.map(parseReasoningSummary) || []
 
+  const summaryText = parsedSummaries.length ? parsedSummaries.map((s) => `- ${s}`).join('\n') : ''
+  const fullText =
+    hasFullContent && content.fullContent?.length ? content.fullContent.join('\n') : ''
+
+  const handleCopy = async () => {
+    const text = showFullContent && hasFullContent ? fullText : summaryText
+    const ok = await copyTextToClipboard(text)
+    if (ok) toast.success('Copied reasoning')
+    else toast.error('Copy failed')
+  }
+
   return (
     <div className="flex justify-start pr-12 animate-in slide-in-from-bottom-2 duration-150">
       <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)] transition-all">
@@ -29,6 +44,16 @@ export function ReasoningCard({ item }: MessageItemProps) {
         <div
           className="flex items-center justify-between border-b border-stroke/20 bg-surface-hover/[0.06] px-4 py-2.5 cursor-pointer select-none"
           onClick={() => setIsExpanded(!isExpanded)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setIsExpanded((prev) => !prev)
+            }
+          }}
+          aria-expanded={isExpanded}
+          aria-label="Toggle reasoning"
         >
           <div className="flex items-center gap-2">
             <div className="rounded-md p-1 shadow-[var(--shadow-1)] bg-surface-solid text-text-3">
@@ -37,6 +62,19 @@ export function ReasoningCard({ item }: MessageItemProps) {
             <span className="text-xs font-semibold text-text-1">Reasoning</span>
           </div>
           <div className="flex items-center gap-2">
+            <IconButton
+              size="sm"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation()
+                void handleCopy()
+              }}
+              disabled={!summaryText && !fullText}
+              title={showFullContent && hasFullContent ? 'Copy full thinking' : 'Copy summary'}
+              aria-label="Copy reasoning"
+            >
+              <Copy size={14} />
+            </IconButton>
             {/* Timestamp */}
             <span className="text-[10px] text-text-3/70">
               {formatTimestamp(item.createdAt)}

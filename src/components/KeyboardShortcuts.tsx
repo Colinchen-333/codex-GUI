@@ -6,15 +6,12 @@ import { useAppStore } from '../stores/app'
 import { useProjectsStore } from '../stores/projects'
 import { useThreadStore } from '../stores/thread/index'
 import { useSessionsStore } from '../stores/sessions'
-import {
-  useSettingsStore,
-  mergeProjectSettings,
-  getEffectiveWorkingDirectory,
-} from '../stores/settings'
 import { useToast } from './ui/Toast'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useUndoRedoStore } from '../stores/undoRedo'
 import { logError } from '../lib/errorUtils'
+import { selectGlobalNextPendingApproval } from '../stores/thread/selectors'
+import { APP_EVENTS, dispatchAppEvent } from '../lib/appEvents'
 
 // Double-escape timeout (like CLI)
 const DOUBLE_ESCAPE_TIMEOUT_MS = 1500
@@ -67,8 +64,8 @@ export function KeyboardShortcuts() {
           escapeTimerRef.current = null
         }, DOUBLE_ESCAPE_TIMEOUT_MS)
       }
-      } else {
-        // Not running - close dialogs / leave settings
+    } else {
+      // Not running - close dialogs / leave settings
       if (location.pathname.startsWith('/settings')) {
         void navigate(-1)
       }
@@ -124,6 +121,17 @@ export function KeyboardShortcuts() {
     }
   }, [showToast])
 
+  const jumpToNextApproval = useCallback(() => {
+    const next = selectGlobalNextPendingApproval(useThreadStore.getState())
+    if (!next) {
+      showToast('No pending approvals', 'info')
+      return
+    }
+    useThreadStore.getState().switchThread(next.threadId)
+    useAppStore.getState().setScrollToItemId(next.itemId)
+    showToast('Jumped to next approval', 'info')
+  }, [showToast])
+
   const shortcuts: KeyboardShortcut[] = useMemo(
     () => [
       // Open settings (Cmd/Ctrl + ,)
@@ -133,10 +141,12 @@ export function KeyboardShortcuts() {
         description: 'Open settings',
         handler: () => navigate('/settings'),
       },
-      // Focus input (Cmd/Ctrl + K)
+      // Note: Cmd/Ctrl + K is reserved for the Command Palette (handled by useCommandPalette).
+      // Focus input (Cmd/Ctrl + Shift + K)
       {
         key: 'k',
         meta: true,
+        shift: true,
         description: 'Focus input',
         handler: () => useAppStore.getState().triggerFocusInput(),
       },
@@ -186,38 +196,22 @@ export function KeyboardShortcuts() {
         description: 'Stop generation (double-press) / Close dialogs',
         handler: handleEscape,
       },
-      // New thread (Cmd/Ctrl + N)
+      // New session (Cmd/Ctrl + N)
       {
         key: 'n',
         meta: true,
-        description: 'New thread',
+        description: 'New session',
         handler: () => {
           const projectId = useProjectsStore.getState().selectedProjectId
           if (!projectId) {
             showToast('Please select a project first', 'error')
             return
           }
-          const project = useProjectsStore.getState().projects.find((p) => p.id === projectId)
-          if (!project) return
-
-          const settings = useSettingsStore.getState().settings
-          const effective = mergeProjectSettings(settings, project.settingsJson)
-          const cwd = getEffectiveWorkingDirectory(project.path, project.settingsJson)
-
           if (!useThreadStore.getState().canAddSession()) {
             showToast('Maximum sessions reached. Close one and retry.', 'error')
             return
           }
-
-          void useThreadStore
-            .getState()
-            .startThread(projectId, cwd, effective.model, effective.sandboxMode, effective.approvalPolicy)
-            .then(() => {
-              showToast('New session started', 'success')
-            })
-            .catch(() => {
-              showToast('Failed to start new session', 'error')
-            })
+          dispatchAppEvent(APP_EVENTS.OPEN_NEW_SESSION_DIALOG)
         },
       },
       // Toggle terminal (Cmd/Ctrl + J)
@@ -226,19 +220,28 @@ export function KeyboardShortcuts() {
         meta: true,
         description: 'Toggle terminal',
         handler: () => {
-          window.dispatchEvent(new CustomEvent('codex:toggle-terminal'))
+          dispatchAppEvent(APP_EVENTS.TOGGLE_TERMINAL)
         },
       },
-      // Clear thread (Cmd/Ctrl + L)
+      // Toggle sidebar (Cmd/Ctrl + B) - aligns with common editor behavior
+      {
+        key: 'b',
+        meta: true,
+        description: 'Toggle sidebar',
+        handler: () => {
+          useAppStore.getState().toggleSidebarCollapsed()
+        },
+      },
+      // Clear session (Cmd/Ctrl + L)
       {
         key: 'l',
         meta: true,
-        description: 'Clear thread',
+        description: 'Clear session',
         handler: () => {
           const { focusedThreadId, clearThread } = useThreadStore.getState()
           if (focusedThreadId) {
             clearThread()
-            showToast('Thread cleared', 'info')
+            showToast('Session cleared', 'info')
           }
           useAppStore.getState().triggerFocusInput()
         },
@@ -249,12 +252,37 @@ export function KeyboardShortcuts() {
         meta: true,
         description: 'Toggle review pane',
         handler: () => {
-          window.dispatchEvent(new CustomEvent('codex:toggle-review-panel'))
+          dispatchAppEvent(APP_EVENTS.TOGGLE_REVIEW_PANEL)
         },
+      },
+      // Jump to next approval (Cmd/Ctrl + Shift + A)
+      {
+        key: 'a',
+        meta: true,
+        shift: true,
+        description: 'Jump to next approval',
+        handler: jumpToNextApproval,
+      },
+      // Go to Diff (Cmd/Ctrl + Shift + D)
+      {
+        key: 'd',
+        meta: true,
+        shift: true,
+        description: 'Go to Diff',
+        handler: () => navigate('/diff'),
+      },
+      // Browse Files (Cmd/Ctrl + Shift + F)
+      {
+        key: 'f',
+        meta: true,
+        shift: true,
+        description: 'Browse files',
+        handler: () => navigate('/file-preview'),
       },
       // Help - Show keyboard shortcuts
       {
         key: '?',
+        shift: true,
         description: 'Show keyboard shortcuts',
         handler: () => useAppStore.getState().setKeyboardShortcutsOpen(true),
       },
@@ -312,7 +340,7 @@ export function KeyboardShortcuts() {
         },
       },
     ],
-    [showToast, handleEscape, navigateToNextSession, undo, redo, canUndo, canRedo, navigate] // Only dependencies that aren't store functions
+    [showToast, handleEscape, navigateToNextSession, jumpToNextApproval, undo, redo, canUndo, canRedo, navigate] // Only dependencies that aren't store functions
   )
 
   useKeyboardShortcuts(shortcuts)

@@ -70,7 +70,14 @@ const VirtualizedRow = memo(function VirtualizedRow({
   }
 
   return (
-    <div ref={rowRef} style={style} className="py-1.5" data-index={index} {...ariaAttributes}>
+    <div
+      ref={rowRef}
+      style={style}
+      className="py-1.5"
+      data-index={index}
+      data-item-id={id}
+      {...ariaAttributes}
+    >
       <MessageItem key={id} item={item} />
     </div>
   )
@@ -86,6 +93,10 @@ export interface ChatMessageListProps {
   onDrop: (e: React.DragEvent) => void
   /** Optional filter text for deferred filtering */
   filterText?: string
+  /** Callback when auto-scroll state changes */
+  onAutoScrollChange?: (enabled: boolean) => void
+  /** Callback when a suggestion card is clicked */
+  onSuggestionClick?: (text: string) => void
 }
 
 export default memo(function ChatMessageList({
@@ -97,6 +108,8 @@ export default memo(function ChatMessageList({
   onDragLeave,
   onDrop,
   filterText = '',
+  onAutoScrollChange,
+  onSuggestionClick,
 }: ChatMessageListProps) {
   // P1 Fix: Use proper selector to prevent re-renders from getter-based state access
   const focusedThread = useThreadStore(selectFocusedThread)
@@ -143,7 +156,7 @@ export default memo(function ChatMessageList({
   const { warmupCache } = useItemSizeCache(items, filteredItemOrder)
 
   // Auto-scroll behavior - pass threadId to reset state on thread switch
-  const { setAutoScroll, trackScrollPosition } = useAutoScroll(
+  const { autoScroll, setAutoScroll, trackScrollPosition } = useAutoScroll(
     virtualListRef,
     messagesEndRef,
     filteredItemOrder,
@@ -151,6 +164,11 @@ export default memo(function ChatMessageList({
     turnStatus,
     threadId
   )
+
+  // Notify parent when auto-scroll state changes
+  useEffect(() => {
+    onAutoScrollChange?.(autoScroll)
+  }, [autoScroll, onAutoScrollChange])
 
   // Scroll handling
   const { handleScroll } = useScrollHandler(scrollAreaRef, setAutoScroll, trackScrollPosition)
@@ -240,7 +258,7 @@ export default memo(function ChatMessageList({
             onRowsRendered={handleRowsRendered}
           />
         ) : (
-          <ChatEmptyState isFiltered={!!deferredFilterText} />
+          <ChatEmptyState isFiltered={!!deferredFilterText} onSuggestionClick={onSuggestionClick} />
         )}
         <div ref={messagesEndRef} />
       </div>

@@ -171,34 +171,35 @@ const TOAST_ICONS = {
 
 const TOAST_STYLES: Record<Toast['type'], { bg: string; border: string; icon: string; progress: string }> = {
   info: {
-    bg: 'bg-card/95 backdrop-blur-sm',
-    border: 'border-blue-500/50',
-    icon: 'text-blue-500',
-    progress: 'bg-blue-500',
+    bg: 'bg-surface-solid/95 backdrop-blur-sm',
+    border: 'border-status-info/30',
+    icon: 'text-status-info',
+    progress: 'bg-status-info',
   },
   success: {
-    bg: 'bg-card/95 backdrop-blur-sm',
-    border: 'border-green-500/50',
-    icon: 'text-green-500',
-    progress: 'bg-green-500',
+    bg: 'bg-surface-solid/95 backdrop-blur-sm',
+    border: 'border-status-success/30',
+    icon: 'text-status-success',
+    progress: 'bg-status-success',
   },
   warning: {
-    bg: 'bg-card/95 backdrop-blur-sm',
-    border: 'border-yellow-500/50',
-    icon: 'text-yellow-500',
-    progress: 'bg-yellow-500',
+    bg: 'bg-surface-solid/95 backdrop-blur-sm',
+    border: 'border-status-warning/30',
+    icon: 'text-status-warning',
+    progress: 'bg-status-warning',
   },
   error: {
-    bg: 'bg-card/95 backdrop-blur-sm',
-    border: 'border-red-500/50',
-    icon: 'text-red-500',
-    progress: 'bg-red-500',
+    bg: 'bg-surface-solid/95 backdrop-blur-sm',
+    border: 'border-status-error/30',
+    icon: 'text-status-error',
+    progress: 'bg-status-error',
   },
 }
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const onDismissRef = useRef(onDismiss)
   const [isPaused, setIsPaused] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [progress, setProgress] = useState(100)
   const startTimeRef = useRef(0)
   const remainingTimeRef = useRef(toast.duration ?? 5000)
@@ -296,21 +297,37 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-sm text-foreground">{toast.title}</p>
+            <p className="font-medium text-sm text-text-1">{toast.title}</p>
             {showCount && (
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                ×{toast.count}
+              <span className="shrink-0 rounded-full bg-surface-hover/[0.08] px-2 py-0.5 text-[10px] font-medium text-text-3">
+                x{toast.count}
               </span>
             )}
           </div>
           {toast.message && (
-            <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{toast.message}</p>
+            <div className="mt-1">
+              <p className={cn(
+                'text-xs text-text-3',
+                !isExpanded && 'line-clamp-2'
+              )}>
+                {toast.message}
+              </p>
+              {toast.message.length > 120 && (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-[11px] text-primary hover:underline mt-0.5"
+                >
+                  {isExpanded ? 'Show less' : 'Show more'}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
         <button
           type="button"
-          className="shrink-0 p-1 -m-1 text-muted-foreground/60 hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
+          className="shrink-0 p-1 -m-1 text-text-3/70 hover:text-text-1 rounded-lg hover:bg-surface-hover/[0.08] transition-colors"
           onClick={requestDismiss}
           aria-label="Dismiss notification"
         >
@@ -318,7 +335,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         </button>
 
         {(toast.duration ?? 5000) > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted/30">
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-surface-hover/[0.06]">
             <div
               className={cn('h-full transition-all duration-100', styles.progress)}
               style={{ width: `${progress}%` }}

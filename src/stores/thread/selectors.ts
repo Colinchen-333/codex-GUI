@@ -16,6 +16,7 @@ import { defaultTokenUsage, defaultTurnTiming } from './utils'
 
 const EMPTY_ITEMS: Record<string, AnyThreadItem> = {}
 const EMPTY_ITEM_ORDER: string[] = []
+const EMPTY_ORDERED_ITEMS: AnyThreadItem[] = []
 const EMPTY_PENDING_APPROVALS: ThreadState['pendingApprovals'] = []
 const EMPTY_QUEUED_MESSAGES: ThreadState['queuedMessages'] = []
 const EMPTY_SESSION_OVERRIDES: ThreadState['sessionOverrides'] = {}
@@ -42,10 +43,21 @@ export function selectFocusedThreadId(state: ThreadState): string | null {
 /**
  * Select all threads as an array.
  * Returns threads in insertion order (sorted by creation).
+ * Memoized: returns the same array reference when threads/focusedThreadId haven't changed.
  */
+// Cache for selectAllThreads to prevent new array on every call
+let _cachedThreadsRef: Record<string, SingleThreadState> | null = null
+let _cachedFocusedId: string | null = null
+let _cachedSorted: SingleThreadState[] = []
+
 export function selectAllThreads(state: ThreadState): SingleThreadState[] {
   const { threads, focusedThreadId } = state
-  return Object.values(threads).sort((a, b) => {
+  if (threads === _cachedThreadsRef && focusedThreadId === _cachedFocusedId) {
+    return _cachedSorted
+  }
+  _cachedThreadsRef = threads
+  _cachedFocusedId = focusedThreadId ?? null
+  _cachedSorted = Object.values(threads).sort((a, b) => {
     // Focused thread first
     if (a.thread.id === focusedThreadId) return -1
     if (b.thread.id === focusedThreadId) return 1
@@ -54,6 +66,7 @@ export function selectAllThreads(state: ThreadState): SingleThreadState[] {
     const bTime = b.thread.createdAt ?? 0
     return bTime - aTime
   })
+  return _cachedSorted
 }
 
 /**
@@ -128,7 +141,7 @@ let cachedThreadId: string | null = null
 
 export function selectOrderedItems(state: ThreadState): AnyThreadItem[] {
   const focusedThread = selectFocusedThread(state)
-  if (!focusedThread) return []
+  if (!focusedThread) return EMPTY_ORDERED_ITEMS
   const { items, itemOrder } = focusedThread
   if (
     cachedThreadId === focusedThread.thread.id &&
@@ -158,8 +171,17 @@ export function selectItemById(itemId: string) {
  * Select items of a specific type from the focused thread.
  */
 export function selectItemsByType(itemType: ThreadItemType) {
+  // Cache filtered results to ensure selector output is referentially stable.
+  // Returning a new array on every call can break useSyncExternalStore expectations
+  // and trigger infinite update loops (especially in Strict Mode / tests).
+  let cachedOrderedItemsRef: AnyThreadItem[] | null = null
+  let cachedFilteredItems: AnyThreadItem[] = []
   return (state: ThreadState): AnyThreadItem[] => {
-    return selectOrderedItems(state).filter((item) => item.type === itemType)
+    const ordered = selectOrderedItems(state)
+    if (ordered === cachedOrderedItemsRef) return cachedFilteredItems
+    cachedOrderedItemsRef = ordered
+    cachedFilteredItems = ordered.filter((item) => item.type === itemType)
+    return cachedFilteredItems
   }
 }
 
@@ -246,6 +268,37 @@ export function selectGlobalPendingApprovalCount(state: ThreadState): number {
     }
   }
   return count
+}
+
+export type GlobalPendingApprovalSummary = {
+  count: number
+  next: ThreadState['pendingApprovals'][number] | null
+}
+
+/**
+ * Select a global (cross-thread) summary of pending approvals:
+ * - total count across all threads
+ * - the earliest (by createdAt) pending approval, if any
+ */
+export function selectGlobalPendingApprovalSummary(state: ThreadState): GlobalPendingApprovalSummary {
+  let count = 0
+  let next: ThreadState['pendingApprovals'][number] | null = null
+
+  for (const threadState of Object.values(state.threads)) {
+    if (!threadState) continue
+    const pending = threadState.pendingApprovals
+    if (!pending || pending.length === 0) continue
+    count += pending.length
+    for (const approval of pending) {
+      if (!next || approval.createdAt < next.createdAt) next = approval
+    }
+  }
+
+  return { count, next }
+}
+
+export function selectGlobalNextPendingApproval(state: ThreadState): ThreadState['pendingApprovals'][number] | null {
+  return selectGlobalPendingApprovalSummary(state).next
 }
 
 export function selectPendingApprovalsForThread(threadId: string) {

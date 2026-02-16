@@ -7,10 +7,11 @@
  * Performance optimization: Wrapped with React.memo and custom comparison function
  * to prevent unnecessary re-renders in message lists.
  */
-import { memo, useState, useEffect, useRef, type ReactNode } from 'react'
+import { memo, useState, useEffect, useRef, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { Terminal } from 'lucide-react'
+import { Copy, Terminal } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { copyTextToClipboard } from '../../../lib/clipboard'
 import { isCommandExecutionContent } from '../../../lib/typeGuards'
 import { useThreadStore, selectFocusedThread, type ThreadState } from '../../../stores/thread'
 import { log } from '../../../lib/logger'
@@ -18,8 +19,11 @@ import { truncateOutput, shallowContentEqual } from '../utils'
 import { MAX_OUTPUT_LINES } from '../types'
 import { ColorizedOutput } from '../messages/ColorizedOutput'
 import type { MessageItemProps } from '../types'
-import { BaseCard, CardSection, CardOutput, StatusBadge, type CardStatus } from './BaseCard'
+import { BaseCard, CardOutput, StatusBadge, type CardStatus } from './BaseCard'
 import { formatDuration } from './card-utils'
+import { IconButton } from '../../ui/IconButton'
+import { useToast } from '../../ui/useToast'
+import { focusNextApprovalInThreadOrInput } from '../../../lib/approvalNav'
 
 // -----------------------------------------------------------------------------
 // Helper Components
@@ -29,8 +33,10 @@ interface ApprovalUIProps {
   proposedExecpolicyAmendment?: { command: string[] } | null
   onApprove: (decision: 'accept' | 'acceptForSession' | 'acceptWithExecpolicyAmendment' | 'decline') => Promise<void>
   onExplain: () => Promise<void>
+  onToggleOutput?: () => void
   isExplaining: boolean
   explanation: string
+  isApproving: boolean
 }
 
 /**
@@ -40,8 +46,10 @@ const ApprovalUI = memo(function ApprovalUI({
   proposedExecpolicyAmendment,
   onApprove,
   onExplain,
+  onToggleOutput,
   isExplaining,
   explanation,
+  isApproving,
 }: ApprovalUIProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [approvalMode, setApprovalMode] = useState<'select' | 'explain' | 'feedback'>('select')
@@ -56,9 +64,15 @@ const ApprovalUI = memo(function ApprovalUI({
     }))
   )
 
+  useEffect(() => {
+    if (approvalMode !== 'feedback') return
+    feedbackInputRef.current?.focus()
+  }, [approvalMode])
+
   // Handle feedback submission
   const handleFeedbackSubmit = async () => {
     if (!activeThread) return
+    if (isApproving) return
     try {
       await onApprove('decline')
       if (feedbackText.trim()) {
@@ -70,12 +84,73 @@ const ApprovalUI = memo(function ApprovalUI({
     }
   }
 
+  const isEditableTarget = (target: EventTarget | null): boolean => {
+    if (!target) return false
+    if (!(target instanceof HTMLElement)) return false
+    const tag = target.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+    return target.isContentEditable
+  }
+
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (isEditableTarget(e.target)) return
+    const key = e.key.toLowerCase()
+
+    if (key === 'escape' && approvalMode !== 'select') {
+      e.preventDefault()
+      setApprovalMode('select')
+      return
+    }
+
+    if (approvalMode !== 'select') return
+
+    if (key === 'y') {
+      e.preventDefault()
+      if (isApproving) return
+      void onApprove('accept')
+      return
+    }
+    if (key === 'a') {
+      e.preventDefault()
+      if (isApproving) return
+      void onApprove('acceptForSession')
+      return
+    }
+    if (key === 'n') {
+      e.preventDefault()
+      if (isApproving) return
+      void onApprove('decline')
+      return
+    }
+    if (key === 'x') {
+      e.preventDefault()
+      setApprovalMode('explain')
+      void onExplain()
+      return
+    }
+    if (key === 'e') {
+      e.preventDefault()
+      setApprovalMode('feedback')
+      return
+    }
+    if (key === 'o') {
+      e.preventDefault()
+      onToggleOutput?.()
+      return
+    }
+  }
+
   return (
-    <div className="mt-5 pt-3 border-t border-stroke/20">
+    <div
+      className="mt-5 pt-3 border-t border-stroke/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      aria-label="Approval options"
+    >
       {/* Explanation Mode */}
       {approvalMode === 'explain' && (
         <div className="animate-in fade-in duration-100">
-          <div className="mb-3 text-sm font-medium text-yellow-600 dark:text-yellow-400">
+          <div className="mb-3 text-sm font-medium text-status-warning">
             Command Explanation:
           </div>
           {isExplaining ? (
@@ -106,14 +181,16 @@ const ApprovalUI = memo(function ApprovalUI({
               onChange={(e) => setFeedbackText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleFeedbackSubmit()}
               placeholder="Explain why you’re declining or how to fix it…"
-              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/15"
+              className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
               autoFocus
+              disabled={isApproving}
             />
             <button
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-1)]"
               onClick={handleFeedbackSubmit}
+              disabled={isApproving}
             >
-              Submit
+              {isApproving ? 'Working...' : 'Submit'}
             </button>
           </div>
           <div className="mt-2 text-xs text-text-3">
@@ -136,24 +213,31 @@ const ApprovalUI = memo(function ApprovalUI({
             <button
               className="flex-1 rounded-md bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-[var(--shadow-1)]"
               onClick={() => onApprove('accept')}
-              title="Keyboard: Y"
+              disabled={isApproving}
+              title="Keyboard: y"
             >
               Yes (y)
             </button>
             <button
               className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-1 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => onApprove('acceptForSession')}
-              title="Keyboard: A"
+              disabled={isApproving}
+              title="Keyboard: a"
             >
-              Always (a)
+              Allow for session (a)
             </button>
             <button
               className="rounded-md border border-stroke/30 bg-surface-solid px-4 py-2.5 text-xs font-semibold text-text-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-colors"
               onClick={() => onApprove('decline')}
-              title="Keyboard: N"
+              disabled={isApproving}
+              title="Keyboard: n"
             >
               No (n)
             </button>
+          </div>
+
+          <div className="mt-2 text-[11px] text-text-3">
+            Hotkeys: <span className="font-mono">y</span> accept, <span className="font-mono">a</span> allow for session, <span className="font-mono">n</span> decline, <span className="font-mono">o</span> toggle output, <span className="font-mono">x</span> explain, <span className="font-mono">e</span> feedback
           </div>
 
           {/* Secondary Actions */}
@@ -164,7 +248,8 @@ const ApprovalUI = memo(function ApprovalUI({
                 setApprovalMode('explain')
                 void onExplain()
               }}
-              title="Keyboard: X"
+              disabled={isApproving}
+              title="Keyboard: x"
             >
               Explain (x)
             </button>
@@ -172,9 +257,9 @@ const ApprovalUI = memo(function ApprovalUI({
               className="flex-1 rounded-md border border-stroke/30 bg-surface-solid px-3 py-2 text-[11px] font-medium text-text-2 hover:bg-surface-hover/[0.08] transition-colors"
               onClick={() => {
                 setApprovalMode('feedback')
-                setTimeout(() => feedbackInputRef.current?.focus(), 100)
               }}
-              title="Keyboard: E"
+              disabled={isApproving}
+              title="Keyboard: e"
             >
               Edit/Feedback (e)
             </button>
@@ -194,8 +279,9 @@ const ApprovalUI = memo(function ApprovalUI({
           {showAdvanced && proposedExecpolicyAmendment && (
             <div className="mt-2 flex gap-2 animate-in slide-in-from-top-2 duration-100">
               <button
-                className="flex-1 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-[11px] font-medium text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                className="flex-1 rounded-lg border border-status-success/30 bg-status-success-muted px-3 py-2 text-[11px] font-medium text-status-success hover:bg-status-success-muted/80 transition-colors"
                 onClick={() => onApprove('acceptWithExecpolicyAmendment')}
+                disabled={isApproving}
               >
                 Always Allow (Persistent)
               </button>
@@ -228,9 +314,12 @@ export const CommandExecutionCard = memo(
       }))
     )
 
+    const { toast } = useToast()
+
     const [showFullOutput, setShowFullOutput] = useState(false)
     const [explanation, setExplanation] = useState('')
     const [isExplaining, setIsExplaining] = useState(false)
+    const [isApproving, setIsApproving] = useState(false)
     const isApprovingRef = useRef(false)
     const isExplainingRef = useRef(false)
     const outputRef = useRef<HTMLPreElement>(null)
@@ -288,12 +377,22 @@ export const CommandExecutionCard = memo(
     ) => {
       if (isApprovingRef.current || !activeThread) return
       isApprovingRef.current = true
+      setIsApproving(true)
       try {
+        const threadIdAtStart = activeThread.id
+        const approvalCreatedAtAtStart =
+          (useThreadStore.getState() as unknown as {
+            threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
+          }).threads?.[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === item.id)?.createdAt
+
         await respondToApproval(item.id, decision, {
           execpolicyAmendment: content.proposedExecpolicyAmendment,
         })
+
+        focusNextApprovalInThreadOrInput(threadIdAtStart, approvalCreatedAtAtStart)
       } finally {
         isApprovingRef.current = false
+        setIsApproving(false)
       }
     }
 
@@ -325,6 +424,29 @@ export const CommandExecutionCard = memo(
     }
 
     // Build header actions (exit code badge + duration)
+    const handleCopyCommand = async () => {
+      const ok = await copyTextToClipboard(commandDisplay)
+      if (ok) toast.success('Copied command')
+      else toast.error('Copy failed')
+    }
+
+    const handleCopyOutput = async () => {
+      const ok = await copyTextToClipboard(rawOutput)
+      if (ok) toast.success('Copied output')
+      else toast.error('Copy failed')
+    }
+
+    const handleToggleOutput = () => {
+      if (!rawOutput) return
+      setShowFullOutput((prev) => !prev)
+    }
+
+    const handleCopyStderr = async () => {
+      const ok = await copyTextToClipboard(content.stderr || '')
+      if (ok) toast.success('Copied stderr')
+      else toast.error('Copy failed')
+    }
+
     const headerActions: ReactNode = (
       <>
         {content.exitCode !== undefined && (
@@ -338,6 +460,18 @@ export const CommandExecutionCard = memo(
             {formatDuration(content.durationMs)}
           </span>
         )}
+        <IconButton
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation()
+            void handleCopyCommand()
+          }}
+          title="Copy command"
+          aria-label="Copy command"
+        >
+          <Copy size={14} />
+        </IconButton>
       </>
     )
 
@@ -353,7 +487,7 @@ export const CommandExecutionCard = memo(
         expandable
         defaultExpanded
         iconAnimated={content.isRunning}
-        iconActiveBgClass="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+        iconActiveBgClass="bg-status-info-muted text-status-info"
       >
         {/* Working directory */}
         <div className="text-[11px] text-text-3 font-mono mb-3">
@@ -376,15 +510,29 @@ export const CommandExecutionCard = memo(
 
         {/* Output */}
         {(rawOutput || content.isRunning) && (
-          <CardSection
-            title="Output"
-            className="mb-0"
-          >
-            {content.isRunning && (
-              <span className="ml-2 text-[9px] normal-case text-blue-500 animate-pulse inline-block mb-1">
-                streaming...
-              </span>
-            )}
+          <div className="mb-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-text-3">
+                  Output
+                </div>
+                {content.isRunning && (
+                  <span className="text-[9px] normal-case text-status-info animate-pulse inline-block mb-1">
+                    streaming...
+                  </span>
+                )}
+              </div>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleCopyOutput()}
+                disabled={!rawOutput}
+                title="Copy output"
+                aria-label="Copy output"
+              >
+                <Copy size={14} />
+              </IconButton>
+            </div>
             <CardOutput
               error={content.exitCode !== undefined && content.exitCode !== 0}
               className={cn(content.isRunning && 'min-h-[2rem]')}
@@ -406,7 +554,7 @@ export const CommandExecutionCard = memo(
                 className="mt-1 text-[10px] text-text-3 hover:text-text-1 transition-colors flex items-center gap-1"
                 onClick={() => setShowFullOutput(true)}
               >
-                <span className="text-yellow-600 dark:text-yellow-400">...</span>+{omittedLines}{' '}
+                <span className="text-status-warning">...</span>+{omittedLines}{' '}
                 lines hidden
                 <span className="text-text-2 hover:underline">Show all</span>
               </button>
@@ -419,16 +567,30 @@ export const CommandExecutionCard = memo(
                 Collapse output
               </button>
             )}
-          </CardSection>
+          </div>
         )}
 
         {/* Stderr if different from output */}
         {content.stderr && content.stderr !== content.output && (
-          <CardSection title="Stderr" titleColor="text-red-600 dark:text-red-400" className="mt-3">
+          <div className="mt-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-status-error">
+                Stderr
+              </div>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleCopyStderr()}
+                title="Copy stderr"
+                aria-label="Copy stderr"
+              >
+                <Copy size={14} />
+              </IconButton>
+            </div>
             <CardOutput error maxHeight="max-h-40">
               {content.stderr}
             </CardOutput>
-          </CardSection>
+          </div>
         )}
 
         {/* Reason */}
@@ -442,8 +604,10 @@ export const CommandExecutionCard = memo(
             proposedExecpolicyAmendment={content.proposedExecpolicyAmendment}
             onApprove={handleApprove}
             onExplain={handleExplain}
+            onToggleOutput={handleToggleOutput}
             isExplaining={isExplaining}
             explanation={explanation}
+            isApproving={isApproving}
           />
         )}
       </BaseCard>

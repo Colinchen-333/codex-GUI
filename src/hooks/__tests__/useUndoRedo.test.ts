@@ -229,6 +229,10 @@ describe('useUndoRedo', () => {
       })
 
       expect(mockToast.info).toHaveBeenCalledWith('Snapshot undo not supported', expect.any(Object))
+      expect(mockToast.success).not.toHaveBeenCalledWith(
+        'Undo successful',
+        expect.any(Object)
+      )
     })
 
     it('should perform clearThread undo by restoring thread state', () => {
@@ -333,6 +337,10 @@ describe('useUndoRedo', () => {
       })
 
       expect(mockToast.info).toHaveBeenCalledWith('Message resend', expect.any(Object))
+      expect(mockToast.success).not.toHaveBeenCalledWith(
+        'Redo successful',
+        expect.any(Object)
+      )
     })
 
     it('should show info toast for editMessage redo', () => {
@@ -354,6 +362,10 @@ describe('useUndoRedo', () => {
       })
 
       expect(mockToast.info).toHaveBeenCalledWith('Edit redo', expect.any(Object))
+      expect(mockToast.success).not.toHaveBeenCalledWith(
+        'Redo successful',
+        expect.any(Object)
+      )
     })
   })
 

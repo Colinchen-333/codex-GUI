@@ -244,7 +244,7 @@ export function InboxLayout({ selectedItemId }: InboxLayoutProps) {
       </aside>
 
       {/* Detail panel */}
-      <section className="flex flex-1 flex-col bg-card">
+      <section className="flex flex-1 flex-col bg-background">
         {activeView === 'automations' ? (
           <div className="flex flex-1 flex-col gap-6 p-6">
             <div>

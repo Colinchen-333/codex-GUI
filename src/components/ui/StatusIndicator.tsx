@@ -16,7 +16,6 @@ interface StatusIndicatorProps {
 // Status configuration with colors and labels
 const statusConfig: Record<SessionStatus, {
   label: string
-  labelCn: string
   dotColor: string
   bgColor: string
   textColor: string
@@ -24,7 +23,6 @@ const statusConfig: Record<SessionStatus, {
 }> = {
   idle: {
     label: 'Idle',
-    labelCn: '空闲',
     dotColor: 'bg-text-3/60',
     bgColor: 'bg-surface-hover/[0.12]',
     textColor: 'text-text-3',
@@ -32,7 +30,6 @@ const statusConfig: Record<SessionStatus, {
   },
   running: {
     label: 'Running',
-    labelCn: '运行中',
     dotColor: 'bg-text-2/80',
     bgColor: 'bg-surface-hover/[0.16]',
     textColor: 'text-text-2',
@@ -40,24 +37,21 @@ const statusConfig: Record<SessionStatus, {
   },
   completed: {
     label: 'Completed',
-    labelCn: '任务完成',
-    dotColor: 'bg-emerald-400/70',
+    dotColor: 'bg-status-success/70',
     bgColor: 'bg-surface-hover/[0.12]',
     textColor: 'text-text-2',
     icon: '',
   },
   failed: {
     label: 'Failed',
-    labelCn: '失败',
-    dotColor: 'bg-rose-400/70',
+    dotColor: 'bg-status-error/70',
     bgColor: 'bg-surface-hover/[0.12]',
     textColor: 'text-text-2',
     icon: '',
   },
   interrupted: {
     label: 'Interrupted',
-    labelCn: '已中断',
-    dotColor: 'bg-amber-400/70',
+    dotColor: 'bg-status-warning/70',
     bgColor: 'bg-surface-hover/[0.12]',
     textColor: 'text-text-2',
     icon: '',
@@ -117,7 +111,7 @@ export function StatusIndicator({
       />
       {showLabel && (
         <span className={cn(sizes.text, config.textColor, status === 'running' && 'animate-breathe-text')}>
-          {config.labelCn}
+          {config.label}
         </span>
       )}
     </span>
@@ -147,7 +141,7 @@ export function StatusIcon({ status, size = 'md', className }: StatusIconProps) 
 
   if (isCompleted) {
     return (
-        <span className={cn('text-emerald-400/80 flex-shrink-0', className)} title="Completed">
+        <span className={cn('text-status-success/80 flex-shrink-0', className)} title="Completed">
         <svg className={sizeClass} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
@@ -157,7 +151,7 @@ export function StatusIcon({ status, size = 'md', className }: StatusIconProps) 
 
   if (isFailed) {
     return (
-        <span className={cn('text-rose-400/80 flex-shrink-0', className)} title="Failed">
+        <span className={cn('text-status-error/80 flex-shrink-0', className)} title="Failed">
         <svg className={sizeClass} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
         </svg>
@@ -178,7 +172,7 @@ export function StatusIcon({ status, size = 'md', className }: StatusIconProps) 
 
   if (isInterrupted) {
     return (
-        <span className={cn('text-amber-400/80 flex-shrink-0', className)} title="Interrupted">
+        <span className={cn('text-status-warning/80 flex-shrink-0', className)} title="Interrupted">
         <svg className={sizeClass} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
         </svg>
@@ -193,7 +187,7 @@ export function StatusIcon({ status, size = 'md', className }: StatusIconProps) 
 // eslint-disable-next-line react-refresh/only-export-components
 export function getStatusLabel(status: SessionStatus): string {
   const config = statusConfig[status]
-  return config ? config.labelCn : '未知'
+  return config ? config.label : 'Unknown'
 }
 
 export default StatusIndicator

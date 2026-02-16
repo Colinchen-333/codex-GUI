@@ -1,19 +1,88 @@
-import { lazy, Suspense, useState, useEffect, memo, type CSSProperties } from 'react'
+import { lazy, Suspense, useState, useEffect, memo, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '../../lib/utils'
 
-// Lazy load syntax highlighter for better initial load performance
-const SyntaxHighlighter = lazy(() =>
-  import('react-syntax-highlighter').then((mod) => ({ default: mod.Prism }))
-)
+type PrismHighlighter = ComponentType<{
+  style?: Record<string, CSSProperties>
+  language?: string
+  PreTag?: string
+  customStyle?: CSSProperties
+  children?: ReactNode
+}> & {
+  registerLanguage?: (languageName: string, language: unknown) => void
+  alias?: (languageName: string, aliases: string[]) => void
+}
+
+let prismLanguagesPromise: Promise<void> | null = null
+async function ensurePrismLanguages(Highlighter: PrismHighlighter) {
+  if (prismLanguagesPromise) return prismLanguagesPromise
+
+  prismLanguagesPromise = (async () => {
+    const [
+      bash,
+      diff,
+      json,
+      javascript,
+      jsx,
+      typescript,
+      tsx,
+      python,
+      rust,
+      yaml,
+      markdown,
+    ] = await Promise.all([
+      import('react-syntax-highlighter/dist/esm/languages/prism/bash').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/diff').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/json').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/javascript').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/jsx').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/typescript').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/tsx').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/python').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/rust').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/yaml').then((m) => m.default),
+      import('react-syntax-highlighter/dist/esm/languages/prism/markdown').then((m) => m.default),
+    ])
+
+    // prism-light: registerLanguage ignores the name and registers the refractor language object.
+    Highlighter.registerLanguage?.('bash', bash)
+    Highlighter.registerLanguage?.('diff', diff)
+    Highlighter.registerLanguage?.('json', json)
+    Highlighter.registerLanguage?.('javascript', javascript)
+    Highlighter.registerLanguage?.('jsx', jsx)
+    Highlighter.registerLanguage?.('typescript', typescript)
+    Highlighter.registerLanguage?.('tsx', tsx)
+    Highlighter.registerLanguage?.('python', python)
+    Highlighter.registerLanguage?.('rust', rust)
+    Highlighter.registerLanguage?.('yaml', yaml)
+    Highlighter.registerLanguage?.('markdown', markdown)
+
+    Highlighter.alias?.('bash', ['sh', 'shell', 'zsh'])
+    Highlighter.alias?.('javascript', ['js'])
+    Highlighter.alias?.('typescript', ['ts'])
+    Highlighter.alias?.('tsx', ['tsreact'])
+    Highlighter.alias?.('yaml', ['yml'])
+  })()
+
+  return prismLanguagesPromise
+}
+
+// Lazy load a "light" Prism highlighter and register only a small language set.
+// This keeps the production bundle much smaller than importing the full Prism build.
+const SyntaxHighlighter = lazy(async () => {
+  const mod = await import('react-syntax-highlighter/dist/esm/prism-light')
+  const Highlighter = mod.default as unknown as PrismHighlighter
+  await ensurePrismLanguages(Highlighter)
+  return { default: Highlighter }
+})
 
 // Lazy load theme - cached at module level
 let cachedTheme: Record<string, CSSProperties> | null = null
 const loadTheme = async () => {
   if (cachedTheme) return cachedTheme
-  const mod = await import('react-syntax-highlighter/dist/esm/styles/prism')
-  cachedTheme = mod.oneDark as Record<string, CSSProperties>
+  const mod = await import('react-syntax-highlighter/dist/esm/styles/prism/one-dark')
+  cachedTheme = mod.default as Record<string, CSSProperties>
   return cachedTheme
 }
 
@@ -122,7 +191,7 @@ const markdownComponents = {
 
     if (!isValidUrl(href)) {
       // Render as plain text for invalid URLs
-      return <span className="text-muted-foreground">{children}</span>
+      return <span className="text-text-3">{children}</span>
     }
 
     return (

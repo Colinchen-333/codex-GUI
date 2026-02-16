@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { MessageSquare, Cloud, ChevronDown } from 'lucide-react'
+import { MessageSquare, Sparkles, ChevronDown, Gamepad2, FileText, Newspaper } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export interface ChatEmptyStateProps {
@@ -8,19 +8,20 @@ export interface ChatEmptyStateProps {
   className?: string
   projectName?: string
   onProjectSelect?: () => void
+  onSuggestionClick?: (text: string) => void
 }
 
 const SUGGESTION_CARDS = [
   {
-    emoji: '🎮',
+    icon: <Gamepad2 size={18} className="text-text-2" aria-hidden="true" />,
     text: 'Build a classic Snake game in this repo.',
   },
   {
-    emoji: '📜',
+    icon: <FileText size={18} className="text-text-2" aria-hidden="true" />,
     text: 'Create a one-page PDF that summarizes this app.',
   },
   {
-    emoji: '📰',
+    icon: <Newspaper size={18} className="text-text-2" aria-hidden="true" />,
     text: "Summarize last week's PRs by teammate and theme.",
   },
 ]
@@ -31,6 +32,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
   className,
   projectName = 'codex-GUI',
   onProjectSelect,
+  onSuggestionClick,
 }: ChatEmptyStateProps) {
   if (isFiltered) {
     return (
@@ -64,7 +66,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
     >
       <div className="mb-8">
         <div className="w-16 h-16 rounded-2xl bg-surface-solid border border-stroke/10 flex items-center justify-center mb-6 mx-auto">
-          <Cloud size={32} className="text-text-3" />
+          <Sparkles size={32} className="text-text-3" />
         </div>
         <h2 className="text-3xl font-bold text-center mb-2 text-text-1">
           {message || "Let's build"}
@@ -80,21 +82,21 @@ export const ChatEmptyState = memo(function ChatEmptyState({
 
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 mb-12 px-6">
         {SUGGESTION_CARDS.map((card, index) => (
-          <div
+          <button
             key={index}
-            className="bg-surface-solid border border-stroke/10 p-5 rounded-2xl hover:border-ring/50 cursor-pointer transition-all"
+            onClick={() => onSuggestionClick?.(card.text)}
+            className="bg-surface-solid border border-stroke/10 p-5 rounded-2xl hover:border-ring/50 cursor-pointer transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <div className="text-2xl mb-4">{card.emoji}</div>
+            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stroke/10 bg-surface-hover/[0.06]">
+              {card.icon}
+            </div>
             <p className="text-sm font-medium leading-relaxed text-text-2">
               {card.text}
             </p>
-          </div>
+          </button>
         ))}
       </div>
 
-      <button className="text-xs font-medium text-text-3 hover:text-text-2 uppercase tracking-widest mb-12">
-        Explore more
-      </button>
     </div>
   )
 })

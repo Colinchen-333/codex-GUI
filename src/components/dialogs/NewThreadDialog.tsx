@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react'
-import { GitBranch, Monitor, Cloud, Loader2, AlertCircle } from 'lucide-react'
+import { GitBranch, Monitor, Loader2, AlertCircle } from 'lucide-react'
 import { BaseDialog } from '../ui/BaseDialog'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { projectApi } from '../../lib/api'
 import { cn } from '../../lib/utils'
 
-type ThreadMode = 'local' | 'worktree' | 'cloud'
+type ThreadMode = 'local' | 'worktree'
 
 interface NewThreadDialogProps {
   isOpen: boolean
@@ -28,13 +28,6 @@ const modes: { id: ThreadMode; label: string; icon: typeof Monitor; description:
     label: 'Worktree',
     icon: GitBranch,
     description: 'Create an isolated git worktree with a new branch.',
-  },
-  {
-    id: 'cloud',
-    label: 'Cloud',
-    icon: Cloud,
-    description: 'Run tasks in the cloud.',
-    disabled: true,
   },
 ]
 
@@ -109,7 +102,7 @@ export function NewThreadDialog({
     <BaseDialog
       isOpen={isOpen}
       onClose={handleClose}
-      title="New Thread"
+      title="New Session"
       maxWidth="md"
     >
       <div className="px-6 py-5 space-y-5">
@@ -123,6 +116,7 @@ export function NewThreadDialog({
                 key={mode.id}
                 onClick={() => !mode.disabled && setSelectedMode(mode.id)}
                 disabled={mode.disabled}
+                title={mode.disabled ? 'Unavailable' : undefined}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                   isSelected
@@ -136,7 +130,7 @@ export function NewThreadDialog({
                 <span>{mode.label}</span>
                 {mode.disabled && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-hover/[0.12] text-text-3">
-                    Soon
+                    Unavailable
                   </span>
                 )}
               </button>
@@ -185,7 +179,7 @@ export function NewThreadDialog({
 
         {/* Error message */}
         {error && (
-          <div className="flex items-center gap-2 text-sm text-red-400">
+          <div className="flex items-center gap-2 text-sm text-status-error">
             <AlertCircle size={14} className="flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -193,7 +187,7 @@ export function NewThreadDialog({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+      <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-stroke/20">
         <Button variant="ghost" onClick={handleClose} disabled={isCreating}>
           Cancel
         </Button>
@@ -201,7 +195,7 @@ export function NewThreadDialog({
           variant="primary"
           onClick={handleCreate}
           loading={isCreating}
-          disabled={selectedMode === 'cloud' || (selectedMode === 'worktree' && !branchName.trim())}
+          disabled={selectedMode === 'worktree' && !branchName.trim()}
         >
           {isCreating ? (
             <>
@@ -211,7 +205,7 @@ export function NewThreadDialog({
           ) : selectedMode === 'worktree' ? (
             'Create Worktree'
           ) : (
-            'Create Thread'
+            'Create Session'
           )}
         </Button>
       </div>

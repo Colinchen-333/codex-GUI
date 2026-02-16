@@ -15,10 +15,10 @@ export function classifyRisk(change: { path: string; kind: string; diff?: string
 export function getRiskBadgeStyles(risk: RiskLevel): string {
   switch (risk) {
     case 'high':
-      return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+      return 'bg-status-error-muted text-status-error'
     case 'medium':
-      return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+      return 'bg-status-warning-muted text-status-warning'
     case 'low':
-      return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+      return 'bg-status-success-muted text-status-success'
   }
 }

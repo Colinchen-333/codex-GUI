@@ -22,7 +22,7 @@ export const SidebarTabs = memo(function SidebarTabs({
     <div className="flex mb-4 rounded-md bg-surface-hover/[0.06] p-0.5 border border-stroke/10" role="tablist">
       <button
         className={cn(
-          'flex-1 rounded-[4px] px-3 py-1 text-[11px] font-medium transition-all duration-200',
+          'flex-1 rounded px-3 py-1 text-[11px] font-medium transition-all duration-200',
           activeTab === 'projects'
             ? 'bg-surface-solid text-text-1 shadow-sm'
             : 'text-text-3 hover:text-text-2'
@@ -37,7 +37,7 @@ export const SidebarTabs = memo(function SidebarTabs({
       </button>
       <button
         className={cn(
-          'flex-1 rounded-[4px] px-3 py-1 text-[11px] font-medium transition-all duration-200',
+          'flex-1 rounded px-3 py-1 text-[11px] font-medium transition-all duration-200',
           activeTab === 'sessions'
             ? 'bg-surface-solid text-text-1 shadow-sm'
             : 'text-text-3 hover:text-text-2'

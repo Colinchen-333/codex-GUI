@@ -3,53 +3,7 @@ import {
   SettingsSection,
   SettingsCard,
 } from '../../components/settings/SettingsLayout'
-
-interface ShortcutGroup {
-  title: string
-  shortcuts: Array<{
-    keys: string[]
-    description: string
-  }>
-}
-
-const SHORTCUT_GROUPS: ShortcutGroup[] = [
-  {
-    title: 'General',
-    shortcuts: [
-      { keys: ['\u2318', ','], description: 'Open settings' },
-      { keys: ['\u2318', 'K'], description: 'Focus message input' },
-      { keys: ['\u2318', 'N'], description: 'New session' },
-      { keys: ['Esc'], description: 'Stop generation (double-tap) / Close dialogs' },
-      { keys: ['?'], description: 'Show keyboard shortcuts' },
-    ],
-  },
-  {
-    title: 'Navigation',
-    shortcuts: [
-      { keys: ['\u2318', '1'], description: 'Switch to Projects tab' },
-      { keys: ['\u2318', '2'], description: 'Switch to Sessions tab' },
-      { keys: ['\u2191', '\u2193'], description: 'Navigate message history (input)' },
-    ],
-  },
-  {
-    title: 'Chat Input',
-    shortcuts: [
-      { keys: ['Enter'], description: 'Send message (input)' },
-      { keys: ['Shift', 'Enter'], description: 'New line (input)' },
-      { keys: ['/'], description: 'Show slash commands (input)' },
-      { keys: ['@'], description: 'Mention file (input)' },
-      { keys: ['\u2318', 'V'], description: 'Paste image (input)' },
-    ],
-  },
-  {
-    title: 'Approval Actions',
-    shortcuts: [
-      { keys: ['Y'], description: 'Accept action' },
-      { keys: ['N'], description: 'Decline action' },
-      { keys: ['A'], description: 'Accept all for session' },
-    ],
-  },
-]
+import { SHORTCUT_GROUPS, type ShortcutGroup } from '../../lib/shortcutsCatalog'
 
 /**
  * Keyboard shortcuts settings page (inline, not dialog)

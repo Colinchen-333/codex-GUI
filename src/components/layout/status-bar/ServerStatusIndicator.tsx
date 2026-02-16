@@ -35,16 +35,18 @@ export const ServerStatusIndicator = memo(function ServerStatusIndicator({
       <div className="flex items-center gap-1.5">
         <div className="relative flex h-2 w-2">
           {isRunning && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-token-text-tertiary/60 opacity-60" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-success/40 opacity-60" />
           )}
           <span
             className={cn(
               'relative inline-flex h-2 w-2 rounded-full',
-              statusKnown ? (isRunning ? 'bg-token-charts-green' : 'bg-token-text-tertiary/70') : 'bg-token-text-tertiary/40'
+              statusKnown
+                ? (isRunning ? 'bg-status-success' : 'bg-status-error')
+                : 'bg-surface-hover/[0.22]'
             )}
           />
         </div>
-        <span className="flex items-center gap-1 text-xs text-token-description-foreground">
+        <span className="flex items-center gap-1 text-xs text-text-2">
           <Activity size={11} strokeWidth={2.4} />
           Engine {statusKnown ? (isRunning ? 'online' : 'offline') : 'checking'}
         </span>
@@ -52,7 +54,7 @@ export const ServerStatusIndicator = memo(function ServerStatusIndicator({
 
       {statusKnown && !isRunning && (
         <button
-          className="text-xs font-medium text-token-description-foreground transition-colors hover:text-token-foreground"
+          className="text-xs font-semibold text-text-2 transition-colors hover:text-text-1"
           onClick={() => void handleRestart()}
         >
           Restart

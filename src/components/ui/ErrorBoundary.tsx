@@ -12,24 +12,30 @@ interface Props {
 interface State {
   hasError: boolean
   error: Error | null
+  errorCount: number
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { hasError: false, error: null, errorCount: 0 }
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.setState(prev => ({ errorCount: prev.errorCount + 1 }))
     logError(error, {
       context: 'ErrorBoundary',
       source: 'ui',
       details: errorInfo.componentStack
     })
+  }
+
+  resetErrorBoundary = () => {
+    this.setState({ hasError: false, error: null })
   }
 
   render() {
@@ -68,10 +74,20 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Copy size={14} />
                 Copy Error
               </Button>
+              {this.state.errorCount < 3 && (
+                <Button variant="secondary" onClick={this.resetErrorBoundary}>
+                  Try Again
+                </Button>
+              )}
               <Button variant="primary" onClick={() => window.location.reload()}>
                 Reload Application
               </Button>
             </div>
+            {this.state.errorCount >= 3 && (
+              <p className="mt-4 text-center text-xs text-status-warning">
+                Multiple errors detected. Please reload the application.
+              </p>
+            )}
           </div>
         </div>
       )

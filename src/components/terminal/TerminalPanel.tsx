@@ -162,23 +162,25 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
 
   // Listen for Tauri events
   useEffect(() => {
+    let mounted = true
     const unlisteners: UnlistenFn[] = []
 
     const setup = async () => {
       const unStdout = await listen<string>('terminal:stdout', (event) => {
-        xtermRef.current?.writeln(event.payload)
+        if (mounted) xtermRef.current?.writeln(event.payload)
       })
-      unlisteners.push(unStdout)
+      if (mounted) unlisteners.push(unStdout); else unStdout()
 
       const unStderr = await listen<string>('terminal:stderr', (event) => {
-        xtermRef.current?.writeln(`\x1b[31m${event.payload}\x1b[0m`)
+        if (mounted) xtermRef.current?.writeln(`\x1b[31m${event.payload}\x1b[0m`)
       })
-      unlisteners.push(unStderr)
+      if (mounted) unlisteners.push(unStderr); else unStderr()
     }
 
     void setup()
 
     return () => {
+      mounted = false
       for (const fn of unlisteners) fn()
     }
   }, [])

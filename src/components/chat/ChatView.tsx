@@ -25,6 +25,7 @@ import ChatInputArea from './ChatInputArea'
 import { DragOverlay, useChatImageUpload } from './ChatImageUpload'
 import { useChatCommands } from './useChatCommands'
 import { useMessageSubmission } from './useMessageSubmission'
+import { cn } from '../../lib/utils'
 
 export function ChatView() {
   // Store selectors
@@ -250,15 +251,18 @@ export function ChatView() {
       />
 
       {/* Scroll to bottom button */}
-      {showScrollButton && (
-        <button
-          onClick={handleScrollToBottom}
-          className="absolute bottom-28 right-6 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-stroke bg-surface-solid shadow-lg transition-opacity hover:bg-surface-hover/[0.14]"
-          aria-label="Scroll to bottom"
-        >
-          <ArrowDown size={16} className="text-text-2" />
-        </button>
-      )}
+      <button
+        onClick={handleScrollToBottom}
+        className={cn(
+          'absolute bottom-28 right-6 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-stroke bg-surface-solid shadow-lg transition-all duration-200',
+          showScrollButton
+            ? 'opacity-100 translate-y-0'
+            : 'pointer-events-none opacity-0 translate-y-2'
+        )}
+        aria-label="Scroll to bottom"
+      >
+        <ArrowDown size={16} className="text-text-2" />
+      </button>
 
       {/* Input Area */}
       <ChatInputArea

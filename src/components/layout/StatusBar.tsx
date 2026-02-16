@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, GitBranch, ShieldAlert } from 'lucide-react'
+import { GitBranch, ShieldAlert } from 'lucide-react'
 import {
   SnapshotListDialog,
   AboutDialog,
@@ -96,13 +96,9 @@ export function StatusBar() {
         data-tauri-drag-region
       >
         <div className="no-drag pointer-events-auto flex items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex h-6 items-center gap-1 rounded-md border border-stroke/20 bg-surface-solid px-2 text-text-2"
-          >
+          <span className="inline-flex h-6 items-center rounded-md border border-stroke/20 bg-surface-solid px-2 text-text-2">
             Local
-            <ChevronDown size={11} />
-          </button>
+          </span>
 
           <span
             className={cn(
@@ -140,7 +136,6 @@ export function StatusBar() {
             <span className="inline-flex h-6 items-center gap-1 rounded-md border border-stroke/20 bg-surface-solid px-2 text-text-2">
               <GitBranch size={11} />
               {branch || 'main'}
-              <ChevronDown size={11} />
             </span>
           )}
 

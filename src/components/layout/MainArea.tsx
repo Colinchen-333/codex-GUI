@@ -630,7 +630,6 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-1">
                 Local
-                <ChevronDown size={11} />
               </span>
               <span className="inline-flex items-center gap-1 text-status-warning">
                 <ShieldAlert size={11} />
@@ -640,7 +639,6 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
             <span className="inline-flex items-center gap-1">
               <GitBranch size={11} />
               main
-              <ChevronDown size={11} />
             </span>
           </div>
 

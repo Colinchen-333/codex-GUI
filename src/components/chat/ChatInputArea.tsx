@@ -534,7 +534,7 @@ export default memo(function ChatInputArea({
           <div className="px-4 pt-3">
             <textarea
               ref={inputRef}
-              className="w-full max-h-[220px] min-h-[80px] resize-none bg-transparent text-sm text-text-1 focus:outline-none placeholder:text-text-3/70"
+              className="w-full max-h-[220px] min-h-[80px] resize-none bg-transparent text-sm text-text-1 focus:outline-none placeholder:text-text-3"
               placeholder={placeholder}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -651,7 +651,7 @@ export default memo(function ChatInputArea({
                             role="option"
                             aria-selected={isSelected}
                             className={cn(
-                              'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.08]',
+                              'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.12]',
                               isSelected && 'bg-surface-hover/[0.06]'
                             )}
                             onClick={() => handleSelectModel(model.id)}
@@ -712,7 +712,7 @@ export default memo(function ChatInputArea({
                           role="option"
                           aria-selected={isSelected}
                           className={cn(
-                            'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.08]',
+                            'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.12]',
                             isSelected && 'bg-surface-hover/[0.06]'
                           )}
                           onClick={() => handleSelectApproval(policy)}
@@ -785,7 +785,7 @@ export default memo(function ChatInputArea({
                       <input
                         ref={branchSearchRef}
                         type="text"
-                        className="w-full rounded-lg bg-surface-hover/[0.08] py-1.5 pl-8 pr-3 text-xs text-text-1 placeholder:text-text-3/70 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        className="w-full rounded-lg bg-surface-hover/[0.08] py-1.5 pl-8 pr-3 text-xs text-text-1 placeholder:text-text-3 focus:outline-none focus:ring-1 focus:ring-primary/30"
                         placeholder="Find a branch..."
                         value={branchSearch}
                         onChange={(e) => setBranchSearch(e.target.value)}
@@ -806,7 +806,7 @@ export default memo(function ChatInputArea({
                           aria-selected={branch.isCurrent}
                           disabled={branch.isCurrent || isSwitchingBranch}
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover/[0.08]',
+                            'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover/[0.12]',
                             branch.isCurrent && 'bg-surface-hover/[0.06]',
                             isSwitchingBranch && !branch.isCurrent && 'opacity-50'
                           )}

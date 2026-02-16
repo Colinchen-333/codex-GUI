@@ -451,7 +451,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <IconButton size="sm" onClick={() => void fetchDiff()} title="Refresh">
+            <IconButton size="sm" onClick={() => void fetchDiff()} title="Refresh" aria-label="Refresh">
               <RefreshCw size={14} />
             </IconButton>
             <Button variant="secondary" size="sm" onClick={onCommit}>
@@ -462,7 +462,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
               <span className="text-status-success font-semibold">+{stats.additions.toLocaleString()}</span>
               <span className="text-status-error font-semibold">-{stats.deletions.toLocaleString()}</span>
             </div>
-            <IconButton size="sm" onClick={onClose} title="Close panel">
+            <IconButton size="sm" onClick={onClose} title="Close panel" aria-label="Close panel">
               <X size={14} />
             </IconButton>
           </div>

@@ -632,7 +632,10 @@ export default memo(function ChatInputArea({
                     aria-label="Select model"
                   >
                     {models.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-xs text-text-3">Loading models...</div>
+                      <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-text-3">
+                        <Loader2 size={14} className="animate-spin" />
+                        Loading models...
+                      </div>
                     ) : (
                       models.map((model) => {
                         const isSelected = model.id === (modelOverride || settings.model) || model.model === (modelOverride || settings.model)

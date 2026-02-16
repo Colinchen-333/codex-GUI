@@ -444,7 +444,7 @@ export function createRespondToApprovalInThread(
     } finally {
       set((state) => {
         const ts = state.threads[threadId]
-        if (ts?.approvalInFlight) {
+        if (ts) {
           delete ts.approvalInFlight[itemId]
         }
         return state

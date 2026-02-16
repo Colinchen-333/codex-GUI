@@ -38,6 +38,7 @@ export function useKeepAwake(): UseKeepAwakeReturn {
   }, [])
 
   const start = useCallback(async () => {
+    if (isLoading) return
     setIsLoading(true)
     try {
       await systemApi.startKeepAwake()
@@ -48,9 +49,10 @@ export function useKeepAwake(): UseKeepAwakeReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isLoading])
 
   const stop = useCallback(async () => {
+    if (isLoading) return
     setIsLoading(true)
     try {
       await systemApi.stopKeepAwake()
@@ -61,7 +63,7 @@ export function useKeepAwake(): UseKeepAwakeReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isLoading])
 
   const toggle = useCallback(async () => {
     if (isActive) {

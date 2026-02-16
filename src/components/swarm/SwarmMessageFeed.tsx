@@ -19,12 +19,10 @@ const TYPE_STYLES: Record<string, string> = {
 
 export function SwarmMessageFeed() {
   const messages = useSwarmStore((s) => s.messages)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
   if (messages.length === 0) {
@@ -36,11 +34,11 @@ export function SwarmMessageFeed() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" role="log" aria-live="polite" aria-label="Activity log">
       <h3 className="text-[12px] font-semibold uppercase tracking-wider text-text-3">
         Activity
       </h3>
-      <div ref={scrollRef} className="space-y-3">
+      <div className="space-y-3">
         {messages.map((msg) => (
           <div key={msg.id} className="text-[13px]">
             <div className="flex items-baseline gap-2">
@@ -58,6 +56,7 @@ export function SwarmMessageFeed() {
             </p>
           </div>
         ))}
+        <div ref={endRef} />
       </div>
     </div>
   )

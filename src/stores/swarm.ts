@@ -135,7 +135,7 @@ export const useSwarmStore = create<SwarmState>((set) => ({
     set({
       isActive: true,
       phase: 'idle',
-      startedAt: Date.now(),
+      startedAt: null,
       error: null,
     })
   },
@@ -145,7 +145,10 @@ export const useSwarmStore = create<SwarmState>((set) => ({
   },
 
   setPhase: (phase) => {
-    set({ phase })
+    set((state) => ({
+      phase,
+      startedAt: phase === 'exploring' && !state.startedAt ? Date.now() : state.startedAt,
+    }))
   },
 
   setUserRequest: (request) => {
@@ -205,16 +208,13 @@ export const useSwarmStore = create<SwarmState>((set) => ({
   },
 
   addMessage: (msg) => {
-    set((state) => ({
-      messages: [
+    set((state) => {
+      const next = [
         ...state.messages,
-        {
-          ...msg,
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-        },
-      ],
-    }))
+        { ...msg, id: crypto.randomUUID(), timestamp: Date.now() },
+      ]
+      return { messages: next.length > 200 ? next.slice(-200) : next }
+    })
   },
 
   setTestResults: (output, pass) => {

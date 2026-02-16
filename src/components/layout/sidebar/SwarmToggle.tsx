@@ -1,6 +1,7 @@
 import { Bot } from 'lucide-react'
 import { Switch } from '../../ui/Switch'
 import { useSwarmStore } from '../../../stores/swarm'
+import { cancelSwarm } from '../../../lib/swarmOrchestrator'
 
 export function SwarmToggle() {
   const isActive = useSwarmStore((s) => s.isActive)
@@ -24,7 +25,20 @@ export function SwarmToggle() {
         <Switch
           size="sm"
           checked={isActive}
-          onChange={(checked) => (checked ? activate() : deactivate())}
+          onChange={(checked) => {
+            if (checked) {
+              activate()
+            } else {
+              const { phase } = useSwarmStore.getState()
+              if (phase !== 'idle' && phase !== 'completed' && phase !== 'failed') {
+                if (window.confirm('Cancel Self-Driving? This will stop all workers and discard pending changes.')) {
+                  cancelSwarm()
+                }
+              } else {
+                deactivate()
+              }
+            }
+          }}
           aria-label="Toggle Self-Driving mode"
         />
       </div>

@@ -1,5 +1,8 @@
 import { useState, useRef } from 'react'
 import { useSwarmStore } from '../../stores/swarm'
+import { useProjectsStore } from '../../stores/projects'
+import { runSwarm, cancelSwarm } from '../../lib/swarmOrchestrator'
+import { projectApi } from '../../lib/api'
 import { Button } from '../ui/Button'
 import { Send } from 'lucide-react'
 
@@ -9,21 +12,57 @@ export function SwarmInput() {
   const setPhase = useSwarmStore((s) => s.setPhase)
   const stagingDiff = useSwarmStore((s) => s.stagingDiff)
   const testsPass = useSwarmStore((s) => s.testsPass)
+  const deactivate = useSwarmStore((s) => s.deactivate)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSubmit = () => {
     const trimmed = draft.trim()
     if (!trimmed) return
+    setDraft('')
     setUserRequest(trimmed)
     setPhase('exploring')
-    setDraft('')
+
+    const { selectedProjectId, projects } = useProjectsStore.getState()
+    const selectedProject = selectedProjectId
+      ? projects.find((p) => p.id === selectedProjectId)
+      : null
+    if (selectedProjectId && selectedProject?.path) {
+      runSwarm(trimmed, selectedProject.path, selectedProjectId).catch((err) => {
+        useSwarmStore.getState().setError(err instanceof Error ? err.message : String(err))
+        useSwarmStore.getState().setPhase('failed')
+      })
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
+    }
+  }
+
+  const handleMerge = async () => {
+    const ctx = useSwarmStore.getState().context
+    if (!ctx) return
+    try {
+      await projectApi.gitCheckoutBranch(ctx.projectPath, ctx.originalBranch)
+      const result = await projectApi.gitMergeNoFf(
+        ctx.projectPath,
+        ctx.stagingBranch,
+        'Merge Self-Driving changes'
+      )
+      if (result.success) {
+        await cancelSwarm()
+      } else {
+        useSwarmStore.getState().setError(
+          `Merge conflict: ${result.conflictFiles.join(', ')}`
+        )
+      }
+    } catch (err) {
+      useSwarmStore.getState().setError(
+        err instanceof Error ? err.message : String(err)
+      )
     }
   }
 
@@ -38,7 +77,8 @@ export function SwarmInput() {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Describe what you want to build..."
-            className="flex-1 resize-none rounded-lg border border-stroke/20 bg-surface px-3 py-2 text-[14px] text-text-1 placeholder:text-text-3 focus:border-primary focus:outline-none"
+            aria-label="Self-Driving request"
+            className="flex-1 resize-none rounded-lg border border-stroke/20 bg-surface px-3 py-2 text-[14px] text-text-1 placeholder:text-text-3 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             rows={2}
           />
           <Button
@@ -69,16 +109,14 @@ export function SwarmInput() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => useSwarmStore.getState().deactivate()}
+              onClick={() => cancelSwarm()}
             >
               Discard
             </Button>
             <Button
               variant="primary"
               size="sm"
-              onClick={() => {
-                /* merge to main - orchestrator handles */
-              }}
+              onClick={handleMerge}
             >
               Merge to Main
             </Button>

@@ -19,7 +19,10 @@ function WorkerCard({ worker }: { worker: SwarmWorker }) {
     <div className="flex items-center gap-2 rounded-lg border border-stroke/10 bg-surface px-3 py-2">
       <div
         className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[worker.status] || 'bg-surface-solid'}`}
+        title={worker.status}
+        aria-hidden="true"
       />
+      <span className="sr-only">{worker.status}</span>
       <div className="min-w-0">
         <div className="truncate text-[12px] font-medium text-text-1">
           {worker.name}

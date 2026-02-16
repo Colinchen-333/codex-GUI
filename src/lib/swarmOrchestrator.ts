@@ -11,8 +11,8 @@
  * 3. CASCADE CHECK: If 1 task -> Team Lead handles it alone (no workers)
  * 4. SPAWN: Create worktrees + worker threads
  * 5. WORK: Assign tasks, wait for completion, merge each worker's branch
- * 6. REVIEW: Generate combined diff of staging vs original branch
- * 7. TEST: Run test command
+ * 6. TEST: Run test commands (before review)
+ * 7. REVIEW: Generate combined diff of staging vs original branch
  * 8. COMPLETE: Wait for user approval
  * 9. CLEANUP: Remove worktrees on cancel/error
  */
@@ -57,13 +57,29 @@ function parseTaskList(response: string): Array<{
   testCommand: string
   dependsOn: string[]
 }> {
-  // Look for ```json ... ``` block in the response
-  const jsonMatch = response.match(/```json\s*\n([\s\S]*?)\n\s*```/)
-  if (!jsonMatch) {
+  // Look for ```json ... ``` block in the response (case-insensitive, allow jsonc)
+  const jsonMatch = response.match(/```json[c]?\s*\n([\s\S]*?)\n?\s*```/i)
+
+  let parsed: unknown
+
+  if (jsonMatch) {
+    parsed = JSON.parse(jsonMatch[1])
+  } else {
+    // Fallback: try to find a raw JSON array in the response
+    const arrayMatch = response.match(/\[[\s\S]*\]/)
+    if (arrayMatch) {
+      try {
+        parsed = JSON.parse(arrayMatch[0])
+      } catch {
+        // Fall through to the error below
+      }
+    }
+  }
+
+  if (!parsed) {
     throw new Error('Team Lead response did not contain a JSON task list')
   }
 
-  const parsed = JSON.parse(jsonMatch[1])
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error('Task list is empty or not an array')
   }
@@ -79,74 +95,70 @@ function parseTaskList(response: string): Array<{
 /**
  * Wait for a thread's current turn to complete by listening to Tauri events.
  *
- * Subscribes to `turn-completed` and `item-completed` events, collecting
- * agent message text as it arrives. Resolves with the concatenated agent
- * response when the turn finishes, or rejects on timeout.
+ * IMPORTANT: This function awaits both listen() calls synchronously before
+ * returning the promise. Callers should call this BEFORE triggering the work
+ * (e.g. sendMessage) to avoid missing events due to race conditions.
+ *
+ * Resolves with the concatenated agent response when the turn finishes.
+ * Does NOT have an internal timeout -- callers should use withTimeout() for that.
  */
-async function waitForTurnComplete(
-  threadId: string,
-  timeoutMs = WORKER_TIMEOUT_MS
-): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const collectedText: string[] = []
-    const unlisteners: UnlistenFn[] = []
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
+async function waitForTurnComplete(threadId: string): Promise<string> {
+  const collectedText: string[] = []
+  const unlisteners: UnlistenFn[] = []
 
-    const cleanup = () => {
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId)
-        timeoutId = null
-      }
-      for (const unlisten of unlisteners) {
-        unlisten()
-      }
+  // Create a deferred promise whose resolve/reject are captured by the listeners
+  let resolvePromise: (value: string) => void
+  let rejectPromise: (reason: Error) => void
+  const resultPromise = new Promise<string>((resolve, reject) => {
+    resolvePromise = resolve
+    rejectPromise = reject
+  })
+
+  const cleanup = () => {
+    for (const unlisten of unlisteners) {
+      unlisten()
+    }
+  }
+
+  // Await both listen() calls synchronously BEFORE returning the promise.
+  // This guarantees listeners are registered before any events can fire.
+
+  // Listen for item completions to collect agent message text
+  const unlistenItem = await listen<ItemCompletedEvent>('item-completed', (event) => {
+    const payload = event.payload
+    if (payload.threadId !== threadId) return
+    if (payload.item.type !== 'agentMessage') return
+
+    const content = payload.item.content as
+      | { text?: string; isStreaming?: boolean }
+      | undefined
+    if (content?.text) {
+      collectedText.push(content.text)
+    }
+  })
+  unlisteners.push(unlistenItem)
+
+  // Listen for turn completion
+  const unlistenTurn = await listen<TurnCompletedEvent>('turn-completed', (event) => {
+    const payload = event.payload
+    if (payload.threadId !== threadId) return
+
+    cleanup()
+
+    const status = payload.turn.status
+    if (status === 'failed') {
+      const errorMsg = payload.turn.error?.message || 'Turn failed'
+      rejectPromise(new Error(errorMsg))
+      return
     }
 
-    // Set up timeout
-    timeoutId = setTimeout(() => {
-      cleanup()
-      reject(new Error(`Thread ${threadId} timed out after ${timeoutMs}ms`))
-    }, timeoutMs)
-
-    // Listen for item completions to collect agent message text
-    listen<ItemCompletedEvent>('item-completed', (event) => {
-      const payload = event.payload
-      if (payload.threadId !== threadId) return
-      if (payload.item.type !== 'agentMessage') return
-
-      // Extract text from the agent message content
-      const content = payload.item.content as
-        | { text?: string; isStreaming?: boolean }
-        | undefined
-      if (content?.text) {
-        collectedText.push(content.text)
-      }
-    })
-      .then((unlisten) => unlisteners.push(unlisten))
-      .catch((err) => log.error(`[Swarm] Failed to listen for item-completed: ${err}`, 'SwarmOrchestrator'))
-
-    // Listen for turn completion
-    listen<TurnCompletedEvent>('turn-completed', (event) => {
-      const payload = event.payload
-      if (payload.threadId !== threadId) return
-
-      cleanup()
-
-      const status = payload.turn.status
-      if (status === 'failed') {
-        const errorMsg = payload.turn.error?.message || 'Turn failed'
-        reject(new Error(errorMsg))
-        return
-      }
-
-      resolve(collectedText.join('\n'))
-    })
-      .then((unlisten) => unlisteners.push(unlisten))
-      .catch((err) => {
-        cleanup()
-        reject(new Error(`Failed to listen for turn-completed: ${err}`))
-      })
+    resolvePromise(collectedText.join('\n'))
   })
+  unlisteners.push(unlistenTurn)
+
+  // Both listeners are now registered. Return the promise that will be
+  // resolved/rejected by the turn-completed listener callback.
+  return resultPromise
 }
 
 /**
@@ -154,6 +166,20 @@ async function waitForTurnComplete(
  */
 function isTimeoutResult(value: unknown): value is { timeout: true } {
   return value !== null && typeof value === 'object' && 'timeout' in value
+}
+
+/**
+ * Interrupt all active worker threads. Best-effort; errors are logged but ignored.
+ */
+async function interruptAllWorkers(): Promise<void> {
+  const workers = useSwarmStore.getState().workers
+  for (const w of workers) {
+    try {
+      await threadApi.interrupt(w.threadId)
+    } catch {
+      // Interrupting a thread that is already idle/done is harmless
+    }
+  }
 }
 
 // ==================== Main Orchestrator ====================
@@ -195,8 +221,11 @@ export async function runSwarm(
     const teamLeadThreadId = teamLeadResponse.thread.id
     store.setTeamLeadThread(teamLeadThreadId)
 
-    // Send exploration prompt to Team Lead
+    // Set up listener BEFORE sending the message to avoid race condition
     const explorationPrompt = buildTeamLeadExplorationPrompt(userRequest, projectPath)
+    const explorationTurnPromise = waitForTurnComplete(teamLeadThreadId)
+
+    // Now trigger the work
     await threadApi.sendMessage(teamLeadThreadId, explorationPrompt)
 
     store.addMessage({
@@ -205,8 +234,11 @@ export async function runSwarm(
       type: 'discovery',
     })
 
-    // Wait for Team Lead to finish exploration
-    const explorationResult = await waitForTurnComplete(teamLeadThreadId, EXPLORATION_TIMEOUT_MS)
+    // Wait for Team Lead to finish exploration (with timeout)
+    const explorationResult = await withTimeout(explorationTurnPromise, EXPLORATION_TIMEOUT_MS)
+    if (isTimeoutResult(explorationResult)) {
+      throw new Error('Team Lead exploration timed out')
+    }
 
     // ---- Phase 2: PLAN ----
     store.setPhase('planning')
@@ -255,13 +287,43 @@ export async function runSwarm(
       store.updateTaskStatus(task.id, 'in_progress')
 
       const cascadePrompt = buildCascadePrompt(userRequest, task)
+
+      // Set up listener BEFORE sending message
+      const cascadeTurnPromise = waitForTurnComplete(teamLeadThreadId)
       await threadApi.sendMessage(teamLeadThreadId, cascadePrompt)
-      await waitForTurnComplete(teamLeadThreadId)
+      const cascadeResult = await withTimeout(cascadeTurnPromise, WORKER_TIMEOUT_MS)
+
+      if (isTimeoutResult(cascadeResult)) {
+        store.updateTaskStatus(task.id, 'failed')
+        throw new Error('Team Lead cascade task timed out')
+      }
 
       store.updateTaskStatus(task.id, 'merged')
       store.addMessage({ from: 'Team Lead', content: `Completed: ${task.title}`, type: 'status' })
 
-      // Skip to completed -- no staging diff or tests in cascade mode
+      // Run test command in cascade path if one is configured
+      if (task.testCommand && task.testCommand !== 'echo "no test"') {
+        store.setPhase('testing')
+        store.addMessage({ from: 'System', content: 'Running tests...', type: 'status' })
+        try {
+          const testResult = await terminalApi.execute(projectPath, task.testCommand)
+          const passed = testResult.exitCode === 0
+          store.setTestResults(task.testCommand, passed)
+          store.addMessage({
+            from: 'System',
+            content: passed ? 'Tests passed!' : `Tests failed (exit code: ${testResult.exitCode})`,
+            type: passed ? 'status' : 'error',
+          })
+        } catch (err) {
+          store.setTestResults(`Error: ${err instanceof Error ? err.message : String(err)}`, false)
+          store.addMessage({
+            from: 'System',
+            content: `Test execution failed: ${err instanceof Error ? err.message : String(err)}`,
+            type: 'error',
+          })
+        }
+      }
+
       store.setPhase('completed')
       store.addMessage({
         from: 'System',
@@ -332,6 +394,32 @@ export async function runSwarm(
         return
       }
 
+      // RISK-02: Enforce dependsOn -- skip tasks whose dependencies are not yet met
+      if (task.dependsOn.length > 0) {
+        const allTasks = useSwarmStore.getState().tasks
+        const depsMet = task.dependsOn.every((depTitle) => {
+          const dep = allTasks.find((t) => t.title === depTitle)
+          return dep?.status === 'merged'
+        })
+        if (!depsMet) {
+          const anyFailed = task.dependsOn.some((depTitle) => {
+            const dep = allTasks.find((t) => t.title === depTitle)
+            return dep?.status === 'failed'
+          })
+          if (anyFailed) {
+            store.updateTaskStatus(task.id, 'failed')
+            store.addMessage({
+              from: 'System',
+              content: `Skipped "${task.title}": dependency failed`,
+              type: 'error',
+            })
+            continue
+          }
+          // Dependency not yet done -- skip for now (will be retried in sequential mode)
+          continue
+        }
+      }
+
       // Find an idle worker
       let assignedWorker = useSwarmStore.getState().workers.find((w) => w.status === 'idle')
 
@@ -370,6 +458,9 @@ export async function runSwarm(
         parseInt(assignedWorker.id.split('-')[1], 10)
       )
 
+      // Set up listener BEFORE sending message to avoid race condition
+      const workerTurnPromise = waitForTurnComplete(assignedWorker.threadId)
+
       try {
         await threadApi.sendMessage(assignedWorker.threadId, workerPrompt)
       } catch (err) {
@@ -385,10 +476,7 @@ export async function runSwarm(
       }
 
       // Wait for worker to complete (with timeout)
-      const result = await withTimeout(
-        waitForTurnComplete(assignedWorker.threadId),
-        WORKER_TIMEOUT_MS
-      )
+      const result = await withTimeout(workerTurnPromise, WORKER_TIMEOUT_MS)
 
       if (isTimeoutResult(result)) {
         store.updateWorker(assignedWorker.id, { status: 'failed' })
@@ -431,7 +519,45 @@ export async function runSwarm(
       }
     }
 
-    // ---- Phase 6: REVIEW ----
+    // ---- Phase 6: TEST (before review) ----
+    store.setPhase('testing')
+    store.addMessage({ from: 'System', content: 'Running tests...', type: 'status' })
+
+    // Collect all unique test commands from tasks
+    const testCommands = [...new Set(
+      useSwarmStore.getState().tasks
+        .map((t) => t.testCommand)
+        .filter((cmd): cmd is string => !!cmd && cmd !== 'echo "no test"')
+    )]
+
+    let allTestsPassed = true
+    const testOutputs: string[] = []
+
+    if (testCommands.length === 0) {
+      testOutputs.push('No test commands configured')
+    } else {
+      for (const cmd of testCommands) {
+        try {
+          const testResult = await terminalApi.execute(projectPath, cmd)
+          testOutputs.push(`$ ${cmd}\nExit code: ${testResult.exitCode}`)
+          if (testResult.exitCode !== 0) allTestsPassed = false
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err)
+          testOutputs.push(`$ ${cmd}\nError: ${errMsg}`)
+          allTestsPassed = false
+        }
+      }
+    }
+
+    const testSummary = testOutputs.join('\n\n')
+    store.setTestResults(testSummary, allTestsPassed)
+    store.addMessage({
+      from: 'System',
+      content: allTestsPassed ? 'All tests passed!' : `Some tests failed:\n${testSummary}`,
+      type: allTestsPassed ? 'status' : 'error',
+    })
+
+    // ---- Phase 7: REVIEW ----
     store.setPhase('reviewing')
     store.addMessage({
       from: 'System',
@@ -452,44 +578,23 @@ export async function runSwarm(
       })
     }
 
-    // Optionally ask Team Lead to review the combined diff
+    // Ask Team Lead to review the combined diff, including test results
     const currentDiff = useSwarmStore.getState().stagingDiff
     if (currentDiff) {
       try {
-        const reviewPrompt = buildTeamLeadReviewPrompt(currentDiff, '')
+        const reviewPrompt = buildTeamLeadReviewPrompt(currentDiff, testSummary)
+
+        // Set up listener BEFORE sending message
+        const reviewTurnPromise = waitForTurnComplete(teamLeadThreadId)
         await threadApi.sendMessage(teamLeadThreadId, reviewPrompt)
-        const reviewResult = await waitForTurnComplete(teamLeadThreadId)
-        store.addMessage({ from: 'Team Lead', content: reviewResult, type: 'discovery' })
+        const reviewResult = await withTimeout(reviewTurnPromise, WORKER_TIMEOUT_MS)
+
+        if (!isTimeoutResult(reviewResult)) {
+          store.addMessage({ from: 'Team Lead', content: reviewResult, type: 'discovery' })
+        }
       } catch (err) {
         log.warn(`[Swarm] Team Lead review failed (non-fatal): ${err}`, 'SwarmOrchestrator')
       }
-    }
-
-    // ---- Phase 7: TEST ----
-    store.setPhase('testing')
-    store.addMessage({ from: 'System', content: 'Running tests...', type: 'status' })
-
-    // Use the first task's test command, or a default
-    const testCommand =
-      useSwarmStore.getState().tasks.find((t) => t.testCommand && t.testCommand !== 'echo "no test"')
-        ?.testCommand || 'echo "No test command configured"'
-
-    try {
-      const testResult = await terminalApi.execute(projectPath, testCommand)
-      const passed = testResult.exitCode === 0
-      store.setTestResults(testCommand, passed)
-      store.addMessage({
-        from: 'System',
-        content: passed ? 'Tests passed!' : `Tests failed (exit code: ${testResult.exitCode})`,
-        type: passed ? 'status' : 'error',
-      })
-    } catch (err) {
-      store.setTestResults(`Error: ${err instanceof Error ? err.message : String(err)}`, false)
-      store.addMessage({
-        from: 'System',
-        content: `Test execution failed: ${err instanceof Error ? err.message : String(err)}`,
-        type: 'error',
-      })
     }
 
     // ---- Phase 8: COMPLETE ----
@@ -500,10 +605,11 @@ export async function runSwarm(
       type: 'broadcast',
     })
 
-    // Mark all workers as done
+    // Mark all workers as done and interrupt their threads
     useSwarmStore.getState().workers.forEach((w) => {
       store.updateWorker(w.id, { status: 'done' })
     })
+    await interruptAllWorkers()
 
     log.info('[Swarm] Orchestration completed successfully', 'SwarmOrchestrator')
   } catch (err) {
@@ -513,6 +619,9 @@ export async function runSwarm(
     store.setError(errorMsg)
     store.setPhase('failed')
     store.addMessage({ from: 'System', content: `Error: ${errorMsg}`, type: 'error' })
+
+    // Interrupt workers before cleanup
+    await interruptAllWorkers()
 
     // Attempt cleanup of swarm infrastructure
     if (swarmContext) {
@@ -545,6 +654,9 @@ export async function cancelSwarm(): Promise<void> {
 
   store.setPhase('cleaning_up')
   store.addMessage({ from: 'System', content: 'Cancelling and cleaning up...', type: 'status' })
+
+  // Interrupt all worker threads before removing worktrees
+  await interruptAllWorkers()
 
   try {
     const workers = store.workers

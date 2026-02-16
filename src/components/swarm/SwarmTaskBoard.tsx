@@ -18,12 +18,18 @@ const STATUS_LABELS: Record<string, string> = {
 
 function TaskCard({ task, index }: { task: SwarmTask; index: number }) {
   const workers = useSwarmStore((s) => s.workers)
+  const tasks = useSwarmStore((s) => s.tasks)
   const assignedWorker = task.assignedWorker
     ? workers.find((w) => w.id === task.assignedWorker)
     : null
 
+  const dependencyLabels = task.dependsOn.map((depId) => {
+    const depIdx = tasks.findIndex((t) => t.id === depId || t.title === depId)
+    return depIdx >= 0 ? `#${depIdx + 1}` : depId
+  })
+
   return (
-    <div className="rounded-lg border border-stroke/10 bg-surface p-3">
+    <div className="rounded-lg border border-stroke/10 bg-surface p-3" role="listitem">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-medium text-text-3">
@@ -46,8 +52,8 @@ function TaskCard({ task, index }: { task: SwarmTask; index: number }) {
       )}
       <div className="mt-2 flex items-center gap-3 text-[11px] text-text-3">
         {assignedWorker && <span>{assignedWorker.name}</span>}
-        {task.dependsOn.length > 0 && (
-          <span>Depends on: {task.dependsOn.join(', ')}</span>
+        {dependencyLabels.length > 0 && (
+          <span>Depends on: {dependencyLabels.join(', ')}</span>
         )}
       </div>
     </div>
@@ -70,7 +76,7 @@ export function SwarmTaskBoard() {
       <h3 className="text-[12px] font-semibold uppercase tracking-wider text-text-3">
         Tasks
       </h3>
-      <div className="space-y-2">
+      <div className="space-y-2" role="list" aria-label="Task board">
         {tasks.map((task, i) => (
           <TaskCard key={task.id} task={task} index={i} />
         ))}

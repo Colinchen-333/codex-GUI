@@ -90,6 +90,14 @@ export async function setupSwarm(
   taskName: string,
   workerCount: number
 ): Promise<SwarmSetupContext> {
+  // Guard: reject if working directory is dirty
+  const dirtyFiles = await projectApi.gitStatus(projectPath)
+  if (dirtyFiles.length > 0) {
+    throw new Error(
+      `Working directory is dirty (${dirtyFiles.length} changed file(s)). Please commit or stash changes before starting a swarm.`
+    )
+  }
+
   const slug = slugify(taskName)
   const timestamp = Date.now()
   const stagingBranch = `swarm/${slug}-${timestamp}`
@@ -98,7 +106,7 @@ export async function setupSwarm(
   const originalBranch = await projectApi.getCurrentBranch(projectPath)
   log.info(`[Swarm] Original branch: ${originalBranch}`, 'SwarmHarness')
 
-  // Create staging branch from HEAD
+  // Create staging branch from HEAD (no Rust API for branch creation, but slug is sanitized)
   const createResult = await execCapture(
     projectPath,
     `git checkout -b ${stagingBranch} HEAD`
@@ -108,12 +116,15 @@ export async function setupSwarm(
   }
   log.info(`[Swarm] Created staging branch: ${stagingBranch}`, 'SwarmHarness')
 
-  // Switch back to original branch
-  const checkoutResult = await execCapture(projectPath, `git checkout ${originalBranch}`)
-  if (checkoutResult.exitCode !== 0) {
+  // Switch back to original branch using safe Rust API
+  try {
+    await projectApi.gitCheckoutBranch(projectPath, originalBranch)
+  } catch (err) {
     // Try to clean up the staging branch before throwing
     await execCapture(projectPath, `git branch -D ${stagingBranch}`).catch(() => {})
-    throw new Error(`Failed to switch back to original branch: ${checkoutResult.stderr}`)
+    throw new Error(
+      `Failed to switch back to original branch: ${err instanceof Error ? err.message : String(err)}`
+    )
   }
 
   // Create worktrees for each worker
@@ -159,8 +170,7 @@ export async function setupSwarm(
 /**
  * Merge a worker branch into the staging branch using --no-ff.
  *
- * Uses execute_terminal_command with git merge since there is no dedicated
- * Rust command for merge yet. Parses output to detect conflicts.
+ * Uses safe Rust APIs for checkout and merge instead of shell commands.
  */
 export async function mergeToStaging(
   projectPath: string,
@@ -168,49 +178,31 @@ export async function mergeToStaging(
   stagingBranch: string,
   message: string
 ): Promise<MergeResult> {
-  // Checkout staging branch
-  const checkoutResult = await execCapture(projectPath, `git checkout ${stagingBranch}`)
-  if (checkoutResult.exitCode !== 0) {
+  // Checkout staging branch using safe Rust API
+  try {
+    await projectApi.gitCheckoutBranch(projectPath, stagingBranch)
+  } catch (err) {
     return {
       success: false,
       conflictFiles: [],
-      message: `Failed to checkout staging branch: ${checkoutResult.stderr}`,
+      message: `Failed to checkout staging branch: ${err instanceof Error ? err.message : String(err)}`,
     }
   }
 
-  // Escape double quotes in commit message for shell safety
-  const escapedMessage = message.replace(/"/g, '\\"')
-
-  // Merge with --no-ff
-  const mergeResult = await execCapture(
-    projectPath,
-    `git merge --no-ff ${workerBranch} -m "${escapedMessage}"`
-  )
-
-  if (mergeResult.exitCode === 0) {
+  // Merge with --no-ff using safe Rust API
+  try {
+    const result = await projectApi.gitMergeNoFf(projectPath, workerBranch, message)
     return {
-      success: true,
-      conflictFiles: [],
-      message: mergeResult.stdout || 'Merge successful',
+      success: result.success,
+      conflictFiles: result.conflictFiles,
+      message: result.message,
     }
-  }
-
-  // Parse conflict files from merge output
-  const conflictFiles: string[] = []
-  const combined = `${mergeResult.stdout}\n${mergeResult.stderr}`
-  const conflictPattern = /CONFLICT.*?:\s+.*?in\s+(.+)/g
-  let match
-  while ((match = conflictPattern.exec(combined)) !== null) {
-    conflictFiles.push(match[1].trim())
-  }
-
-  // Abort the failed merge to leave the repo in a clean state
-  await execCapture(projectPath, 'git merge --abort').catch(() => {})
-
-  return {
-    success: false,
-    conflictFiles,
-    message: combined,
+  } catch (err) {
+    return {
+      success: false,
+      conflictFiles: [],
+      message: `Merge failed: ${err instanceof Error ? err.message : String(err)}`,
+    }
   }
 }
 
@@ -226,7 +218,7 @@ export async function cleanupSwarm(
   const { projectPath, workerPaths, workerBranches, stagingBranch, originalBranch } = context
 
   // First, switch back to the original branch to avoid being on a branch we're about to delete
-  await execCapture(projectPath, `git checkout ${originalBranch}`).catch((err) => {
+  await projectApi.gitCheckoutBranch(projectPath, originalBranch).catch((err) => {
     log.error(`[Swarm] Failed to checkout original branch: ${err}`, 'SwarmHarness')
   })
 

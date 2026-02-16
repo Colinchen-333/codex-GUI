@@ -9,6 +9,7 @@
  * - useChatCommands: Command context builder hook
  */
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import { ArrowDown } from 'lucide-react'
 import type { ListImperativeAPI } from 'react-window'
 // useThreadStore imported for potential future use - currently using props
 import { useProjectsStore, type ProjectsState } from '../../stores/projects'
@@ -37,6 +38,8 @@ export function ChatView() {
   const [isDragging, setIsDragging] = useState(false)
   const [showReviewSelector, setShowReviewSelector] = useState(false)
 
+  const [showScrollButton, setShowScrollButton] = useState(false)
+
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -52,6 +55,24 @@ export function ChatView() {
     handleDragLeave,
     handleDrop,
   } = useChatImageUpload(setAttachedImages, setIsDragging)
+
+  const handleAutoScrollChange = useCallback((isAutoScrolling: boolean) => {
+    setShowScrollButton(!isAutoScrolling)
+  }, [])
+
+  const handleScrollToBottom = useCallback(() => {
+    const thread = useThreadStore.getState()
+    const focusedId = thread.focusedThreadId
+    const focusedThreadData = focusedId ? thread.threads[focusedId] : null
+    const count = focusedThreadData?.itemOrder?.length ?? 0
+    if (virtualListRef.current && count > 0) {
+      virtualListRef.current.scrollToRow({
+        index: count - 1,
+        align: 'end',
+        behavior: 'smooth',
+      })
+    }
+  }, [])
 
   const {
     buildCommandContext,
@@ -191,6 +212,13 @@ export function ChatView() {
     })
   }, [setInputValue])
 
+  const handleSuggestionClick = useCallback((text: string) => {
+    setInputValue(text)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }, [setInputValue])
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden relative">
       {shouldShowContinue && (
@@ -217,7 +245,20 @@ export function ChatView() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onAutoScrollChange={handleAutoScrollChange}
+        onSuggestionClick={handleSuggestionClick}
       />
+
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <button
+          onClick={handleScrollToBottom}
+          className="absolute bottom-28 right-6 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-stroke bg-surface-solid shadow-lg transition-opacity hover:bg-surface-hover/[0.14]"
+          aria-label="Scroll to bottom"
+        >
+          <ArrowDown size={16} className="text-text-2" />
+        </button>
+      )}
 
       {/* Input Area */}
       <ChatInputArea

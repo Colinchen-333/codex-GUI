@@ -98,7 +98,7 @@ export const ProjectList = memo(function ProjectList({
           <ContextMenu key={project.id} items={contextMenuItems}>
             <button
               className={cn(
-                'group flex w-full flex-col justify-center h-[36px] rounded-[6px] px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden',
+                'group flex w-full flex-col justify-center h-[36px] rounded-md px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden',
                 isSelected
                   ? 'bg-surface-hover/[0.08] text-text-1'
                   : 'text-text-2 hover:bg-surface-hover/[0.04] hover:text-text-1'

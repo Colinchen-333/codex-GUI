@@ -188,7 +188,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
       >
         <div
           ref={containerRef}
-          className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+          className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -210,7 +210,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
           </div>
 
           <div className="px-5 pb-5">
-            <div className="rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning-muted px-3 py-2">
+            <div className="rounded-sm border border-status-warning/30 bg-status-warning-muted px-3 py-2">
               <p className="text-[12px] text-status-warning">Unavailable in web mode</p>
             </div>
           </div>
@@ -228,7 +228,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
       >
         <div
           ref={containerRef}
-          className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+          className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -250,7 +250,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
           </div>
 
           <div className="px-5 pb-5">
-            <div className="rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning-muted px-3 py-2">
+            <div className="rounded-sm border border-status-warning/30 bg-status-warning-muted px-3 py-2">
               <p className="text-[12px] text-status-warning">No project selected</p>
             </div>
           </div>
@@ -267,7 +267,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
     >
       <div
         ref={containerRef}
-        className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+        className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -291,14 +291,14 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
 
         {/* GH CLI Status Warning */}
         {ghStatus === 'checking' && (
-          <div className="flex items-center gap-2 mx-5 mt-4 px-3 py-2 rounded-[var(--radius-sm)] border border-stroke/20 bg-surface-hover/[0.03]">
+          <div className="flex items-center gap-2 mx-5 mt-4 px-3 py-2 rounded-sm border border-stroke/20 bg-surface-hover/[0.03]">
             <Loader2 size={14} className="animate-spin text-text-3" />
             <span className="text-[12px] text-text-3">Checking GitHub CLI...</span>
           </div>
         )}
 
         {(ghStatus === 'not-installed' || ghStatus === 'not-authenticated') && (
-          <div className="mx-5 mt-4 rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning-muted px-3 py-2.5">
+          <div className="mx-5 mt-4 rounded-sm border border-status-warning/30 bg-status-warning-muted px-3 py-2.5">
             <div className="flex items-start gap-2">
               <AlertTriangle size={14} className="text-status-warning mt-0.5 flex-shrink-0" />
               <div>
@@ -319,7 +319,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
 
         {/* Error banner */}
         {error && (
-          <div className="mx-5 mt-3 rounded-[var(--radius-sm)] border border-status-error/30 bg-status-error-muted px-3 py-2">
+          <div className="mx-5 mt-3 rounded-sm border border-status-error/30 bg-status-error-muted px-3 py-2">
             <p className="text-[12px] text-status-error">{error}</p>
           </div>
         )}
@@ -333,7 +333,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
                 <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-3 mb-1.5">
                   Head branch (current)
                 </label>
-                <div className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2">
+                <div className="flex items-center gap-1.5 rounded-sm border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2">
                   <span className="text-[13px] font-mono text-text-2">{headBranch || '...'}</span>
                 </div>
               </div>
@@ -447,12 +447,12 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
             </div>
 
             {/* PR URL display */}
-            <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2 mb-4">
+            <div className="flex items-center gap-2 rounded-sm border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2 mb-4">
               <span className="text-[12px] font-mono text-primary truncate flex-1">{prUrl}</span>
               <button
                 onClick={handleCopyUrl}
                 className={cn(
-                  'flex-shrink-0 p-1 rounded-[var(--radius-xs)] transition-colors',
+                  'flex-shrink-0 p-1 rounded transition-colors',
                   copied ? 'text-status-success' : 'text-text-3 hover:text-text-1'
                 )}
                 aria-label="Copy URL"

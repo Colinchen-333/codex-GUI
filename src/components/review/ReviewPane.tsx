@@ -405,7 +405,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
     const ext = path.split('.').pop()?.toLowerCase()
     if (ext === 'json') {
       return (
-        <span className="inline-flex h-4 w-4 items-center justify-center rounded-[4px] bg-surface-hover/[0.12] text-[9px] font-mono text-text-3/80">
+        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-surface-hover/[0.12] text-[9px] font-mono text-text-3/80">
           {'{}'}
         </span>
       )

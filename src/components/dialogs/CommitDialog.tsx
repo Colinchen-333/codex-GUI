@@ -325,7 +325,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
       <label
         key={key}
         className={cn(
-          'flex items-center gap-2.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] cursor-pointer transition-colors',
+          'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors',
           isSelected ? 'bg-surface-hover/[0.08]' : 'hover:bg-surface-hover/[0.04]'
         )}
       >
@@ -337,7 +337,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
         />
         <div
           className={cn(
-            'h-4 w-4 rounded-[var(--radius-xs)] border flex-shrink-0 flex items-center justify-center transition-all',
+            'h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center transition-all',
             isSelected
               ? 'border-primary bg-primary'
               : 'border-stroke/40 bg-surface-solid'
@@ -369,7 +369,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
       >
         <div
           ref={containerRef}
-          className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+          className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -391,7 +391,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
           </div>
 
           <div className="px-5 pb-5">
-            <div className="rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning-muted px-3 py-2">
+            <div className="rounded-sm border border-status-warning/30 bg-status-warning-muted px-3 py-2">
               <p className="text-[12px] text-status-warning">Unavailable in web mode</p>
             </div>
           </div>
@@ -409,7 +409,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
       >
         <div
           ref={containerRef}
-          className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+          className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -431,7 +431,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
           </div>
 
           <div className="px-5 pb-5">
-            <div className="rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning-muted px-3 py-2">
+            <div className="rounded-sm border border-status-warning/30 bg-status-warning-muted px-3 py-2">
               <p className="text-[12px] text-status-warning">No project selected</p>
             </div>
           </div>
@@ -448,7 +448,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
     >
       <div
         ref={containerRef}
-        className="w-full max-w-[520px] rounded-[var(--radius-2xl)] bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
+        className="w-full max-w-[520px] rounded-2xl bg-surface-solid shadow-[var(--shadow-2xl)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -474,7 +474,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
         <div className="flex items-center justify-between px-5 pt-4">
           <div className="flex items-center gap-3">
             <span className="text-[13px] text-text-3">Branch</span>
-            <div className="flex items-center gap-1.5 rounded-[var(--radius-xs)] border border-stroke/20 bg-surface-hover/[0.05] px-2 py-0.5">
+            <div className="flex items-center gap-1.5 rounded border border-stroke/20 bg-surface-hover/[0.05] px-2 py-0.5">
               <GitBranch size={12} className="text-text-2" />
               <span className="text-[12px] font-medium text-text-1">
                 {projectGitInfo?.branch || remoteInfo?.branch || 'main'}
@@ -494,7 +494,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
 
         {/* Error banner */}
         {error && (
-          <div className="mx-5 mt-3 rounded-[var(--radius-sm)] border border-status-error/30 bg-status-error-muted px-3 py-2">
+          <div className="mx-5 mt-3 rounded-sm border border-status-error/30 bg-status-error-muted px-3 py-2">
             <p className="text-[12px] text-status-error">{error}</p>
           </div>
         )}
@@ -600,7 +600,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
                 value={commitMessage}
                 onChange={(e) => setCommitMessage(e.target.value)}
                 placeholder="Leave blank to use default message"
-                className="w-full h-[72px] rounded-[var(--radius-sm)] border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2 text-[13px] text-text-1 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none resize-none"
+                className="w-full h-[72px] rounded-sm border border-stroke/20 bg-surface-hover/[0.03] px-3 py-2 text-[13px] text-text-1 placeholder:text-text-3 focus:border-stroke/30 focus:outline-none resize-none"
                 ref={commitMessageRef}
               />
             </div>

@@ -19,6 +19,8 @@ import { TerminalPanel } from '../terminal/TerminalPanel'
 import { log } from '../../lib/logger'
 import { useToast } from '../ui/Toast'
 import { cn } from '../../lib/utils'
+import { useSwarmStore } from '../../stores/swarm'
+import { SwarmView } from '../swarm/SwarmView'
 
 interface AppShellContext {
   onToggleRightPanel?: () => void
@@ -184,6 +186,7 @@ export function MainArea() {
   const settings = useSettingsStore((state) => state.settings)
   const startThread = useThreadStore((state) => state.startThread)
   const canAddSession = useThreadStore((state) => state.canAddSession)
+  const swarmIsActive = useSwarmStore((s) => s.isActive)
   const context = useOutletContext<AppShellContext>() ?? {}
   const { showToast } = useToast()
   const [terminalVisible, setTerminalVisible] = useState(false)
@@ -343,6 +346,14 @@ export function MainArea() {
 
   if (!selectedProjectId) {
     return <NewThreadLanding projectId={null} onOpenCommitDialog={context.onOpenCommitDialog} />
+  }
+
+  if (swarmIsActive) {
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <SwarmView />
+      </div>
+    )
   }
 
   const hasActiveThreads = Object.keys(threads).length > 0

@@ -1206,6 +1206,15 @@ pub async fn get_git_commits(path: String, limit: Option<u32>) -> Result<Vec<Git
     .await
 }
 
+/// Git merge result (for --no-ff merge operations)
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitMergeResult {
+    pub success: bool,
+    pub conflict_files: Vec<String>,
+    pub message: String,
+}
+
 /// Git worktree information
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1688,6 +1697,105 @@ pub async fn create_pull_request(
         let pr_url = String::from_utf8_lossy(&output.stdout).trim().to_string();
         tracing::info!("Created PR: {}", pr_url);
         Ok(pr_url)
+    })
+    .await
+}
+
+/// Checkout an existing git branch
+#[tauri::command]
+pub async fn git_checkout_branch(
+    project_path: String,
+    branch_name: String,
+) -> Result<()> {
+    validate_branch_name(&branch_name)?;
+
+    crate::utils::spawn_blocking_io(move || {
+        let canonical_path = crate::utils::validate_and_canonicalize_path(&project_path)?;
+
+        if !inside_git_repo(&canonical_path)? {
+            return Err(crate::Error::Other(
+                "Not a git repository".to_string(),
+            ));
+        }
+
+        let output = std::process::Command::new("git")
+            .args(["checkout", &branch_name])
+            .current_dir(&canonical_path)
+            .output()
+            .map_err(|err| crate::Error::Other(format!("Failed to run git checkout: {err}")))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(crate::Error::Other(format!(
+                "git checkout failed: {stderr}"
+            )));
+        }
+
+        tracing::info!("Checked out branch {} in {}", branch_name, canonical_path.display());
+        Ok(())
+    })
+    .await
+}
+
+/// Merge a branch into the current branch with --no-ff
+#[tauri::command]
+pub async fn git_merge_no_ff(
+    project_path: String,
+    branch_name: String,
+    message: String,
+) -> Result<GitMergeResult> {
+    validate_branch_name(&branch_name)?;
+
+    crate::utils::spawn_blocking_io(move || {
+        let canonical_path = crate::utils::validate_and_canonicalize_path(&project_path)?;
+
+        if !inside_git_repo(&canonical_path)? {
+            return Err(crate::Error::Other(
+                "Not a git repository".to_string(),
+            ));
+        }
+
+        let output = std::process::Command::new("git")
+            .args(["merge", "--no-ff", &branch_name, "-m", &message])
+            .current_dir(&canonical_path)
+            .output()
+            .map_err(|err| crate::Error::Other(format!("Failed to run git merge: {err}")))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let combined = format!("{}\n{}", stdout, stderr);
+
+        if output.status.success() {
+            tracing::info!("Merged branch {} in {}", branch_name, canonical_path.display());
+            return Ok(GitMergeResult {
+                success: true,
+                conflict_files: vec![],
+                message: stdout,
+            });
+        }
+
+        // Parse conflict files without regex
+        let mut conflict_files = Vec::new();
+        for line in combined.lines() {
+            if line.contains("CONFLICT") && line.contains(" in ") {
+                if let Some(idx) = line.rfind(" in ") {
+                    conflict_files.push(line[idx + 4..].trim().to_string());
+                }
+            }
+        }
+
+        // Abort the failed merge to leave repo clean
+        let _ = std::process::Command::new("git")
+            .args(["merge", "--abort"])
+            .current_dir(&canonical_path)
+            .output();
+
+        tracing::warn!("Merge conflict merging {} in {}", branch_name, canonical_path.display());
+        Ok(GitMergeResult {
+            success: false,
+            conflict_files,
+            message: combined,
+        })
     })
     .await
 }

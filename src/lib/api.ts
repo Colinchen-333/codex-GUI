@@ -351,6 +351,12 @@ export interface WorktreeInfo {
   headCommit: string
 }
 
+export interface GitMergeResult {
+  success: boolean
+  conflictFiles: string[]
+  message: string
+}
+
 // ==================== Config Types ====================
 
 export interface ConfigLayer {
@@ -467,6 +473,12 @@ export const projectApi = {
     invoke<void>('remove_worktree', { projectPath, worktreePath }),
   listWorktrees: (projectPath: string) =>
     invokeOrFallback<WorktreeInfo[]>([], 'list_worktrees', { projectPath }),
+
+  // Swarm git operations
+  gitCheckoutBranch: (projectPath: string, branchName: string) =>
+    invoke<void>('git_checkout_branch', { projectPath, branchName }),
+  gitMergeNoFf: (projectPath: string, branchName: string, message: string) =>
+    invoke<GitMergeResult>('git_merge_no_ff', { projectPath, branchName, message }),
 }
 
 // ==================== Session API ====================

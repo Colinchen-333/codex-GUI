@@ -25,6 +25,7 @@ import { useAutomationsStore } from '../../stores/automations'
 import { useSettingsStore, mergeProjectSettings, getEffectiveWorkingDirectory } from '../../stores/settings'
 import { useToast } from '../ui/Toast'
 import { SessionSearch, GroupedSessionList, SidebarDialogs, useSidebarDialogs } from './sidebar/index'
+import { SwarmToggle } from './sidebar/SwarmToggle'
 import { ImportCodexSessionDialog } from '../LazyComponents'
 import type { CodexSessionSummary } from '../../lib/api'
 import { cn, formatSessionTime } from '../../lib/utils'
@@ -289,6 +290,7 @@ export function Sidebar() {
             />
             <span className="text-[16px] tracking-tight">New session</span>
           </button>
+        <SwarmToggle />
         <button
           type="button"
           onClick={() => navigate('/inbox?automationMode=create')}

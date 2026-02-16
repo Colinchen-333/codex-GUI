@@ -160,6 +160,9 @@ pub fn run() {
             commands::projects::create_worktree,
             commands::projects::remove_worktree,
             commands::projects::list_worktrees,
+            // Swarm git commands
+            commands::projects::git_checkout_branch,
+            commands::projects::git_merge_no_ff,
             // Session commands
             commands::sessions::list_sessions,
             commands::sessions::get_session,

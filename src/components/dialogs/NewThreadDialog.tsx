@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react'
-import { GitBranch, Monitor, Cloud, Loader2, AlertCircle } from 'lucide-react'
+import { GitBranch, Monitor, Loader2, AlertCircle } from 'lucide-react'
 import { BaseDialog } from '../ui/BaseDialog'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { projectApi } from '../../lib/api'
 import { cn } from '../../lib/utils'
 
-type ThreadMode = 'local' | 'worktree' | 'cloud'
+type ThreadMode = 'local' | 'worktree'
 
 interface NewThreadDialogProps {
   isOpen: boolean
@@ -28,13 +28,6 @@ const modes: { id: ThreadMode; label: string; icon: typeof Monitor; description:
     label: 'Worktree',
     icon: GitBranch,
     description: 'Create an isolated git worktree with a new branch.',
-  },
-  {
-    id: 'cloud',
-    label: 'Cloud',
-    icon: Cloud,
-    description: 'Cloud mode is not available yet.',
-    disabled: true,
   },
 ]
 
@@ -202,7 +195,7 @@ export function NewThreadDialog({
           variant="primary"
           onClick={handleCreate}
           loading={isCreating}
-          disabled={selectedMode === 'cloud' || (selectedMode === 'worktree' && !branchName.trim())}
+          disabled={selectedMode === 'worktree' && !branchName.trim()}
         >
           {isCreating ? (
             <>

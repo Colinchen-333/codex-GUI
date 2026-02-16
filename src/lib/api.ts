@@ -57,7 +57,7 @@ export interface Project {
 }
 
 // Thread mode for session creation
-export type ThreadMode = 'local' | 'worktree' | 'cloud'
+export type ThreadMode = 'local' | 'worktree'
 
 // Session status types for agent state tracking
 export type SessionStatus = 'idle' | 'running' | 'completed' | 'failed' | 'interrupted'

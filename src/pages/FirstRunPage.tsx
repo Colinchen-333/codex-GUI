@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Shield, ChevronRight, ExternalLink } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 
-type Step = 'intro' | 'autonomy' | 'cloud'
+type Step = 'intro' | 'autonomy'
 
 export function FirstRunPage() {
   const navigate = useNavigate()
@@ -15,12 +15,10 @@ export function FirstRunPage() {
 
   const handleBack = () => {
     if (step === 'autonomy') setStep('intro')
-    else if (step === 'cloud') setStep('autonomy')
   }
 
   const handleNext = () => {
     if (step === 'intro') setStep('autonomy')
-    else if (step === 'autonomy') setStep('cloud')
     else handleAccept()
   }
 
@@ -92,51 +90,13 @@ export function FirstRunPage() {
               <Button variant="ghost" onClick={handleBack}>
                 Back
               </Button>
-              <Button variant="primary" onClick={handleNext} className="gap-2">
-                I Understand
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-          </>
-        )}
-
-        {step === 'cloud' && (
-          <>
-            <div className="text-center">
-              <h1 className="text-[20px] font-semibold text-text-1">
-                Cloud Tasks
-              </h1>
-              <p className="mt-3 text-[15px] leading-6 text-text-3">
-                Codex can run tasks in the cloud for longer operations. Your code is processed 
-                securely and deleted after task completion.
-              </p>
-            </div>
-            <div className="w-full rounded-2xl border border-stroke/20 bg-surface-solid p-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-2">Data retention</span>
-                  <span className="text-text-1 font-medium">Deleted after task</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-2">Encryption</span>
-                  <span className="text-text-1 font-medium">End-to-end</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-2">Training</span>
-                  <span className="text-text-1 font-medium">Not used</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex w-full items-center justify-between gap-3">
-              <Button variant="ghost" onClick={handleBack}>
-                Back
-              </Button>
-              <Button variant="primary" onClick={handleAccept}>
+              <Button variant="primary" onClick={handleNext}>
                 Get Started
               </Button>
             </div>
           </>
         )}
+
         </div>
       </div>
     </div>

@@ -561,7 +561,7 @@ interface SessionTabProps {
   sessionTitle: string | null
   sessionTasksJson: string | null
   sessionStatus: SessionStatus
-  sessionMode: 'local' | 'worktree' | 'cloud' | null
+  sessionMode: 'local' | 'worktree' | null
   worktreeBranch: string | null
 }
 

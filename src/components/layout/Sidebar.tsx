@@ -260,7 +260,10 @@ export function Sidebar() {
       {selectedSession && (
         <div className="relative z-10 px-3 pb-2">
           <div className="flex h-10 items-center justify-between rounded-md px-2 text-[11px] text-text-2">
-            <div className="min-w-0 truncate pr-2 text-[13px] font-semibold text-text-1">
+            <div
+              className="min-w-0 truncate pr-2 text-[13px] font-semibold text-text-1"
+              title={selectedSession.title || displayProjectName || 'Session'}
+            >
               {selectedSession.title || displayProjectName || 'Session'}
             </div>
             <div className="shrink-0 text-[11px] text-text-3">
@@ -350,6 +353,7 @@ export function Sidebar() {
 	            onClick={handleAddProject}
 	            size="sm"
 	            title="Add project folder"
+	            aria-label="Add project folder"
 	            className="h-6 w-6 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
 	          >
 	            <FolderPlus size={13} strokeWidth={1.5} />

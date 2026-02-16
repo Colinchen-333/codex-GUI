@@ -16,6 +16,8 @@ import {
   Check,
   Minus,
   GitCommit,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
 import { DiffView, parseDiff, type FileDiff } from '../components/ui/DiffView'
 import { cn } from '../lib/utils'
@@ -533,28 +535,32 @@ export function DiffPage() {
   const renderMainContent = () => {
     if (loadState === 'loading') {
       return (
-        <div className="flex flex-1 items-center justify-center text-sm text-text-3">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-text-3">
+          <Loader2 size={20} className="animate-spin" />
           Loading diff data...
         </div>
       )
     }
     if (loadState === 'not-git') {
       return (
-        <div className="flex flex-1 items-center justify-center text-sm text-text-3">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-text-3">
+          <GitCommit size={20} />
           This workspace is not a git repository.
         </div>
       )
     }
     if (loadState === 'empty') {
       return (
-        <div className="flex flex-1 items-center justify-center text-sm text-text-3">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-text-3">
+          <FileCode size={20} />
           No diff data available.
         </div>
       )
     }
     if (loadState === 'error') {
       return (
-        <div className="flex flex-1 items-center justify-center text-sm text-status-error">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-status-error">
+          <AlertCircle size={20} />
           Failed to decode diff data.
         </div>
       )

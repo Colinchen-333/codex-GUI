@@ -3,7 +3,7 @@
  * Extracted from ChatView.tsx for better modularity
  */
 import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from 'react'
-import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, ListTodo, GitBranch, Check, MessageSquare, FileEdit, Zap, Search } from 'lucide-react'
+import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, ListTodo, GitBranch, Check, MessageSquare, FileEdit, Zap, Search, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectFileChanges } from '../../stores/thread/selectors'
@@ -768,7 +768,7 @@ export default memo(function ChatInputArea({
                 aria-expanded={isBranchMenuOpen}
                 aria-haspopup="listbox"
               >
-                <GitBranch size={14} />
+                {isSwitchingBranch ? <Loader2 size={14} className="animate-spin text-primary" /> : <GitBranch size={14} />}
                 <span>{gitBranch}</span>
                 <ChevronDown size={12} className={cn('transition-transform', isBranchMenuOpen && 'rotate-180')} />
               </button>

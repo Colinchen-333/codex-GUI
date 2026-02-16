@@ -112,18 +112,27 @@ export function StatusBar() {
             {permission.text}
           </span>
 
-          <span className="inline-flex h-6 items-center px-1 text-text-2">
+          <span className={cn(
+            'inline-flex h-6 items-center gap-1.5 px-1',
+            isConnected ? 'text-text-2' : 'text-status-warning'
+          )}>
+            <span className={cn(
+              'h-1.5 w-1.5 rounded-full',
+              isReconnecting ? 'bg-status-warning animate-pulse' : isConnected ? 'bg-status-success' : 'bg-status-error'
+            )} />
             {engineLabel}
           </span>
 
-          <button
-            type="button"
-            onClick={handleRestartEngine}
-            disabled={isReconnecting}
-            className="inline-flex h-6 items-center rounded-md px-1 text-text-2 transition-colors hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Restart
-          </button>
+          {!isConnected && (
+            <button
+              type="button"
+              onClick={handleRestartEngine}
+              disabled={isReconnecting}
+              className="inline-flex h-6 items-center rounded-md px-1 text-text-2 transition-colors hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Restart
+            </button>
+          )}
 
         </div>
 

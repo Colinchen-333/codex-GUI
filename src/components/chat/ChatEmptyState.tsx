@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { MessageSquare, Cloud, ChevronDown, Gamepad2, FileText, Newspaper } from 'lucide-react'
+import { MessageSquare, Sparkles, ChevronDown, Gamepad2, FileText, Newspaper } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export interface ChatEmptyStateProps {
@@ -66,7 +66,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
     >
       <div className="mb-8">
         <div className="w-16 h-16 rounded-2xl bg-surface-solid border border-stroke/10 flex items-center justify-center mb-6 mx-auto">
-          <Cloud size={32} className="text-text-3" />
+          <Sparkles size={32} className="text-text-3" />
         </div>
         <h2 className="text-3xl font-bold text-center mb-2 text-text-1">
           {message || "Let's build"}

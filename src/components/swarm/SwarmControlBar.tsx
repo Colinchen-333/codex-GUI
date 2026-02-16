@@ -41,6 +41,7 @@ export function SwarmControlBar() {
   const startedAt = useSwarmStore((s) => s.startedAt)
   const deactivate = useSwarmStore((s) => s.deactivate)
   const error = useSwarmStore((s) => s.error)
+  const userRequest = useSwarmStore((s) => s.userRequest)
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
@@ -94,7 +95,7 @@ export function SwarmControlBar() {
             return (
               <div key={p} className="flex items-center gap-1.5">
                 <div
-                  className={`h-2 w-2 rounded-full ${color} transition-colors`}
+                  className={`${i === currentPhaseIdx && phase !== 'idle' ? 'h-2.5 w-2.5' : 'h-2 w-2'} rounded-full ${color} transition-all`}
                   title={PHASE_LABELS[p]}
                 />
                 {i < PHASES.length - 1 && (
@@ -111,6 +112,13 @@ export function SwarmControlBar() {
         <span className="text-[13px] font-medium text-text-1" aria-live="polite">
           {PHASE_LABELS[phase] || phase}
         </span>
+
+        {/* User request preview */}
+        {userRequest && phase !== 'idle' && (
+          <span className="max-w-[200px] truncate text-[12px] text-text-3" title={userRequest}>
+            {userRequest}
+          </span>
+        )}
 
         {/* Error */}
         {error && (
@@ -132,17 +140,15 @@ export function SwarmControlBar() {
           </span>
         )}
 
-        {/* Cancel button */}
-        {phase !== 'idle' && phase !== 'completed' && (
-          <IconButton
-            size="sm"
-            onClick={handleCancel}
-            aria-label="Cancel Self-Driving"
-            title="Cancel"
-          >
-            <X size={14} />
-          </IconButton>
-        )}
+        {/* Close/Cancel button - always visible */}
+        <IconButton
+          size="sm"
+          onClick={handleCancel}
+          aria-label={phase === 'idle' || phase === 'completed' || phase === 'failed' ? 'Close Self-Driving' : 'Cancel Self-Driving'}
+          title={phase === 'idle' || phase === 'completed' || phase === 'failed' ? 'Close' : 'Cancel'}
+        >
+          <X size={14} />
+        </IconButton>
       </div>
     </div>
   )

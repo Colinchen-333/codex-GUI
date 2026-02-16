@@ -11,11 +11,11 @@ export function SwarmView() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Task Board */}
-        <div className="w-[45%] border-r border-stroke/10 overflow-y-auto p-4">
+        <div className="w-[340px] min-w-[280px] max-w-[480px] shrink-0 border-r border-stroke/10 overflow-y-auto p-4">
           <SwarmTaskBoard />
         </div>
         {/* Right: Message Feed */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 min-w-[300px] overflow-y-auto p-4">
           <SwarmMessageFeed />
         </div>
       </div>

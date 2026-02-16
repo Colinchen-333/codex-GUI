@@ -4,16 +4,18 @@ import { useProjectsStore } from '../../stores/projects'
 import { runSwarm, cancelSwarm } from '../../lib/swarmOrchestrator'
 import { projectApi } from '../../lib/api'
 import { Button } from '../ui/Button'
-import { Send } from 'lucide-react'
+import { Send, CheckCircle2, XCircle } from 'lucide-react'
 
 export function SwarmInput() {
   const phase = useSwarmStore((s) => s.phase)
+  const userRequest = useSwarmStore((s) => s.userRequest)
   const setUserRequest = useSwarmStore((s) => s.setUserRequest)
   const setPhase = useSwarmStore((s) => s.setPhase)
   const stagingDiff = useSwarmStore((s) => s.stagingDiff)
   const testsPass = useSwarmStore((s) => s.testsPass)
   const deactivate = useSwarmStore((s) => s.deactivate)
   const [draft, setDraft] = useState('')
+  const [merging, setMerging] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSubmit = () => {
@@ -45,6 +47,7 @@ export function SwarmInput() {
   const handleMerge = async () => {
     const ctx = useSwarmStore.getState().context
     if (!ctx) return
+    setMerging(true)
     try {
       await projectApi.gitCheckoutBranch(ctx.projectPath, ctx.originalBranch)
       const result = await projectApi.gitMergeNoFf(
@@ -63,6 +66,8 @@ export function SwarmInput() {
       useSwarmStore.getState().setError(
         err instanceof Error ? err.message : String(err)
       )
+    } finally {
+      setMerging(false)
     }
   }
 
@@ -70,6 +75,13 @@ export function SwarmInput() {
   if (phase === 'idle') {
     return (
       <div className="border-t border-stroke/10 p-4">
+        <div className="mb-3 rounded-lg bg-surface-solid/50 px-3 py-2.5">
+          <p className="text-[13px] font-medium text-text-1">Self-Driving Mode</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-text-3">
+            Describe your goal and the system will analyze your codebase, decompose it into tasks,
+            and coordinate parallel workers to implement them — all with git isolation.
+          </p>
+        </div>
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
@@ -92,6 +104,13 @@ export function SwarmInput() {
             <span className="ml-1.5">Start</span>
           </Button>
         </div>
+        <div className="mt-1.5 text-[11px] text-text-3">
+          <kbd className="rounded border border-stroke/20 px-1 py-0.5 text-[10px]">⏎</kbd>
+          <span className="ml-1">to start</span>
+          <span className="mx-2 text-stroke">·</span>
+          <kbd className="rounded border border-stroke/20 px-1 py-0.5 text-[10px]">⇧⏎</kbd>
+          <span className="ml-1">new line</span>
+        </div>
       </div>
     )
   }
@@ -101,9 +120,18 @@ export function SwarmInput() {
     return (
       <div className="border-t border-stroke/10 p-4">
         <div className="flex items-center justify-between">
-          <div className="text-[13px] text-text-2">
-            {testsPass ? 'All tests passed.' : 'Review the results above.'}
-            {stagingDiff && ' Changes are ready to merge.'}
+          <div className="flex items-center gap-2 text-[13px]">
+            {testsPass === true && (
+              <span className="flex items-center gap-1 text-status-success">
+                <CheckCircle2 size={14} /> Tests passed
+              </span>
+            )}
+            {testsPass === false && (
+              <span className="flex items-center gap-1 text-status-error">
+                <XCircle size={14} /> Tests failed
+              </span>
+            )}
+            {stagingDiff && <span className="text-text-3">· Changes ready to merge</span>}
           </div>
           <div className="flex gap-2">
             <Button
@@ -117,8 +145,9 @@ export function SwarmInput() {
               variant="primary"
               size="sm"
               onClick={handleMerge}
+              disabled={merging}
             >
-              Merge to Main
+              {merging ? 'Merging...' : 'Merge to Main'}
             </Button>
           </div>
         </div>
@@ -129,9 +158,16 @@ export function SwarmInput() {
   // Working state: show progress indicator
   return (
     <div className="border-t border-stroke/10 px-4 py-3">
-      <div className="flex items-center gap-2 text-[13px] text-text-3">
-        <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-        <span>Self-Driving in progress...</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[13px] text-text-2">
+          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+          <span>Self-Driving in progress...</span>
+        </div>
+        {userRequest && (
+          <span className="max-w-[50%] truncate text-[12px] text-text-3" title={userRequest}>
+            {userRequest}
+          </span>
+        )}
       </div>
     </div>
   )

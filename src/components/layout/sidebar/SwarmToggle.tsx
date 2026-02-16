@@ -9,7 +9,7 @@ export function SwarmToggle() {
   const deactivate = useSwarmStore((s) => s.deactivate)
 
   return (
-    <div className="group flex h-10 w-full items-center justify-between rounded-md px-3 text-[16px] text-text-1">
+    <div className="group flex h-10 w-full cursor-default items-center justify-between rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]">
       <div className="flex items-center gap-2.5">
         <Bot
           size={19}

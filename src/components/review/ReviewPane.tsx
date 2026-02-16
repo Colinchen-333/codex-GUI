@@ -525,23 +525,27 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
         {/* Diff view (left/main area) */}
         <div className="flex-[3] flex flex-col overflow-hidden border-r border-stroke/10">
           {loadState === 'loading' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-text-3">
-              Loading...
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-3">
+              <RefreshCw size={20} className="animate-spin" />
+              <p className="text-sm">Loading diff...</p>
             </div>
           )}
           {loadState === 'not-git' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-text-3">
-              Not a git repository
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-3">
+              <GitCommit size={20} />
+              <p className="text-sm">Not a git repository</p>
             </div>
           )}
           {loadState === 'empty' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-text-3">
-              No changes
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-3">
+              <FileCode size={20} />
+              <p className="text-sm">No changes</p>
             </div>
           )}
           {loadState === 'error' && (
-            <div className="flex flex-1 items-center justify-center text-sm text-status-error">
-              Failed to load diff
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              <X size={20} className="text-status-error" />
+              <p className="text-sm text-status-error">Failed to load diff</p>
             </div>
           )}
           {loadState === 'idle' && selectedDiff && (

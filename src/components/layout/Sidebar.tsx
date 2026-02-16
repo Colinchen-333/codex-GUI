@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
 import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftClose, Filter, Check } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
@@ -27,7 +27,7 @@ import { useToast } from '../ui/Toast'
 import { SessionSearch, GroupedSessionList, SidebarDialogs, useSidebarDialogs } from './sidebar/index'
 import { ImportCodexSessionDialog } from '../LazyComponents'
 import type { CodexSessionSummary } from '../../lib/api'
-import { formatSessionTime } from '../../lib/utils'
+import { cn, formatSessionTime } from '../../lib/utils'
 import { Dropdown } from '../ui/Dropdown'
 
 type OpenProjectSettingsEventDetail = { projectId?: string | null }
@@ -49,6 +49,7 @@ export function Sidebar() {
   const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed)
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [sessionFilters, setSessionFilters] = useState(() => {
     const defaults = { pinnedOnly: false, runningOnly: false, showArchived: false }
@@ -288,7 +289,10 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => navigate('/inbox?automationMode=create')}
-          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
+          className={cn(
+            "group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]",
+            location.pathname === '/inbox' && location.search.includes('automationMode=create') && 'bg-surface-hover/[0.08]'
+          )}
         >
           <div className="flex items-center gap-2.5">
             <Zap
@@ -305,7 +309,10 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => navigate('/inbox')}
-          className="group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
+          className={cn(
+            "group flex h-10 w-full items-center justify-between gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]",
+            location.pathname === '/inbox' && !location.search.includes('automationMode=create') && 'bg-surface-hover/[0.08]'
+          )}
         >
           <div className="flex items-center gap-2.5">
             <Bell
@@ -320,7 +327,10 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => navigate('/skills')}
-          className="group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]"
+          className={cn(
+            "group flex h-10 w-full items-center gap-2.5 rounded-md px-3 text-[16px] text-text-1 transition-colors hover:bg-surface-hover/[0.06]",
+            location.pathname === '/skills' && 'bg-surface-hover/[0.08]'
+          )}
         >
           <Layers
             size={19}
@@ -404,7 +414,10 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-[15px] text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
+          className={cn(
+            "flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-[15px] text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1",
+            location.pathname.startsWith('/settings') && 'bg-surface-hover/[0.08] text-text-1'
+          )}
         >
           <Settings size={17} className="text-text-3" />
           <span className="text-[16px] tracking-tight">Settings</span>

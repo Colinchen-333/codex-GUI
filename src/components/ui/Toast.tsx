@@ -199,6 +199,7 @@ const TOAST_STYLES: Record<Toast['type'], { bg: string; border: string; icon: st
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const onDismissRef = useRef(onDismiss)
   const [isPaused, setIsPaused] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [progress, setProgress] = useState(100)
   const startTimeRef = useRef(0)
   const remainingTimeRef = useRef(toast.duration ?? 5000)
@@ -304,7 +305,23 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
             )}
           </div>
           {toast.message && (
-            <p className="mt-1 text-xs text-text-3 line-clamp-2">{toast.message}</p>
+            <div className="mt-1">
+              <p className={cn(
+                'text-xs text-text-3',
+                !isExpanded && 'line-clamp-2'
+              )}>
+                {toast.message}
+              </p>
+              {toast.message.length > 120 && (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-[11px] text-primary hover:underline mt-0.5"
+                >
+                  {isExpanded ? 'Show less' : 'Show more'}
+                </button>
+              )}
+            </div>
           )}
         </div>
 

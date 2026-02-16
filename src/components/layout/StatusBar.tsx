@@ -108,7 +108,7 @@ export function StatusBar() {
             className={cn(
               'inline-flex h-6 items-center gap-1 rounded-md border px-2',
               permission.danger
-                ? 'border-orange-500/30 bg-orange-500/10 text-orange-500'
+                ? 'border-status-warning/30 bg-status-warning-muted text-status-warning'
                 : 'border-stroke/20 bg-surface-solid text-text-2'
             )}
           >

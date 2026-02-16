@@ -632,7 +632,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
                 Local
                 <ChevronDown size={11} />
               </span>
-              <span className="inline-flex items-center gap-1 text-orange-500">
+              <span className="inline-flex items-center gap-1 text-status-warning">
                 <ShieldAlert size={11} />
                 Full access
               </span>

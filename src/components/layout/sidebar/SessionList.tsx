@@ -402,7 +402,7 @@ export const SessionList = memo(function SessionList({
             <ContextMenu key={session.sessionId} items={contextMenuItems}>
               <button
                 className={cn(
-                  'group w-full h-[36px] rounded-[6px] px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden flex flex-col justify-center',
+                  'group w-full h-[36px] rounded-md px-2.5 py-1.5 text-left transition-all duration-200 relative overflow-hidden flex flex-col justify-center',
                   isSelected
                     ? 'bg-surface-hover/[0.08] text-text-1'
                     : 'text-text-2 hover:bg-surface-hover/[0.04] hover:text-text-1',
@@ -446,7 +446,7 @@ export const SessionList = memo(function SessionList({
                   <span
                     className={cn(
                       'transition-colors',
-                      isRunning && 'animate-breathe-text text-blue-400',
+                      isRunning && 'animate-breathe-text text-primary',
                       isSelected && 'text-text-2'
                     )}
                   >
@@ -464,7 +464,7 @@ export const SessionList = memo(function SessionList({
                       <span className="opacity-50">·</span>
                       <span
                         className={cn(
-                          'px-1.5 py-0.5 rounded-[4px] bg-surface-hover/[0.06] text-[10px] truncate max-w-[120px]',
+                          'px-1.5 py-0.5 rounded bg-surface-hover/[0.06] text-[10px] truncate max-w-[120px]',
                           isSelected && 'bg-surface-hover/[0.1]'
                         )}
                       >
@@ -478,7 +478,7 @@ export const SessionList = memo(function SessionList({
                       <span className="opacity-50">·</span>
                       <span
                         className={cn(
-                          'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-[4px] bg-primary/10 text-primary text-[10px] truncate max-w-[100px]',
+                          'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] truncate max-w-[100px]',
                         )}
                       >
                         <GitBranch size={9} className="flex-shrink-0" />

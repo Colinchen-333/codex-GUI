@@ -169,7 +169,7 @@ export const GroupedSessionList = memo(function GroupedSessionList({
                         {displayName}
                       </span>
 
-                      {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500 animate-pulse" />}
+                      {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
 
                       {timeStr && (
                         <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>

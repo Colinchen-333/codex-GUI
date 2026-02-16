@@ -489,8 +489,8 @@ export default memo(function ChatInputArea({
 
         <div
           className={cn(
-            'relative rounded-2xl bg-surface-solid border border-white/[0.08] transition-all duration-200 shadow-[var(--shadow-1)]',
-            'hover:border-white/[0.12]',
+            'relative rounded-2xl bg-surface-solid border border-stroke/20 transition-all duration-200 shadow-[var(--shadow-1)]',
+            'hover:border-stroke/30',
             isFocused && 'ring-2 ring-primary/5 border-primary/20 shadow-[var(--shadow-2)]',
             isDragging && 'scale-[1.01] ring-2 ring-primary/20 ring-offset-2'
           )}
@@ -569,7 +569,7 @@ export default memo(function ChatInputArea({
               <div ref={addMenuRef} className="relative">
                 <button
                   className={cn(
-                    'h-8 w-8 rounded-full border border-white/[0.08] bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1',
+                    'h-8 w-8 rounded-full border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.12] hover:text-text-1',
                     isAddMenuOpen && 'bg-surface-hover/[0.14] text-text-1'
                   )}
                   onClick={() => setIsAddMenuOpen((prev) => !prev)}

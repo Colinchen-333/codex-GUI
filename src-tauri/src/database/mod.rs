@@ -23,6 +23,9 @@ impl Database {
     pub fn new(path: &Path) -> Result<Self> {
         let conn = Connection::open(path)?;
 
+        // Enable WAL mode for better concurrent read performance
+        conn.execute_batch("PRAGMA journal_mode = WAL;")?;
+
         // Enable foreign keys
         conn.execute_batch("PRAGMA foreign_keys = ON;")?;
 

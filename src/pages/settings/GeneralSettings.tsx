@@ -62,9 +62,11 @@ export const GeneralSettings = memo(function GeneralSettings() {
   const keepAwakeEnabled = localStorage.getItem('codex-keep-awake') === 'true'
 
   // Font size mode
-  const [fontSizeMode, setFontSizeMode] = useState<FontSizeMode>(
-    () => (localStorage.getItem('codex-font-size-mode') as FontSizeMode) || 'default'
-  )
+  const VALID_FONT_SIZES: FontSizeMode[] = ['default', 'compact']
+  const [fontSizeMode, setFontSizeMode] = useState<FontSizeMode>(() => {
+    const raw = localStorage.getItem('codex-font-size-mode')
+    return raw && VALID_FONT_SIZES.includes(raw as FontSizeMode) ? (raw as FontSizeMode) : 'default'
+  })
 
   // Multiline prompt
   const [multilinePrompt, setMultilinePrompt] = useState(
@@ -72,9 +74,11 @@ export const GeneralSettings = memo(function GeneralSettings() {
   )
 
   // Window style
-  const [windowStyle, setWindowStyle] = useState<WindowStyle>(
-    () => (localStorage.getItem('codex-window-style') as WindowStyle) || 'solid'
-  )
+  const VALID_WINDOW_STYLES: WindowStyle[] = ['solid', 'transparent']
+  const [windowStyle, setWindowStyle] = useState<WindowStyle>(() => {
+    const raw = localStorage.getItem('codex-window-style')
+    return raw && VALID_WINDOW_STYLES.includes(raw as WindowStyle) ? (raw as WindowStyle) : 'solid'
+  })
 
   useEffect(() => {
     void useModelsStore.getState().fetchModels()

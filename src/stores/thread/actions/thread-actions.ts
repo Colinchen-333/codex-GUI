@@ -7,7 +7,7 @@
 
 import type { WritableDraft } from 'immer'
 import { threadApi } from '../../../lib/api'
-import { parseError, handleAsyncError } from '../../../lib/errorUtils'
+import { parseError, handleAsyncError, logError } from '../../../lib/errorUtils'
 import { log } from '../../../lib/logger'
 import { eventBus } from '../../../lib/eventBus'
 import {
@@ -187,9 +187,7 @@ export function createStartThread(
       // P1 Fix: Return the created threadId for reliable access
       return threadId
     } catch (error) {
-      console.error('[startThread] Caught error:', error)
-      console.error('[startThread] Error type:', typeof error)
-      console.error('[startThread] Error message:', error instanceof Error ? error.message : String(error))
+      logError(error, { context: 'startThread', source: 'thread-actions' })
 
       set((state) => {
         state.globalError = parseError(error)

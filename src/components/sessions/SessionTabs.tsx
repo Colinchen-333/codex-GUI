@@ -153,7 +153,7 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
     try {
       switchThread(threadId)
     } catch {
-      // Revert switching state on error
+      // Thread switch failed (e.g. thread no longer exists) — revert UI state
       setSwitchingTabId(null)
       return
     }
@@ -215,65 +215,44 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
     return false
   }, [toast])
 
-  const handleRevealInFinder = useCallback(async () => {
-    if (!projectCwd) return
+  const tryHostAction = useCallback(async (
+    path: string | null,
+    action: (p: string) => Promise<unknown>,
+    fallbackMsg: string,
+  ) => {
+    if (!path) return
     if (!requireTauri()) return
     try {
-      await revealInFinder(projectCwd)
+      await action(path)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reveal in Finder')
+      toast.error(err instanceof Error ? err.message : fallbackMsg)
     }
-  }, [projectCwd, requireTauri, toast])
+  }, [requireTauri, toast])
 
-  const handleOpenInTerminal = useCallback(async () => {
-    if (!projectCwd) return
-    if (!requireTauri()) return
-    try {
-      await openInTerminal(projectCwd)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to open in Terminal')
-    }
-  }, [projectCwd, requireTauri, toast])
-
-  const handleOpenInVSCode = useCallback(async () => {
-    if (!projectCwd) return
-    if (!requireTauri()) return
-    try {
-      await openInVSCode(projectCwd)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to open in VS Code')
-    }
-  }, [projectCwd, requireTauri, toast])
-
-  const handleRevealWorktreeInFinder = useCallback(async () => {
-    if (!activeWorktreePath) return
-    if (!requireTauri()) return
-    try {
-      await revealInFinder(activeWorktreePath)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reveal worktree in Finder')
-    }
-  }, [activeWorktreePath, requireTauri, toast])
-
-  const handleOpenWorktreeInTerminal = useCallback(async () => {
-    if (!activeWorktreePath) return
-    if (!requireTauri()) return
-    try {
-      await openInTerminal(activeWorktreePath)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to open worktree in Terminal')
-    }
-  }, [activeWorktreePath, requireTauri, toast])
-
-  const handleOpenWorktreeInVSCode = useCallback(async () => {
-    if (!activeWorktreePath) return
-    if (!requireTauri()) return
-    try {
-      await openInVSCode(activeWorktreePath)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to open worktree in VS Code')
-    }
-  }, [activeWorktreePath, requireTauri, toast])
+  const handleRevealInFinder = useCallback(
+    () => tryHostAction(projectCwd, revealInFinder, 'Failed to reveal in Finder'),
+    [projectCwd, tryHostAction]
+  )
+  const handleOpenInTerminal = useCallback(
+    () => tryHostAction(projectCwd, openInTerminal, 'Failed to open in Terminal'),
+    [projectCwd, tryHostAction]
+  )
+  const handleOpenInVSCode = useCallback(
+    () => tryHostAction(projectCwd, openInVSCode, 'Failed to open in VS Code'),
+    [projectCwd, tryHostAction]
+  )
+  const handleRevealWorktreeInFinder = useCallback(
+    () => tryHostAction(activeWorktreePath, revealInFinder, 'Failed to reveal worktree in Finder'),
+    [activeWorktreePath, tryHostAction]
+  )
+  const handleOpenWorktreeInTerminal = useCallback(
+    () => tryHostAction(activeWorktreePath, openInTerminal, 'Failed to open worktree in Terminal'),
+    [activeWorktreePath, tryHostAction]
+  )
+  const handleOpenWorktreeInVSCode = useCallback(
+    () => tryHostAction(activeWorktreePath, openInVSCode, 'Failed to open worktree in VS Code'),
+    [activeWorktreePath, tryHostAction]
+  )
 
   const handleStop = useCallback(() => {
     void useThreadStore.getState().interrupt()
@@ -292,6 +271,7 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
       if (!ok) throw new Error('Clipboard unavailable')
       toast.success('Session ID copied')
     } catch {
+      // Clipboard API may not be available in all environments
       toast.error('Failed to copy session ID')
     }
   }, [focusedThreadId, toast])

@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { Pencil, Settings, FolderOpen, Trash2 } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { logError } from '../../../lib/errorUtils'
 import { ContextMenu, type ContextMenuItem } from '../../ui/ContextMenu'
 
 export interface Project {
@@ -83,7 +84,7 @@ export const ProjectList = memo(function ProjectList({
               // Use Tauri shell to open folder
               void import('@tauri-apps/plugin-shell').then(async ({ open }) => {
                 await open(project.path)
-              }).catch((err) => console.error('Failed to open folder:', err))
+              }).catch((err) => logError(err, { context: 'openFolder', source: 'ProjectList' }))
             },
           },
           {

@@ -43,7 +43,7 @@ export const GitSettings = memo(function GitSettings() {
         if (config['git.prTemplate'] != null) setPrTemplate(String(config['git.prTemplate']))
         if (config['git.defaultBaseBranch'] != null) setDefaultBaseBranch(String(config['git.defaultBaseBranch']))
       } catch {
-        // Config not available, use defaults
+        // Config API not available yet — use defaults
       } finally {
         setIsLoading(false)
       }
@@ -55,7 +55,7 @@ export const GitSettings = memo(function GitSettings() {
     try {
       await configApi.write(key, value)
     } catch {
-      // Silently fail - config write may not be supported yet
+      // Config write may not be supported yet — setting still applies in memory
     }
   }
 

@@ -64,7 +64,7 @@ function parseTasks(tasksJson: string | null): TaskItem[] {
     const parsed = JSON.parse(tasksJson)
     return Array.isArray(parsed) ? parsed : []
   } catch (error) {
-    console.warn('[TaskQueue] Failed to parse tasks JSON:', error)
+    // Invalid tasks JSON — return empty array to avoid rendering errors
     return []
   }
 }

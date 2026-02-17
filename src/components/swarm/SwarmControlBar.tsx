@@ -2,6 +2,7 @@ import { useSwarmStore, type SwarmPhase } from '../../stores/swarm'
 import { cancelSwarm } from '../../lib/swarmOrchestrator'
 import { X } from 'lucide-react'
 import { IconButton } from '../ui/IconButton'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { useEffect, useState } from 'react'
 
 const PHASES: SwarmPhase[] = [
@@ -43,6 +44,7 @@ export function SwarmControlBar() {
   const error = useSwarmStore((s) => s.error)
   const userRequest = useSwarmStore((s) => s.userRequest)
   const [elapsed, setElapsed] = useState(0)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   useEffect(() => {
     if (!startedAt || phase === 'completed' || phase === 'failed') return
@@ -58,9 +60,7 @@ export function SwarmControlBar() {
     if (phase === 'idle' || phase === 'completed' || phase === 'failed') {
       deactivate()
     } else {
-      if (window.confirm('Cancel Self-Driving? This will stop all workers and discard pending changes.')) {
-        cancelSwarm()
-      }
+      setShowCancelConfirm(true)
     }
   }
 
@@ -150,6 +150,20 @@ export function SwarmControlBar() {
           <X size={14} />
         </IconButton>
       </div>
+
+      <ConfirmDialog
+        isOpen={showCancelConfirm}
+        title="Cancel Self-Driving?"
+        message="This will stop all workers and discard pending changes."
+        confirmText="Cancel Self-Driving"
+        cancelText="Keep Running"
+        variant="danger"
+        onConfirm={() => {
+          setShowCancelConfirm(false)
+          cancelSwarm()
+        }}
+        onCancel={() => setShowCancelConfirm(false)}
+      />
     </div>
   )
 }

@@ -51,7 +51,7 @@ export const PersonalizationSettings = memo(function PersonalizationSettings() {
           setCustomInstructions(String(config['personalization.customInstructions']))
         }
       } catch {
-        // Config not available, use defaults
+        // Config API not available yet — use defaults
       } finally {
         setIsLoading(false)
       }
@@ -63,7 +63,7 @@ export const PersonalizationSettings = memo(function PersonalizationSettings() {
     try {
       await configApi.write(key, value)
     } catch {
-      // Silently fail - config write may not be supported yet
+      // Config write may not be supported yet — setting still applies in memory
     }
   }
 

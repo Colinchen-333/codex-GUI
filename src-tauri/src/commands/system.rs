@@ -140,6 +140,26 @@ pub async fn stop_keep_awake(state: State<'_, CaffeinateState>) -> Result<(), St
 /// Check if caffeinate is currently active
 #[tauri::command]
 pub async fn is_keep_awake_active(state: State<'_, CaffeinateState>) -> Result<bool, String> {
-    let guard = state.0.lock().map_err(|e| e.to_string())?;
-    Ok(guard.is_some())
+    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(child) = guard.as_mut() {
+        match child.try_wait() {
+            Ok(Some(_status)) => {
+                // Process has exited, clean up
+                tracing::warn!("Caffeinate process has exited unexpectedly");
+                guard.take();
+                Ok(false)
+            }
+            Ok(None) => {
+                // Process is still running
+                Ok(true)
+            }
+            Err(e) => {
+                tracing::warn!("Failed to check caffeinate status: {}", e);
+                guard.take();
+                Ok(false)
+            }
+        }
+    } else {
+        Ok(false)
+    }
 }

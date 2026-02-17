@@ -29,6 +29,10 @@ const inFlightTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 const ERROR_TTL_MS = 5000
 const MAX_CACHE_ENTRIES = 200
 const MAX_IN_FLIGHT_MS = 5 * 60 * 1000
+const PRUNE_INTERVAL_MS = 30_000  // Only prune every 30 seconds minimum
+const PRUNE_SIZE_THRESHOLD = 150  // Or when cache exceeds this size
+
+let lastPruneTime = 0
 
 function clearInFlightTimeout(key: string): void {
   const timeoutId = inFlightTimeouts.get(key)
@@ -58,6 +62,12 @@ function toError(value: unknown): Error {
 }
 
 function pruneCache(now: number): void {
+  // Skip pruning if we pruned recently and cache isn't too large
+  if (now - lastPruneTime < PRUNE_INTERVAL_MS && cache.size < PRUNE_SIZE_THRESHOLD) {
+    return
+  }
+  lastPruneTime = now
+
   for (const [key, entry] of cache) {
     if (entry.expiry <= now && !inFlight.has(key)) {
       cache.delete(key)
@@ -225,6 +235,9 @@ export const CACHE_KEYS = {
   SKILLS: 'skills',
   MCP_SERVERS: 'mcpServers',
   ACCOUNT_INFO: 'accountInfo',
+  SERVER_STATUS: 'serverStatus',
+  RATE_LIMITS: 'rateLimits',
+  GIT_INFO: 'gitInfo',
 } as const
 
 // 缓存 TTL 常量（毫秒）
@@ -233,4 +246,7 @@ export const CACHE_TTL = {
   SKILLS: 60 * 1000,          // 1 分钟 - 技能可能动态变化
   MCP_SERVERS: 2 * 60 * 1000, // 2 分钟 - MCP 服务器较稳定
   ACCOUNT_INFO: 60 * 1000,    // 1 分钟 - 账户信息可能变化
+  SERVER_STATUS: 10 * 1000,   // 10 秒 - 服务器状态需要较高实时性
+  RATE_LIMITS: 30 * 1000,     // 30 秒 - 速率限制适度缓存
+  GIT_INFO: 30 * 1000,        // 30 秒 - Git 信息适度缓存
 } as const

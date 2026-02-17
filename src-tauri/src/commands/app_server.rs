@@ -47,9 +47,11 @@ async fn get_codex_cli_version_cached() -> Option<String> {
 /// Get the app server status
 #[tauri::command]
 pub async fn get_server_status(state: State<'_, AppState>) -> Result<ServerStatus> {
-    let mut server = state.app_server.write().await;
-
-    let is_running = server.as_mut().map(|s| s.is_running()).unwrap_or(false);
+    // Only hold the lock briefly to check running status
+    let is_running = {
+        let mut server = state.app_server.write().await;
+        server.as_mut().map(|s| s.is_running()).unwrap_or(false)
+    };
 
     Ok(ServerStatus {
         is_running,

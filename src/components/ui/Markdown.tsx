@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useEffect, memo, type ComponentType, type CSS
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '../../lib/utils'
+import { logError } from '../../lib/errorUtils'
 
 type PrismHighlighter = ComponentType<{
   style?: Record<string, CSSProperties>
@@ -111,7 +112,7 @@ const LazyCodeBlock = memo(function LazyCodeBlock({ language, children }: { lang
 
   useEffect(() => {
     if (!theme) {
-      void loadTheme().then(setTheme).catch((err) => console.error('Failed to load syntax theme:', err))
+      void loadTheme().then(setTheme).catch((err) => logError(err, { context: 'loadSyntaxTheme', source: 'Markdown' }))
     }
   }, [theme])
 

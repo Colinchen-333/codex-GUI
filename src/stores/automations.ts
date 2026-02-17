@@ -62,6 +62,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
     const stored = localStorage.getItem(key)
     return stored ? JSON.parse(stored) : fallback
   } catch {
+    // localStorage or JSON parse may fail — use fallback
     return fallback
   }
 }

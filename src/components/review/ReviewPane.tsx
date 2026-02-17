@@ -14,157 +14,22 @@ import {
   Minus,
   X,
 } from 'lucide-react'
-import { DiffView, parseDiff, type FileDiff } from '../ui/DiffView'
+import { DiffView, type FileDiff } from '../ui/DiffView'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { IconButton } from '../ui/IconButton'
 import { cn } from '../../lib/utils'
 import { projectApi, type GitFileStatus } from '../../lib/api'
+import { parseGitDiff, buildFileTree, flattenTree } from '../../lib/gitDiffUtils'
 import { useProjectsStore } from '../../stores/projects'
 
 // ==================== Types ====================
 
-type ReviewScope = 'uncommitted' | 'branch' | 'last-turn'
+type ReviewScope = 'uncommitted' | 'branch'
 
 type StagedFilter = 'all' | 'staged' | 'unstaged'
 
 type LoadState = 'idle' | 'loading' | 'error' | 'not-git' | 'empty'
-
-type FileNode = {
-  type: 'dir' | 'file'
-  name: string
-  path: string
-  children?: FileNode[]
-  diff?: FileDiff
-  fileStatus?: GitFileStatus
-}
-
-type FlattenedNode = {
-  node: FileNode
-  depth: number
-}
-
-// ==================== Diff Parsing ====================
-
-function parseGitDiff(diff: string): FileDiff[] {
-  const lines = diff.split('\n')
-  const sections: string[] = []
-  let current: string[] = []
-
-  for (const line of lines) {
-    if (line.startsWith('diff --git ')) {
-      if (current.length > 0) {
-        sections.push(current.join('\n'))
-      }
-      current = [line]
-    } else if (current.length > 0) {
-      current.push(line)
-    }
-  }
-  if (current.length > 0) {
-    sections.push(current.join('\n'))
-  }
-
-  return sections.map((section) => {
-    const header = section.split('\n')[0] ?? ''
-    const match = header.match(/^diff --git a\/(.*) b\/(.*)$/)
-    const oldPath = match?.[1] ?? 'unknown'
-    const newPath = match?.[2] ?? oldPath
-
-    let kind: FileDiff['kind'] = 'modify'
-    let renameFrom: string | undefined
-    let renameTo: string | undefined
-
-    if (section.includes('new file mode') || section.includes('--- /dev/null')) {
-      kind = 'add'
-    }
-    if (section.includes('deleted file mode') || section.includes('+++ /dev/null')) {
-      kind = 'delete'
-    }
-    if (section.includes('rename from')) {
-      kind = 'rename'
-      const renameFromMatch = section.match(/rename from (.*)/)
-      const renameToMatch = section.match(/rename to (.*)/)
-      renameFrom = renameFromMatch?.[1]
-      renameTo = renameToMatch?.[1]
-    }
-
-    const path = renameTo || newPath
-    const hunks = parseDiff(section)
-
-    return {
-      path,
-      kind,
-      oldPath: renameFrom || (kind === 'rename' ? oldPath : undefined),
-      hunks,
-      raw: section,
-    }
-  })
-}
-
-// ==================== Tree Helpers ====================
-
-function buildFileTree(diffs: FileDiff[], statusMap?: Map<string, GitFileStatus>): FileNode[] {
-  const root: FileNode = { type: 'dir', name: '', path: '', children: [] }
-
-  for (const diff of diffs) {
-    const parts = diff.path.split('/')
-    let current = root
-    let currentPath = ''
-
-    for (let i = 0; i < parts.length; i += 1) {
-      const part = parts[i]
-      const isFile = i === parts.length - 1
-      currentPath = currentPath ? `${currentPath}/${part}` : part
-
-      if (isFile) {
-        current.children!.push({
-          type: 'file',
-          name: part,
-          path: currentPath,
-          diff,
-          fileStatus: statusMap?.get(currentPath),
-        })
-      } else {
-        let next = current.children!.find((child) => child.type === 'dir' && child.name === part)
-        if (!next) {
-          next = { type: 'dir', name: part, path: currentPath, children: [] }
-          current.children!.push(next)
-        }
-        current = next
-      }
-    }
-  }
-
-  const sortNodes = (nodes: FileNode[]) => {
-    nodes.sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
-      return a.name.localeCompare(b.name)
-    })
-    nodes.forEach((node) => {
-      if (node.children) sortNodes(node.children)
-    })
-  }
-
-  if (root.children) sortNodes(root.children)
-  return root.children ?? []
-}
-
-function flattenTree(
-  nodes: FileNode[],
-  expandedDirs: Set<string>,
-  autoExpand: boolean,
-  depth = 0,
-  result: FlattenedNode[] = []
-): FlattenedNode[] {
-  for (const node of nodes) {
-    result.push({ node, depth })
-    if (node.type === 'dir' && node.children && (autoExpand || expandedDirs.has(node.path))) {
-      flattenTree(node.children, expandedDirs, autoExpand, depth + 1, result)
-    }
-  }
-  return result
-}
 
 function getDiffStats(diff?: FileDiff | null) {
   if (!diff) return { additions: 0, deletions: 0 }
@@ -196,7 +61,6 @@ function getStatusBadge(status?: GitFileStatus): { label: string; color: string 
 const SCOPES: { value: ReviewScope; label: string }[] = [
   { value: 'uncommitted', label: 'Uncommitted' },
   { value: 'branch', label: 'Branch' },
-  { value: 'last-turn', label: 'Last turn' },
 ]
 
 // ==================== Component ====================
@@ -269,25 +133,16 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
         try {
           rawDiff = await projectApi.gitDiffBranch(selectedProject.path, baseBranch)
         } catch {
-          // If main doesn't exist, try master
+          // Base branch (e.g. 'main') may not exist, fall back to 'master'
           try {
             rawDiff = await projectApi.gitDiffBranch(selectedProject.path, 'master')
           } catch {
+            // Neither main nor master exists — cannot determine base branch
             setLoadState('error')
             setFileDiffs([])
             return
           }
         }
-      } else if (activeScope === 'last-turn') {
-        // Last turn: show uncommitted changes as a proxy
-        // (In a full implementation, this would track agent turn boundaries)
-        const result = await projectApi.getGitDiff(selectedProject.path)
-        if (!result.isGitRepo) {
-          setLoadState('not-git')
-          setFileDiffs([])
-          return
-        }
-        rawDiff = result.diff ?? ''
       }
 
       if (!rawDiff.trim()) {
@@ -304,6 +159,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
         setSelectedPath(parsed[0].path)
       }
     } catch {
+      // Network or API error fetching diff — show error state
       setLoadState('error')
       setFileDiffs([])
     }
@@ -384,7 +240,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
       await projectApi.gitStageFiles(selectedProject.path, unstaged)
       void fetchDiff()
     } catch {
-      // Error handling deferred to toast system
+      // Stage operation failed — toast system handles user-facing errors
     }
   }, [selectedProject, fileStatuses, fetchDiff])
 
@@ -397,7 +253,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
       await projectApi.gitUnstageFiles(selectedProject.path, staged)
       void fetchDiff()
     } catch {
-      // Error handling deferred to toast system
+      // Unstage operation failed — toast system handles user-facing errors
     }
   }, [selectedProject, fileStatuses, fetchDiff])
 

@@ -155,7 +155,7 @@ export function mergeProjectSettings(
         globalSettings.approvalPolicy,
     }
   } catch {
-    // Invalid JSON, return global settings
+    // Project settingsJson is invalid JSON — fall back to global settings
     return globalSettings
   }
 }
@@ -173,6 +173,7 @@ export function getEffectiveWorkingDirectory(
     const projectSettings: ProjectSettings = JSON.parse(projectSettingsJson)
     return projectSettings.cwd || projectPath
   } catch {
+    // Invalid JSON — use project root as working directory
     return projectPath
   }
 }

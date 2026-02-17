@@ -12,6 +12,7 @@
  */
 
 import type { SessionStatus } from './api'
+import { log } from './logger'
 
 // ==================== Event Type Definitions ====================
 
@@ -97,7 +98,7 @@ class EventBus {
       try {
         handler(data)
       } catch (error) {
-        console.error(`[EventBus] Error in handler for event "${event}":`, error)
+        log.error(`[EventBus] Error in handler for event "${event}": ${error}`, 'eventBus')
       }
     })
   }

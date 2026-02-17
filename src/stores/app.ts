@@ -10,6 +10,7 @@ function readSidebarCollapsed(): boolean {
     const raw = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)
     return raw === '1' || raw === 'true'
   } catch {
+    // localStorage may be unavailable (e.g. in sandboxed iframes)
     return false
   }
 }

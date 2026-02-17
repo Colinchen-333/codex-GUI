@@ -3,7 +3,7 @@
  * Extracted from ChatView.tsx for better modularity
  */
 import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from 'react'
-import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, ListTodo, GitBranch, Check, MessageSquare, FileEdit, Zap, Search, Loader2 } from 'lucide-react'
+import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, GitBranch, Check, MessageSquare, FileEdit, Zap, Search, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectFileChanges } from '../../stores/thread/selectors'
@@ -12,7 +12,6 @@ import { useProjectsStore } from '../../stores/projects'
 import { useModelsStore, modelSupportsReasoning } from '../../stores/models'
 import { projectApi, terminalApi, type GitBranch as GitBranchType } from '../../lib/api'
 import { useToast } from '../ui/useToast'
-import { Switch } from '../ui/Switch'
 import { SlashCommandPopup } from './SlashCommandPopup'
 import { FileMentionPopup } from './FileMentionPopup'
 import { type SlashCommand } from '../../lib/slashCommands'
@@ -133,7 +132,6 @@ export default memo(function ChatInputArea({
 
   const [isFocused, setIsFocused] = useState(false)
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
-  const [planModeEnabled, setPlanModeEnabled] = useState(false)
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false)
   const [isApprovalMenuOpen, setIsApprovalMenuOpen] = useState(false)
   const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false)
@@ -592,18 +590,6 @@ export default memo(function ChatInputArea({
                       <Paperclip size={16} className="text-text-3" />
                       Add photos & files
                     </button>
-                    <div className="mt-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm text-text-1 hover:bg-surface-hover/[0.12]">
-                      <div className="flex items-center gap-2">
-                        <ListTodo size={16} className="text-text-3" />
-                        Plan mode
-                      </div>
-                      <Switch
-                        checked={planModeEnabled}
-                        onChange={() => setPlanModeEnabled((prev) => !prev)}
-                        size="sm"
-                        aria-label="Toggle plan mode"
-                      />
-                    </div>
                   </div>
                 )}
               </div>

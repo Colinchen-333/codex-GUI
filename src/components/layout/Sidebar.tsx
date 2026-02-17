@@ -10,7 +10,7 @@
  * - useSidebarDialogs: Dialog state management hook
  */
 
-import { useEffect, useCallback, useState } from 'react'
+import React, { useEffect, useCallback, useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
 import { MessageSquarePlus, Zap, Layers, Bell, Settings, FolderPlus, PanelLeftClose, Filter, Check } from 'lucide-react'
@@ -45,7 +45,7 @@ function InboxBadge() {
   )
 }
 
-export function Sidebar() {
+export const Sidebar = React.memo(function Sidebar() {
   const { setSidebarTab: setActiveTab } = useAppStore()
   const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed)
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
@@ -65,6 +65,7 @@ export function Sidebar() {
         showArchived: typeof parsed.showArchived === 'boolean' ? parsed.showArchived : defaults.showArchived,
       }
     } catch {
+      // localStorage may be unavailable or contain invalid JSON
       return defaults
     }
   })
@@ -89,7 +90,7 @@ export function Sidebar() {
     try {
       localStorage.setItem('codex:session-filters', JSON.stringify(sessionFilters))
     } catch {
-      // Ignore quota errors.
+      // localStorage may be full or unavailable — filters still work in memory
     }
   }, [sessionFilters])
 
@@ -118,16 +119,20 @@ export function Sidebar() {
   }, [fetchSessions, selectedProjectId])
 
   const displaySessions = searchQuery ? searchResults : sessions
-  const filteredSessions = displaySessions.filter((s) => {
-    if (!sessionFilters.showArchived && s.isArchived) return false
-    if (sessionFilters.pinnedOnly && !s.isFavorite) return false
-    if (sessionFilters.runningOnly && s.status !== 'running') return false
-    return true
-  })
-  const displayProjectName = selectedProjectId
-    ? projects.find((p) => p.id === selectedProjectId)?.displayName
-      || projects.find((p) => p.id === selectedProjectId)?.path.split('/').pop()
-      || null
+  const filteredSessions = useMemo(
+    () => displaySessions.filter((s) => {
+      if (!sessionFilters.showArchived && s.isArchived) return false
+      if (sessionFilters.pinnedOnly && !s.isFavorite) return false
+      if (sessionFilters.runningOnly && s.status !== 'running') return false
+      return true
+    }),
+    [displaySessions, sessionFilters.showArchived, sessionFilters.pinnedOnly, sessionFilters.runningOnly]
+  )
+  const selectedProject = selectedProjectId
+    ? projects.find((p) => p.id === selectedProjectId)
+    : null
+  const displayProjectName = selectedProject
+    ? selectedProject.displayName || selectedProject.path.split('/').pop() || null
     : null
   const selectedSession = selectedSessionId
     ? displaySessions.find((s) => s.sessionId === selectedSessionId) ?? null
@@ -456,4 +461,4 @@ export function Sidebar() {
       />
     </aside>
   )
-}
+})

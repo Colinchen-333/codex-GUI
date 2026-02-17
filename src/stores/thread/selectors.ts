@@ -248,14 +248,24 @@ export function selectPendingApprovalsByType(type: 'command' | 'fileChange') {
 
 // ==================== Cross-Thread Approval Selectors (Multi-Agent) ====================
 
+// Cache for selectPendingApprovalsByThread to prevent new object on every call
+let _cachedApprovalsByThreadRef: Record<string, SingleThreadState> | null = null
+let _cachedApprovalsByThreadResult: Record<string, ThreadState['pendingApprovals']> = {}
+
 export function selectPendingApprovalsByThread(state: ThreadState): Record<string, ThreadState['pendingApprovals']> {
+  const { threads } = state
+  if (threads === _cachedApprovalsByThreadRef) {
+    return _cachedApprovalsByThreadResult
+  }
+  _cachedApprovalsByThreadRef = threads
   const result: Record<string, ThreadState['pendingApprovals']> = {}
-  for (const threadId of Object.keys(state.threads)) {
-    const threadState = state.threads[threadId]
+  for (const threadId of Object.keys(threads)) {
+    const threadState = threads[threadId]
     if (threadState && threadState.pendingApprovals.length > 0) {
       result[threadId] = threadState.pendingApprovals
     }
   }
+  _cachedApprovalsByThreadResult = result
   return result
 }
 
@@ -280,11 +290,21 @@ export type GlobalPendingApprovalSummary = {
  * - total count across all threads
  * - the earliest (by createdAt) pending approval, if any
  */
+// Cache for selectGlobalPendingApprovalSummary to prevent new object on every call
+let _cachedSummaryThreadsRef: Record<string, SingleThreadState> | null = null
+let _cachedSummaryResult: GlobalPendingApprovalSummary = { count: 0, next: null }
+
 export function selectGlobalPendingApprovalSummary(state: ThreadState): GlobalPendingApprovalSummary {
+  const { threads } = state
+  if (threads === _cachedSummaryThreadsRef) {
+    return _cachedSummaryResult
+  }
+  _cachedSummaryThreadsRef = threads
+
   let count = 0
   let next: ThreadState['pendingApprovals'][number] | null = null
 
-  for (const threadState of Object.values(state.threads)) {
+  for (const threadState of Object.values(threads)) {
     if (!threadState) continue
     const pending = threadState.pendingApprovals
     if (!pending || pending.length === 0) continue
@@ -294,7 +314,8 @@ export function selectGlobalPendingApprovalSummary(state: ThreadState): GlobalPe
     }
   }
 
-  return { count, next }
+  _cachedSummaryResult = { count, next }
+  return _cachedSummaryResult
 }
 
 export function selectGlobalNextPendingApproval(state: ThreadState): ThreadState['pendingApprovals'][number] | null {

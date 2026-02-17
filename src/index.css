@@ -4,7 +4,8 @@
 
 @font-face {
   font-family: 'Source Sans 3';
-  src: url('/fonts/SourceSans3-Regular.ttf') format('truetype');
+  src: url('/fonts/SourceSans3-Regular.woff2') format('woff2'),
+       url('/fonts/SourceSans3-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -12,7 +13,8 @@
 
 @font-face {
   font-family: 'Source Sans 3';
-  src: url('/fonts/SourceSans3-Semibold.ttf') format('truetype');
+  src: url('/fonts/SourceSans3-Semibold.woff2') format('woff2'),
+       url('/fonts/SourceSans3-Semibold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -2102,21 +2104,10 @@
 
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  .page-enter,
-  .panel-slide-up,
-  .panel-slide-right,
-  .stagger-children > *,
-  .toast-enter,
-  .toast-exit,
-  .dialog-content-enter,
-  .dialog-content-exit,
-  .dialog-overlay-enter,
-  .loading-bar-slide,
-  .loading-shimmer,
-  .animate-pulse,
-  .animate-spin,
-  .animate-breathe-text,
-  .voice-recording {
-    animation: none;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

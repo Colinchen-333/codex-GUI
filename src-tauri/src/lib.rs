@@ -27,6 +27,54 @@ use tracing_subscriber::util::SubscriberInitExt;
 #[cfg(target_os = "macos")]
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
+/// Clean up log files older than 30 days
+fn cleanup_old_logs(app_handle: &tauri::AppHandle) {
+    let app_data_dir = match app_handle.path().app_data_dir() {
+        Ok(dir) => dir,
+        Err(_) => return,
+    };
+    let log_dir = app_data_dir.join("logs");
+    if !log_dir.exists() {
+        return;
+    }
+
+    let entries = match std::fs::read_dir(&log_dir) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    let thirty_days = std::time::Duration::from_secs(30 * 24 * 3600);
+    let mut cleaned = 0;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        // Only clean our log files
+        let name = match path.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+        if !name.starts_with("codex-desktop.log") {
+            continue;
+        }
+        if let Ok(metadata) = std::fs::metadata(&path) {
+            if let Ok(modified) = metadata.modified() {
+                if let Ok(age) = std::time::SystemTime::now().duration_since(modified) {
+                    if age > thirty_days && std::fs::remove_file(&path).is_ok() {
+                        cleaned += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    if cleaned > 0 {
+        tracing::info!("Cleaned up {} log files older than 30 days", cleaned);
+    }
+}
+
 /// Clean up old temp image files from previous sessions
 fn cleanup_temp_images() {
     let temp_dir = std::env::temp_dir();
@@ -101,6 +149,9 @@ pub fn run() {
             let log_guard = init_tracing(&app_handle);
 
             tracing::info!("Starting Codex Desktop");
+
+            // Clean up old log files (>30 days)
+            cleanup_old_logs(&app_handle);
 
             // Initialize application state
             let state = AppState::new(&app_handle, log_guard)?;

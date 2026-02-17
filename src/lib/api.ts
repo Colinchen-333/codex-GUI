@@ -399,10 +399,14 @@ export const projectApi = {
     invoke<Project>('update_project', { id, displayName, settings }),
 
   getGitInfo: (path: string) =>
-    invokeOrFallback<GitInfo>(
-      { isGitRepo: false, branch: null, isDirty: null, lastCommit: null },
-      'get_project_git_info',
-      { path }
+    withCache(
+      `${CACHE_KEYS.GIT_INFO}:${path}`,
+      () => invokeOrFallback<GitInfo>(
+        { isGitRepo: false, branch: null, isDirty: null, lastCommit: null },
+        'get_project_git_info',
+        { path }
+      ),
+      CACHE_TTL.GIT_INFO
     ),
   getGitDiff: (path: string) =>
     isTauriAvailable()
@@ -655,13 +659,28 @@ export const snapshotApi = {
 // ==================== App Server API ====================
 
 export const serverApi = {
-  getStatus: () => invokeOrFallback<ServerStatus>({ isRunning: false, version: null }, 'get_server_status'),
+  getStatus: () =>
+    withCache(
+      CACHE_KEYS.SERVER_STATUS,
+      () => invokeOrFallback<ServerStatus>({ isRunning: false, version: null }, 'get_server_status'),
+      CACHE_TTL.SERVER_STATUS
+    ),
 
   restart: () => (isTauriAvailable() ? invoke<void>('restart_server') : Promise.resolve()),
 
-  getAccountInfo: () => invokeOrFallback<AccountInfo>({ account: null, requiresOpenaiAuth: false }, 'get_account_info'),
+  getAccountInfo: () =>
+    withCache(
+      CACHE_KEYS.ACCOUNT_INFO,
+      () => invokeOrFallback<AccountInfo>({ account: null, requiresOpenaiAuth: false }, 'get_account_info'),
+      CACHE_TTL.ACCOUNT_INFO
+    ),
 
-  getAccountRateLimits: () => invokeOrFallback<AccountRateLimitsResponse>({ rateLimits: {} }, 'get_account_rate_limits'),
+  getAccountRateLimits: () =>
+    withCache(
+      CACHE_KEYS.RATE_LIMITS,
+      () => invokeOrFallback<AccountRateLimitsResponse>({ rateLimits: {} }, 'get_account_rate_limits'),
+      CACHE_TTL.RATE_LIMITS
+    ),
 
   startLogin: (loginType: 'chatgpt' | 'apiKey' = 'chatgpt', apiKey?: string) =>
     invoke<LoginResponse>('start_login', { loginType, apiKey }),

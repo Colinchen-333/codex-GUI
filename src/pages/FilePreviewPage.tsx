@@ -131,37 +131,26 @@ export function FilePreviewPage() {
     }
   }
 
-  const handleOpenProjectInFinder = async () => {
+  const tryHostAction = async (action: () => Promise<unknown>, fallbackMsg: string) => {
     try {
-      await revealInFinder(selectedProject.path)
+      await action()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to reveal in Finder', 'error')
+      showToast(err instanceof Error ? err.message : fallbackMsg, 'error')
     }
   }
 
-  const handleOpenProjectInTerminal = async () => {
-    try {
-      await openInTerminal(selectedProject.path)
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to open in Terminal', 'error')
-    }
-  }
+  const handleOpenProjectInFinder = () =>
+    tryHostAction(() => revealInFinder(selectedProject.path), 'Failed to reveal in Finder')
 
-  const handleOpenProjectInVSCode = async () => {
-    try {
-      await openInVSCode(selectedProject.path)
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to open in VS Code', 'error')
-    }
-  }
+  const handleOpenProjectInTerminal = () =>
+    tryHostAction(() => openInTerminal(selectedProject.path), 'Failed to open in Terminal')
 
-  const handleOpenSelectedInVSCode = async () => {
+  const handleOpenProjectInVSCode = () =>
+    tryHostAction(() => openInVSCode(selectedProject.path), 'Failed to open in VS Code')
+
+  const handleOpenSelectedInVSCode = () => {
     if (!selectedAbsolutePath) return
-    try {
-      await openInVSCode(selectedAbsolutePath)
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to open file in VS Code', 'error')
-    }
+    void tryHostAction(() => openInVSCode(selectedAbsolutePath), 'Failed to open file in VS Code')
   }
 
   return (

@@ -182,6 +182,27 @@ async function interruptAllWorkers(): Promise<void> {
   }
 }
 
+/**
+ * Wait for the user to approve or reject the plan.
+ * Subscribes to the swarm store and resolves when approvalState changes
+ * from 'pending' to 'approved' or 'rejected'.
+ */
+function waitForPlanApproval(): Promise<'approved' | 'rejected'> {
+  return new Promise((resolve) => {
+    const current = useSwarmStore.getState().approvalState
+    if (current === 'approved' || current === 'rejected') {
+      resolve(current)
+      return
+    }
+    const unsub = useSwarmStore.subscribe((state) => {
+      if (state.approvalState === 'approved' || state.approvalState === 'rejected') {
+        unsub()
+        resolve(state.approvalState)
+      }
+    })
+  })
+}
+
 // ==================== Main Orchestrator ====================
 
 /**
@@ -254,6 +275,12 @@ export async function runSwarm(
     }
 
     // Populate store with parsed tasks
+    // QW-2: Map dependsOn title strings to task IDs for reliable matching
+    const titleToId = new Map<string, string>()
+    parsedTasks.forEach((t, i) => {
+      titleToId.set(t.title.toLowerCase(), `task-${i + 1}`)
+    })
+
     const swarmTasks: SwarmTask[] = parsedTasks.map((t, i) => ({
       id: `task-${i + 1}`,
       title: t.title,
@@ -261,7 +288,9 @@ export async function runSwarm(
       testCommand: t.testCommand,
       status: 'pending' as const,
       assignedWorker: null,
-      dependsOn: t.dependsOn,
+      dependsOn: t.dependsOn
+        .map((dep) => titleToId.get(dep.toLowerCase()) || dep)
+        .filter((dep) => dep !== `task-${i + 1}`), // remove self-references
     }))
 
     store.setTasks(swarmTasks)
@@ -270,6 +299,29 @@ export async function runSwarm(
       content: `Planned ${swarmTasks.length} task(s):\n${swarmTasks.map((t, i) => `  ${i + 1}. ${t.title}`).join('\n')}`,
       type: 'broadcast',
     })
+
+    // ---- Phase 2b: AWAIT APPROVAL ----
+    store.setPhase('awaiting_approval')
+    // Reset approval state to pending so the UI can show the gate
+    useSwarmStore.setState({ approvalState: 'pending' })
+
+    log.info('[Swarm] Waiting for user to approve plan', 'SwarmOrchestrator')
+    store.addMessage({
+      from: 'System',
+      content: 'Plan ready for review. Approve to proceed or reject to cancel.',
+      type: 'status',
+    })
+
+    const verdict = await waitForPlanApproval()
+
+    if (verdict === 'rejected') {
+      store.addMessage({ from: 'System', content: 'Plan rejected by user.', type: 'error' })
+      store.setError('Plan rejected by user')
+      store.setPhase('failed')
+      return
+    }
+
+    store.addMessage({ from: 'System', content: 'Plan approved. Continuing...', type: 'status' })
 
     // ---- Phase 3: CASCADE CHECK ----
     // If there is only one task, the Team Lead handles it directly
@@ -531,11 +583,11 @@ export async function runSwarm(
         const task = currentTasks.find((t) => t.id === taskId)
         if (!task || task.status !== 'pending') continue
 
-        // FIX-2: Check dependencies and re-queue if not yet met
+        // QW-2: Check dependencies by task ID instead of title string
         if (task.dependsOn.length > 0) {
           const allTasks = useSwarmStore.getState().tasks
-          const anyFailed = task.dependsOn.some((depTitle) => {
-            const dep = allTasks.find((t) => t.title === depTitle)
+          const anyFailed = task.dependsOn.some((depId) => {
+            const dep = allTasks.find((t) => t.id === depId)
             return dep?.status === 'failed'
           })
           if (anyFailed) {
@@ -548,8 +600,8 @@ export async function runSwarm(
             continue
           }
 
-          const depsMet = task.dependsOn.every((depTitle) => {
-            const dep = allTasks.find((t) => t.title === depTitle)
+          const depsMet = task.dependsOn.every((depId) => {
+            const dep = allTasks.find((t) => t.id === depId)
             return dep?.status === 'merged'
           })
           if (!depsMet) {
@@ -562,12 +614,46 @@ export async function runSwarm(
         }
 
         await processTask(task, worker)
+
+        // QW-6: Circuit breaker -- abort if >50% of tasks have failed
+        const latestTasks = useSwarmStore.getState().tasks
+        const failedCount = latestTasks.filter((t) => t.status === 'failed').length
+        if (failedCount > latestTasks.length / 2) {
+          log.error(
+            `[Swarm] Circuit breaker triggered: ${failedCount}/${latestTasks.length} tasks failed`,
+            'SwarmOrchestrator'
+          )
+          const failedNames = latestTasks
+            .filter((t) => t.status === 'failed')
+            .map((t) => t.title)
+            .join(', ')
+          store.addMessage({
+            from: 'System',
+            content: `Circuit breaker: ${failedCount}/${latestTasks.length} tasks failed (${failedNames}). Aborting swarm.`,
+            type: 'error',
+          })
+          // Drain the queue so all worker loops exit
+          taskQueue.length = 0
+          break
+        }
       }
     }
 
     // Launch all workers in parallel
     const workers = useSwarmStore.getState().workers
     await Promise.all(workers.map((w) => workerLoop(w)))
+
+    // QW-6: Check if circuit breaker was triggered
+    {
+      const finalTasks = useSwarmStore.getState().tasks
+      const failedCount = finalTasks.filter((t) => t.status === 'failed').length
+      if (failedCount > finalTasks.length / 2) {
+        await interruptAllWorkers()
+        store.setError(`Circuit breaker: ${failedCount}/${finalTasks.length} tasks failed`)
+        store.setPhase('failed')
+        return
+      }
+    }
 
     // ---- Phase 6: TEST (before review) ----
     store.setPhase('testing')
@@ -641,19 +727,44 @@ export async function runSwarm(
 
         if (!isTimeoutResult(reviewResult)) {
           store.addMessage({ from: 'Team Lead', content: reviewResult, type: 'discovery' })
+
+          // QW-3: Parse review verdict from Team Lead response
+          const upperReview = reviewResult.toUpperCase()
+          if (upperReview.includes('REQUEST_CHANGES') || upperReview.includes('REQUEST CHANGES')) {
+            log.info('[Swarm] Team Lead requested changes', 'SwarmOrchestrator')
+            store.addMessage({
+              from: 'System',
+              content: 'Team Lead requested changes. Review the feedback above before merging.',
+              type: 'error',
+            })
+            // Stay in reviewing phase -- don't auto-transition to completed
+            // User can still force-merge from the UI
+          }
         }
       } catch (err) {
         log.warn(`[Swarm] Team Lead review failed (non-fatal): ${err}`, 'SwarmOrchestrator')
       }
     }
 
-    // ---- Phase 8: COMPLETE ----
-    store.setPhase('completed')
-    store.addMessage({
-      from: 'System',
-      content: 'Swarm completed. Review results and decide to merge or discard.',
-      type: 'broadcast',
-    })
+    // QW-4: Gate on test results -- block auto-completion if tests failed
+    if (!allTestsPassed) {
+      log.info('[Swarm] Tests failed -- blocking auto-completion', 'SwarmOrchestrator')
+      store.addMessage({
+        from: 'System',
+        content: 'Tests failed. Review failures above. You can still force-merge from the UI.',
+        type: 'error',
+      })
+      // Stay in reviewing phase so user must explicitly approve
+      // Don't transition to completed
+    } else {
+      // ---- Phase 8: COMPLETE ----
+      store.setPhase('completed')
+      store.addMessage({
+        from: 'System',
+        content: 'Swarm completed. Review results and decide to merge or discard.',
+        type: 'broadcast',
+      })
+    }
 
     // Mark all workers as done and interrupt their threads
     useSwarmStore.getState().workers.forEach((w) => {

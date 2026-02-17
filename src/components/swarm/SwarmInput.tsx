@@ -4,7 +4,7 @@ import { useProjectsStore } from '../../stores/projects'
 import { runSwarm, cancelSwarm } from '../../lib/swarmOrchestrator'
 import { projectApi } from '../../lib/api'
 import { Button } from '../ui/Button'
-import { Send, CheckCircle2, XCircle } from 'lucide-react'
+import { Send, CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react'
 
 export function SwarmInput() {
   const phase = useSwarmStore((s) => s.phase)
@@ -13,6 +13,9 @@ export function SwarmInput() {
   const setPhase = useSwarmStore((s) => s.setPhase)
   const stagingDiff = useSwarmStore((s) => s.stagingDiff)
   const testsPass = useSwarmStore((s) => s.testsPass)
+  const tasks = useSwarmStore((s) => s.tasks)
+  const approvePlan = useSwarmStore((s) => s.approvePlan)
+  const rejectPlan = useSwarmStore((s) => s.rejectPlan)
   const [draft, setDraft] = useState('')
   const [merging, setMerging] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -109,6 +112,55 @@ export function SwarmInput() {
           <span className="mx-2 text-stroke">·</span>
           <kbd className="rounded border border-stroke/20 px-1 py-0.5 text-[10px]">⇧⏎</kbd>
           <span className="ml-1">new line</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Awaiting approval state: show plan summary with approve/reject
+  if (phase === 'awaiting_approval') {
+    const taskCount = tasks.length
+    return (
+      <div className="border-t border-stroke/10 p-4">
+        <div className="mb-3 space-y-2">
+          <p className="text-[13px] font-medium text-text-1">
+            Plan Review ({taskCount} task{taskCount !== 1 ? 's' : ''})
+          </p>
+
+          {/* QW-8: Task count warnings */}
+          {taskCount > 5 && (
+            <div className="flex items-start gap-2 rounded-md bg-status-warning-muted px-3 py-2 text-[12px] text-status-warning">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>
+                High task count ({taskCount}). Consider breaking this into smaller goals for better results.
+              </span>
+            </div>
+          )}
+          {taskCount === 1 && (
+            <div className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-[12px] text-primary">
+              <Info size={14} className="mt-0.5 shrink-0" />
+              <span>Single task detected. Team Lead will handle it directly (cascade mode).</span>
+            </div>
+          )}
+
+          {/* Task list */}
+          <ul className="space-y-1 text-[12px] text-text-2">
+            {tasks.map((t, i) => (
+              <li key={t.id} className="flex items-start gap-2">
+                <span className="shrink-0 text-text-3">{i + 1}.</span>
+                <span>{t.title}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={rejectPlan}>
+            Reject
+          </Button>
+          <Button variant="primary" size="sm" onClick={approvePlan}>
+            <CheckCircle2 size={14} />
+            <span className="ml-1.5">Approve Plan</span>
+          </Button>
         </div>
       </div>
     )

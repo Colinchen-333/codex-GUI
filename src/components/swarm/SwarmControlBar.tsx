@@ -8,10 +8,11 @@ import { useEffect, useState } from 'react'
 const PHASES: SwarmPhase[] = [
   'exploring',
   'planning',
+  'awaiting_approval',
   'spawning',
   'working',
-  'reviewing',
   'testing',
+  'reviewing',
   'completed',
 ]
 
@@ -19,6 +20,7 @@ const PHASE_LABELS: Record<SwarmPhase, string> = {
   idle: 'Idle',
   exploring: 'Exploring',
   planning: 'Planning',
+  awaiting_approval: 'Awaiting Approval',
   spawning: 'Spawning',
   working: 'Working',
   reviewing: 'Reviewing',

@@ -192,12 +192,24 @@ export async function mergeToStaging(
   // Merge with --no-ff using safe Rust API
   try {
     const result = await projectApi.gitMergeNoFf(projectPath, workerBranch, message)
+
+    // QW-5: If merge failed due to conflicts, abort to clean up staging branch
+    if (!result.success) {
+      log.info(`[Swarm] Merge conflict detected, running git merge --abort`, 'SwarmHarness')
+      await execCapture(projectPath, 'git merge --abort').catch((abortErr) => {
+        log.error(`[Swarm] git merge --abort failed: ${abortErr}`, 'SwarmHarness')
+      })
+    }
+
     return {
       success: result.success,
       conflictFiles: result.conflictFiles,
       message: result.message,
     }
   } catch (err) {
+    // QW-5: Also abort on unexpected merge errors to prevent dirty state
+    await execCapture(projectPath, 'git merge --abort').catch(() => {})
+
     return {
       success: false,
       conflictFiles: [],

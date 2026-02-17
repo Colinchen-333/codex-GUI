@@ -6,6 +6,7 @@ export type SwarmPhase =
   | 'idle'
   | 'exploring'
   | 'planning'
+  | 'awaiting_approval'
   | 'spawning'
   | 'working'
   | 'reviewing'
@@ -74,6 +75,9 @@ export interface SwarmState {
   // Context
   context: SwarmContext | null
 
+  // Plan approval
+  approvalState: 'pending' | 'approved' | 'rejected' | null
+
   // Results
   error: string | null
   testOutput: string | null
@@ -101,6 +105,9 @@ export interface SwarmState {
 
   addMessage: (msg: Omit<SwarmMessage, 'id' | 'timestamp'>) => void
 
+  approvePlan: () => void
+  rejectPlan: () => void
+
   setTestResults: (output: string, pass: boolean) => void
   setStagingDiff: (diff: string) => void
   setError: (error: string | null) => void
@@ -119,6 +126,7 @@ const initialState = {
   workers: [],
   messages: [],
   context: null,
+  approvalState: null as 'pending' | 'approved' | 'rejected' | null,
   error: null,
   testOutput: null,
   testsPass: null,
@@ -215,6 +223,14 @@ export const useSwarmStore = create<SwarmState>((set) => ({
       ]
       return { messages: next.length > 200 ? next.slice(-200) : next }
     })
+  },
+
+  approvePlan: () => {
+    set({ approvalState: 'approved' })
+  },
+
+  rejectPlan: () => {
+    set({ approvalState: 'rejected' })
   },
 
   setTestResults: (output, pass) => {

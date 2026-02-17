@@ -50,6 +50,7 @@ vi.mock('../../../../stores/thread/selectors', () => ({
   selectTurnStatus: (s: { turnStatus: string }) => s.turnStatus,
   selectTurnTiming: (s: { turnTiming: unknown }) => s.turnTiming,
   selectPendingApprovals: (s: { pendingApprovals: unknown }) => s.pendingApprovals,
+  selectTokenUsage: (s: { tokenUsage: unknown }) => s.tokenUsage,
 }))
 
 describe('TurnStatusIndicator', () => {

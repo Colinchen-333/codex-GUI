@@ -10,12 +10,14 @@ import type { CommandExecutionItem } from '../../../../stores/thread/types'
 const threadMocks = vi.hoisted(() => {
   const respondToApproval = vi.fn(async () => {})
   const sendMessage = vi.fn(async () => {})
+  const threadInfo = { id: 't-1' }
   const state = {
-    activeThread: { id: 't-1' },
     respondToApproval,
     sendMessage,
+    threads: { 't-1': { thread: threadInfo } },
+    focusedThreadId: 't-1',
   }
-  return { respondToApproval, sendMessage, state }
+  return { respondToApproval, sendMessage, state, threadInfo }
 })
 
 vi.mock('../../../../lib/clipboard', () => ({
@@ -36,7 +38,7 @@ vi.mock('../../../../stores/thread', () => {
 
   return {
     useThreadStore,
-    selectFocusedThread: () => ({ thread: threadMocks.state.activeThread }),
+    selectFocusedThread: () => ({ thread: threadMocks.threadInfo }),
   }
 })
 

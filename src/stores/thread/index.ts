@@ -26,11 +26,7 @@ import type { ThreadState } from './types'
 import { MAX_PARALLEL_SESSIONS } from './constants'
 
 // Import utilities
-import {
-  defaultTokenUsage,
-  defaultTurnTiming,
-  getFocusedThreadState,
-} from './utils'
+// Note: defaultTokenUsage, defaultTurnTiming, getFocusedThreadState are used by selectors.ts
 
 // Import handlers
 import {
@@ -145,73 +141,6 @@ export const useThreadStore: UseBoundStore<StoreApi<ThreadState>> = create<Threa
       snapshots: [],
       isLoading: false,
       globalError: null,
-
-      // ==================== Backward-compatible Getters ====================
-      get activeThread() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.thread ?? null
-      },
-
-      get items() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.items ?? {}
-      },
-
-      get itemOrder() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.itemOrder ?? []
-      },
-
-      get turnStatus() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.turnStatus ?? 'idle'
-      },
-
-      get currentTurnId() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.currentTurnId ?? null
-      },
-
-      get pendingApprovals() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.pendingApprovals ?? []
-      },
-
-      get tokenUsage() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.tokenUsage ?? defaultTokenUsage
-      },
-
-      get turnTiming() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.turnTiming ?? defaultTurnTiming
-      },
-
-      get sessionOverrides() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.sessionOverrides ?? {}
-      },
-
-      get queuedMessages() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.queuedMessages ?? []
-      },
-
-      get error() {
-        const state = get()
-        const focusedState = getFocusedThreadState(state.threads, state.focusedThreadId)
-        return focusedState?.error ?? state.globalError
-      },
 
       // ==================== Multi-Session Actions ====================
       switchThread: createSwitchThread(typedSet, get),

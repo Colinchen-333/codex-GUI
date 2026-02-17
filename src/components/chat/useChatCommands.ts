@@ -92,7 +92,7 @@ export function useChatCommands({
         effectiveSettings.sandboxMode,
         effectiveSettings.approvalPolicy
       )
-      const newThread = useThreadStore.getState().activeThread
+      const newThread = selectFocusedThread(useThreadStore.getState())?.thread ?? null
       if (newThread) {
         selectSession(newThread.id)
       }

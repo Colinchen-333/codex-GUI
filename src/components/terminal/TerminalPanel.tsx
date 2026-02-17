@@ -18,7 +18,7 @@ const MAX_HEIGHT_RATIO = 0.5 // 50vh
 const DEFAULT_HEIGHT = 300
 
 // Get xterm theme from CSS custom properties
-function getTerminalTheme(): Record<string, string> {
+function getTerminalTheme(): Record<string, string | undefined> {
   const root = document.documentElement
   const get = (prop: string) => getComputedStyle(root).getPropertyValue(prop).trim()
 
@@ -28,7 +28,7 @@ function getTerminalTheme(): Record<string, string> {
     cursor: get('--terminal-ansi-white') || '#e5e5e5',
     cursorAccent: get('--terminal-ansi-black') || '#1e1e1e',
     selectionBackground: '#ffffff30',
-    selectionForeground: undefined as unknown as string,
+    selectionForeground: undefined,
     black: get('--terminal-ansi-black'),
     red: get('--terminal-ansi-red'),
     green: get('--terminal-ansi-green'),

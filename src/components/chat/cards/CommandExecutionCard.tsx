@@ -381,9 +381,7 @@ export const CommandExecutionCard = memo(
       try {
         const threadIdAtStart = activeThread.id
         const approvalCreatedAtAtStart =
-          (useThreadStore.getState() as unknown as {
-            threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
-          }).threads?.[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === item.id)?.createdAt
+          useThreadStore.getState().threads[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === item.id)?.createdAt
 
         await respondToApproval(item.id, decision, {
           execpolicyAmendment: content.proposedExecpolicyAmendment,
@@ -401,7 +399,7 @@ export const CommandExecutionCard = memo(
       if (isExplainingRef.current) return
       isExplainingRef.current = true
 
-      const currentThread = useThreadStore.getState().activeThread
+      const currentThread = selectFocusedThread(useThreadStore.getState())?.thread ?? null
       if (!currentThread || !activeThread || currentThread.id !== activeThread.id) {
         log.error('Thread changed before explain, aborting', 'CommandExecutionCard')
         isExplainingRef.current = false

@@ -13,7 +13,6 @@ export function SwarmInput() {
   const setPhase = useSwarmStore((s) => s.setPhase)
   const stagingDiff = useSwarmStore((s) => s.stagingDiff)
   const testsPass = useSwarmStore((s) => s.testsPass)
-  const deactivate = useSwarmStore((s) => s.deactivate)
   const [draft, setDraft] = useState('')
   const [merging, setMerging] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)

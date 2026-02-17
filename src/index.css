@@ -676,10 +676,7 @@
 }
 
 /* Dialog animations (official) */
-@keyframes dialog-overlay-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* Note: dialog-overlay-enter merged into fade-in keyframe */
 
 @keyframes dialog-content-enter {
   from {
@@ -704,7 +701,7 @@
 }
 
 .dialog-overlay-enter {
-  animation: dialog-overlay-enter var(--duration-normal) var(--ease-out);
+  animation: fade-in var(--duration-normal) var(--ease-out);
 }
 
 .dialog-content-enter {
@@ -1083,15 +1080,7 @@
 }
 
 /* Edge fade gradients (official) */
-@keyframes edge-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes edge-fade-top {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* Note: edge-fade and edge-fade-top keyframes removed (identical to fade-in) */
 
 .vertical-scroll-fade-mask {
   mask-image: linear-gradient(
@@ -1449,15 +1438,6 @@
   }
 }
 
-@keyframes codex-dialog-overlay {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .codex-dialog {
   animation: codex-dialog-enter var(--transition-duration-relaxed) var(--cubic-enter);
   transform-origin: center top;
@@ -1465,7 +1445,7 @@
 }
 
 .codex-dialog-overlay {
-  animation: codex-dialog-overlay var(--transition-duration-relaxed) var(--cubic-enter);
+  animation: fade-in var(--transition-duration-relaxed) var(--cubic-enter);
   will-change: opacity;
 }
 

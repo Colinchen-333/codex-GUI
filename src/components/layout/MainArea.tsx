@@ -477,7 +477,7 @@ function NewThreadLanding({ projectId, onOpenCommitDialog }: NewThreadLandingPro
           effectiveSettings.approvalPolicy
         )
 
-        const activeThreadId = useThreadStore.getState().activeThread?.id
+        const activeThreadId = selectFocusedThread(useThreadStore.getState())?.thread?.id
         if (activeThreadId) {
           await sendMessage(message, undefined, undefined, activeThreadId)
         }

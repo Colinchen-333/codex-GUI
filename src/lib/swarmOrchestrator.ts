@@ -190,8 +190,8 @@ async function interruptAllWorkers(): Promise<void> {
  * This is the main entry point. It progresses through phases sequentially,
  * updating the swarm store at each step so the UI can render progress.
  *
- * The MVP uses sequential task assignment (one worker at a time).
- * True parallel execution across workers is a future enhancement.
+ * Workers execute tasks in parallel using a shared work queue.
+ * Each worker pulls tasks concurrently, with dependency-aware re-queuing.
  */
 export async function runSwarm(
   userRequest: string,
@@ -324,6 +324,34 @@ export async function runSwarm(
         }
       }
 
+      // ---- Cascade Review Phase ----
+      store.setPhase('reviewing')
+      store.addMessage({
+        from: 'System',
+        content: 'Generating review diff...',
+        type: 'status',
+      })
+
+      try {
+        const diff = await projectApi.gitDiffBranch(projectPath, 'HEAD~1')
+        store.setStagingDiff(diff)
+
+        if (diff) {
+          const testSummary = store.testOutput || 'No tests run'
+          const reviewPrompt = buildTeamLeadReviewPrompt(diff, testSummary)
+
+          const reviewTurnPromise = waitForTurnComplete(teamLeadThreadId)
+          await threadApi.sendMessage(teamLeadThreadId, reviewPrompt)
+          const reviewResult = await withTimeout(reviewTurnPromise, WORKER_TIMEOUT_MS)
+
+          if (!isTimeoutResult(reviewResult)) {
+            store.addMessage({ from: 'Team Lead', content: reviewResult, type: 'discovery' })
+          }
+        }
+      } catch (err) {
+        log.warn(`[Swarm] Cascade review failed (non-fatal): ${err}`, 'SwarmOrchestrator')
+      }
+
       store.setPhase('completed')
       store.addMessage({
         from: 'System',
@@ -382,26 +410,130 @@ export async function runSwarm(
 
     store.addMessage({ from: 'System', content: `${workerCount} workers ready.`, type: 'status' })
 
-    // ---- Phase 5: WORK ----
+    // ---- Phase 5: WORK (Parallel Worker Pool) ----
     store.setPhase('working')
 
-    // Sequential task assignment for MVP.
-    // Each task is assigned to the first idle worker, one at a time.
-    for (const task of swarmTasks) {
-      // Check if swarm was cancelled during work
-      if (useSwarmStore.getState().phase === 'cleaning_up') {
-        log.info('[Swarm] Swarm cancelled during work phase', 'SwarmOrchestrator')
+    // Build a work queue of pending task IDs for parallel dispatch
+    const taskQueue: string[] = swarmTasks.map((t) => t.id)
+
+    /**
+     * Process a single task on a given worker. Returns when the task is
+     * completed (merged/failed) and the worker is ready for the next task.
+     */
+    async function processTask(
+      task: SwarmTask,
+      worker: { id: string; name: string; threadId: string; worktreePath: string; worktreeBranch: string }
+    ): Promise<void> {
+      // Assign task to worker
+      store.updateWorker(worker.id, { status: 'working', currentTaskId: task.id })
+      store.updateTaskStatus(task.id, 'in_progress', worker.id)
+      store.addMessage({
+        from: worker.name,
+        content: `Working on: ${task.title}`,
+        type: 'status',
+      })
+
+      // Build and send worker prompt
+      const workerPrompt = buildWorkerPrompt(
+        task,
+        swarmTasks.map((t) => ({ title: t.title, description: t.description })),
+        worker.worktreePath,
+        swarmContext!.stagingBranch,
+        parseInt(worker.id.split('-')[1], 10)
+      )
+
+      // Set up listener BEFORE sending message to avoid race condition
+      const workerTurnPromise = waitForTurnComplete(worker.threadId)
+
+      try {
+        await threadApi.sendMessage(worker.threadId, workerPrompt)
+      } catch (err) {
+        log.error(`[Swarm] Failed to send prompt to ${worker.name}: ${err}`, 'SwarmOrchestrator')
+        store.updateWorker(worker.id, { status: 'idle', currentTaskId: null })
+        store.updateTaskStatus(task.id, 'failed')
+        store.addMessage({
+          from: worker.name,
+          content: `Failed to start: ${err instanceof Error ? err.message : String(err)}`,
+          type: 'error',
+        })
         return
       }
 
-      // RISK-02: Enforce dependsOn -- skip tasks whose dependencies are not yet met
-      if (task.dependsOn.length > 0) {
-        const allTasks = useSwarmStore.getState().tasks
-        const depsMet = task.dependsOn.every((depTitle) => {
-          const dep = allTasks.find((t) => t.title === depTitle)
-          return dep?.status === 'merged'
+      // Wait for worker to complete (with timeout)
+      const result = await withTimeout(workerTurnPromise, WORKER_TIMEOUT_MS)
+
+      if (isTimeoutResult(result)) {
+        // FIX-4: Immediately interrupt the worker on timeout
+        try {
+          await threadApi.interrupt(worker.threadId)
+        } catch {
+          // Interrupting a thread that is already idle/done is harmless
+        }
+        store.updateWorker(worker.id, { status: 'idle', currentTaskId: null })
+        store.updateTaskStatus(task.id, 'failed')
+        store.addMessage({
+          from: worker.name,
+          content: `Timed out on: ${task.title}`,
+          type: 'error',
         })
-        if (!depsMet) {
+        return
+      }
+
+      // Merge worker's changes to staging
+      store.updateWorker(worker.id, { status: 'merging' })
+      store.updateTaskStatus(task.id, 'merging')
+
+      const mergeResult = await mergeToStaging(
+        projectPath,
+        worker.worktreeBranch,
+        swarmContext!.stagingBranch,
+        `[swarm] Merge ${task.title} from ${worker.name}`
+      )
+
+      if (mergeResult.success) {
+        store.updateWorker(worker.id, { status: 'idle', currentTaskId: null })
+        store.updateTaskStatus(task.id, 'merged')
+        store.addMessage({
+          from: worker.name,
+          content: `Merged: ${task.title}`,
+          type: 'status',
+        })
+      } else {
+        // FIX-5: Mark task as failed but reset worker to idle so it can take other tasks
+        store.updateWorker(worker.id, { status: 'idle', currentTaskId: null })
+        store.updateTaskStatus(task.id, 'failed')
+        store.addMessage({
+          from: worker.name,
+          content: `Merge conflict on ${task.title}: ${mergeResult.conflictFiles.join(', ')}`,
+          type: 'error',
+        })
+      }
+    }
+
+    /**
+     * Worker loop: each worker pulls tasks from the shared queue until
+     * there are no more tasks to process.
+     */
+    async function workerLoop(
+      worker: { id: string; name: string; threadId: string; worktreePath: string; worktreeBranch: string }
+    ): Promise<void> {
+      while (taskQueue.length > 0) {
+        // Check if swarm was cancelled during work
+        if (useSwarmStore.getState().phase === 'cleaning_up') {
+          log.info(`[Swarm] ${worker.name}: swarm cancelled, stopping`, 'SwarmOrchestrator')
+          return
+        }
+
+        const taskId = taskQueue.shift()
+        if (!taskId) break
+
+        const currentTasks = useSwarmStore.getState().tasks
+        const task = currentTasks.find((t) => t.id === taskId)
+        if (!task || task.status !== 'pending') continue
+
+        // FIX-2: Check dependencies and re-queue if not yet met
+        if (task.dependsOn.length > 0) {
+          const allTasks = useSwarmStore.getState().tasks
           const anyFailed = task.dependsOn.some((depTitle) => {
             const dep = allTasks.find((t) => t.title === depTitle)
             return dep?.status === 'failed'
@@ -415,109 +547,27 @@ export async function runSwarm(
             })
             continue
           }
-          // Dependency not yet done -- skip for now (will be retried in sequential mode)
-          continue
+
+          const depsMet = task.dependsOn.every((depTitle) => {
+            const dep = allTasks.find((t) => t.title === depTitle)
+            return dep?.status === 'merged'
+          })
+          if (!depsMet) {
+            // Re-queue at the back so other workers can process independent tasks
+            taskQueue.push(taskId)
+            // Brief pause to avoid busy-spinning while waiting for dependencies
+            await new Promise((resolve) => setTimeout(resolve, 2000))
+            continue
+          }
         }
-      }
 
-      // Find an idle worker
-      let assignedWorker = useSwarmStore.getState().workers.find((w) => w.status === 'idle')
-
-      // If no idle worker, wait briefly and try again
-      if (!assignedWorker) {
-        log.warn('[Swarm] No idle workers available, waiting...', 'SwarmOrchestrator')
-        await new Promise((resolve) => setTimeout(resolve, 5000))
-        assignedWorker = useSwarmStore.getState().workers.find((w) => w.status === 'idle')
-      }
-
-      if (!assignedWorker) {
-        store.addMessage({
-          from: 'System',
-          content: `No worker available for task: ${task.title}`,
-          type: 'error',
-        })
-        store.updateTaskStatus(task.id, 'failed')
-        continue
-      }
-
-      // Assign task to worker
-      store.updateWorker(assignedWorker.id, { status: 'working', currentTaskId: task.id })
-      store.updateTaskStatus(task.id, 'in_progress', assignedWorker.id)
-      store.addMessage({
-        from: assignedWorker.name,
-        content: `Working on: ${task.title}`,
-        type: 'status',
-      })
-
-      // Build and send worker prompt
-      const workerPrompt = buildWorkerPrompt(
-        task,
-        swarmTasks.map((t) => ({ title: t.title, description: t.description })),
-        assignedWorker.worktreePath,
-        swarmContext.stagingBranch,
-        parseInt(assignedWorker.id.split('-')[1], 10)
-      )
-
-      // Set up listener BEFORE sending message to avoid race condition
-      const workerTurnPromise = waitForTurnComplete(assignedWorker.threadId)
-
-      try {
-        await threadApi.sendMessage(assignedWorker.threadId, workerPrompt)
-      } catch (err) {
-        log.error(`[Swarm] Failed to send prompt to ${assignedWorker.name}: ${err}`, 'SwarmOrchestrator')
-        store.updateWorker(assignedWorker.id, { status: 'failed' })
-        store.updateTaskStatus(task.id, 'failed')
-        store.addMessage({
-          from: assignedWorker.name,
-          content: `Failed to start: ${err instanceof Error ? err.message : String(err)}`,
-          type: 'error',
-        })
-        continue
-      }
-
-      // Wait for worker to complete (with timeout)
-      const result = await withTimeout(workerTurnPromise, WORKER_TIMEOUT_MS)
-
-      if (isTimeoutResult(result)) {
-        store.updateWorker(assignedWorker.id, { status: 'failed' })
-        store.updateTaskStatus(task.id, 'failed')
-        store.addMessage({
-          from: assignedWorker.name,
-          content: `Timed out on: ${task.title}`,
-          type: 'error',
-        })
-        continue
-      }
-
-      // Merge worker's changes to staging
-      store.updateWorker(assignedWorker.id, { status: 'merging' })
-      store.updateTaskStatus(task.id, 'merging')
-
-      const mergeResult = await mergeToStaging(
-        projectPath,
-        assignedWorker.worktreeBranch,
-        swarmContext.stagingBranch,
-        `[swarm] Merge ${task.title} from ${assignedWorker.name}`
-      )
-
-      if (mergeResult.success) {
-        store.updateWorker(assignedWorker.id, { status: 'idle', currentTaskId: null })
-        store.updateTaskStatus(task.id, 'merged')
-        store.addMessage({
-          from: assignedWorker.name,
-          content: `Merged: ${task.title}`,
-          type: 'status',
-        })
-      } else {
-        store.updateWorker(assignedWorker.id, { status: 'failed' })
-        store.updateTaskStatus(task.id, 'failed')
-        store.addMessage({
-          from: assignedWorker.name,
-          content: `Merge conflict on ${task.title}: ${mergeResult.conflictFiles.join(', ')}`,
-          type: 'error',
-        })
+        await processTask(task, worker)
       }
     }
+
+    // Launch all workers in parallel
+    const workers = useSwarmStore.getState().workers
+    await Promise.all(workers.map((w) => workerLoop(w)))
 
     // ---- Phase 6: TEST (before review) ----
     store.setPhase('testing')

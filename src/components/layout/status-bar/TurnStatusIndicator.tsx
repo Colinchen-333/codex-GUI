@@ -7,7 +7,7 @@
 import { memo, useEffect, useState, useRef } from 'react'
 import { Clock, Zap } from 'lucide-react'
 import { useThreadStore } from '../../../stores/thread'
-import { selectTurnStatus, selectTurnTiming, selectPendingApprovals } from '../../../stores/thread/selectors'
+import { selectTurnStatus, selectTurnTiming, selectTokenUsage, selectPendingApprovals } from '../../../stores/thread/selectors'
 import { useAppStore } from '../../../stores/app'
 
 // Format elapsed time compactly like CLI: "0s", "1m 30s", "1h 05m 30s"
@@ -41,14 +41,14 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
     }
 
     // Reset refs when starting - use getState() to avoid dependency on tokenUsage
-    const initialTokens = useThreadStore.getState().tokenUsage.totalTokens
+    const initialTokens = selectTokenUsage(useThreadStore.getState()).totalTokens
     prevTokensRef.current = initialTokens
     prevTimeRef.current = Date.now()
 
     // Update elapsed time every 50ms for CLI-like smooth display
     const interval = setInterval(() => {
       const now = Date.now()
-      const startedAt = useThreadStore.getState().turnTiming.startedAt
+      const startedAt = selectTurnTiming(useThreadStore.getState()).startedAt
       if (startedAt) {
         setElapsedMs(now - startedAt)
       }
@@ -56,7 +56,7 @@ export const TurnStatusIndicator = memo(function TurnStatusIndicator() {
       // Calculate token rate every 500ms for stability
       const timeDelta = (now - prevTimeRef.current) / 1000
       if (timeDelta >= 0.5) {
-        const currentTokens = useThreadStore.getState().tokenUsage.totalTokens
+        const currentTokens = selectTokenUsage(useThreadStore.getState()).totalTokens
         const tokenDelta = currentTokens - prevTokensRef.current
         if (tokenDelta > 0 && timeDelta > 0) {
           setTokenRate(Math.round(tokenDelta / timeDelta))

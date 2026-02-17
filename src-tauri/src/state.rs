@@ -64,6 +64,13 @@ impl AppState {
 
         tracing::info!("Database initialized at {:?}", db_path);
 
+        // Run periodic database VACUUM (weekly)
+        match database.vacuum_if_needed(7) {
+            Ok(true) => tracing::info!("Weekly database VACUUM completed"),
+            Ok(false) => tracing::debug!("Database VACUUM not needed yet"),
+            Err(e) => tracing::warn!("Database VACUUM failed (non-fatal): {}", e),
+        }
+
         // Global state store
         let global_state_path = app_data_dir.join("codex-global-state.json");
         let global_state = Arc::new(GlobalStateStore::load(global_state_path)?);

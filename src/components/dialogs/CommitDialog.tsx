@@ -110,34 +110,6 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
     }
   }, [isOpen, fetchStatus, tauriAvailable])
 
-  useEffect(() => {
-    if (!isOpen) return
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.isComposing) return
-      if (step !== 'review') return
-      if (selectedCount === 0) return
-      if (isCommitting) return
-
-      const modifier = isMac ? e.metaKey : e.ctrlKey
-      if (!modifier) return
-      if (e.key !== 'Enter') return
-
-      e.preventDefault()
-      e.stopPropagation()
-      e.stopImmediatePropagation()
-
-      if (remoteInfo?.remote) {
-        void handleCommitAndPush()
-      } else {
-        void handleCommit()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [handleCommit, handleCommitAndPush, isCommitting, isMac, isOpen, remoteInfo?.remote, selectedCount, step])
-
   const handleToggleFile = (file: GitFileStatus) => {
     const key = `${file.isStaged ? 'staged' : 'unstaged'}:${file.path}`
     setSelectedFiles((prev) => {
@@ -309,6 +281,34 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
       setIsPushing(false)
     }
   }, [commitMessage, files, remoteInfo?.branch, remoteInfo?.remote, selectedFiles, selectedProject?.path, toast])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.isComposing) return
+      if (step !== 'review') return
+      if (selectedCount === 0) return
+      if (isCommitting) return
+
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+      if (!modifier) return
+      if (e.key !== 'Enter') return
+
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+
+      if (remoteInfo?.remote) {
+        void handleCommitAndPush()
+      } else {
+        void handleCommit()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [handleCommit, handleCommitAndPush, isCommitting, isMac, isOpen, remoteInfo?.remote, selectedCount, step])
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {

@@ -20,7 +20,7 @@ import { APP_EVENTS } from '../../lib/appEvents'
 import { useProjectsStore } from '../../stores/projects'
 import { useSessionsStore } from '../../stores/sessions'
 import { useAppStore } from '../../stores/app'
-import { useThreadStore } from '../../stores/thread'
+import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { useAutomationsStore } from '../../stores/automations'
 import { useSettingsStore, mergeProjectSettings, getEffectiveWorkingDirectory } from '../../stores/settings'
 import { useToast } from '../ui/Toast'
@@ -171,7 +171,7 @@ export const Sidebar = React.memo(function Sidebar() {
     try {
       selectSession(null)
       await startThread(selectedProjectId, cwd, effective.model, effective.sandboxMode, effective.approvalPolicy)
-      const newThread = useThreadStore.getState().activeThread
+      const newThread = selectFocusedThread(useThreadStore.getState())?.thread ?? null
       if (newThread) selectSession(newThread.id)
       await fetchSessions(selectedProjectId)
       setActiveTab('sessions')
@@ -215,7 +215,7 @@ export const Sidebar = React.memo(function Sidebar() {
 
       // Get the new thread and try to resume the CLI session
       const resumeThread = useThreadStore.getState().resumeThread
-      const newThread = useThreadStore.getState().activeThread
+      const newThread = selectFocusedThread(useThreadStore.getState())?.thread ?? null
       if (newThread) {
         try {
           // Try to resume the imported session

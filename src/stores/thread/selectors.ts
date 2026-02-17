@@ -17,9 +17,9 @@ import { defaultTokenUsage, defaultTurnTiming } from './utils'
 const EMPTY_ITEMS: Record<string, AnyThreadItem> = {}
 const EMPTY_ITEM_ORDER: string[] = []
 const EMPTY_ORDERED_ITEMS: AnyThreadItem[] = []
-const EMPTY_PENDING_APPROVALS: ThreadState['pendingApprovals'] = []
-const EMPTY_QUEUED_MESSAGES: ThreadState['queuedMessages'] = []
-const EMPTY_SESSION_OVERRIDES: ThreadState['sessionOverrides'] = {}
+const EMPTY_PENDING_APPROVALS: SingleThreadState['pendingApprovals'] = []
+const EMPTY_QUEUED_MESSAGES: SingleThreadState['queuedMessages'] = []
+const EMPTY_SESSION_OVERRIDES: SingleThreadState['sessionOverrides'] = {}
 
 // ==================== Thread State Selectors ====================
 
@@ -84,7 +84,7 @@ export function selectThreadById(threadId: string) {
 /**
  * Select the turn status of the focused thread.
  */
-export function selectTurnStatus(state: ThreadState): ThreadState['turnStatus'] {
+export function selectTurnStatus(state: ThreadState): SingleThreadState['turnStatus'] {
   const focusedThread = selectFocusedThread(state)
   return focusedThread?.turnStatus ?? 'idle'
 }
@@ -218,7 +218,7 @@ export function selectFileChanges(state: ThreadState): AnyThreadItem[] {
 /**
  * Select all pending approvals from the focused thread.
  */
-export function selectPendingApprovals(state: ThreadState): ThreadState['pendingApprovals'] {
+export function selectPendingApprovals(state: ThreadState): SingleThreadState['pendingApprovals'] {
   const focusedThread = selectFocusedThread(state)
   return focusedThread?.pendingApprovals ?? EMPTY_PENDING_APPROVALS
 }
@@ -241,7 +241,7 @@ export function selectHasPendingApprovals(state: ThreadState): boolean {
  * Select pending approvals of a specific type.
  */
 export function selectPendingApprovalsByType(type: 'command' | 'fileChange') {
-  return (state: ThreadState): ThreadState['pendingApprovals'] => {
+  return (state: ThreadState): SingleThreadState['pendingApprovals'] => {
     return selectPendingApprovals(state).filter((p) => p.type === type)
   }
 }
@@ -250,15 +250,15 @@ export function selectPendingApprovalsByType(type: 'command' | 'fileChange') {
 
 // Cache for selectPendingApprovalsByThread to prevent new object on every call
 let _cachedApprovalsByThreadRef: Record<string, SingleThreadState> | null = null
-let _cachedApprovalsByThreadResult: Record<string, ThreadState['pendingApprovals']> = {}
+let _cachedApprovalsByThreadResult: Record<string, SingleThreadState['pendingApprovals']> = {}
 
-export function selectPendingApprovalsByThread(state: ThreadState): Record<string, ThreadState['pendingApprovals']> {
+export function selectPendingApprovalsByThread(state: ThreadState): Record<string, SingleThreadState['pendingApprovals']> {
   const { threads } = state
   if (threads === _cachedApprovalsByThreadRef) {
     return _cachedApprovalsByThreadResult
   }
   _cachedApprovalsByThreadRef = threads
-  const result: Record<string, ThreadState['pendingApprovals']> = {}
+  const result: Record<string, SingleThreadState['pendingApprovals']> = {}
   for (const threadId of Object.keys(threads)) {
     const threadState = threads[threadId]
     if (threadState && threadState.pendingApprovals.length > 0) {
@@ -282,7 +282,7 @@ export function selectGlobalPendingApprovalCount(state: ThreadState): number {
 
 export type GlobalPendingApprovalSummary = {
   count: number
-  next: ThreadState['pendingApprovals'][number] | null
+  next: SingleThreadState['pendingApprovals'][number] | null
 }
 
 /**
@@ -302,7 +302,7 @@ export function selectGlobalPendingApprovalSummary(state: ThreadState): GlobalPe
   _cachedSummaryThreadsRef = threads
 
   let count = 0
-  let next: ThreadState['pendingApprovals'][number] | null = null
+  let next: SingleThreadState['pendingApprovals'][number] | null = null
 
   for (const threadState of Object.values(threads)) {
     if (!threadState) continue
@@ -318,12 +318,12 @@ export function selectGlobalPendingApprovalSummary(state: ThreadState): GlobalPe
   return _cachedSummaryResult
 }
 
-export function selectGlobalNextPendingApproval(state: ThreadState): ThreadState['pendingApprovals'][number] | null {
+export function selectGlobalNextPendingApproval(state: ThreadState): SingleThreadState['pendingApprovals'][number] | null {
   return selectGlobalPendingApprovalSummary(state).next
 }
 
 export function selectPendingApprovalsForThread(threadId: string) {
-  return (state: ThreadState): ThreadState['pendingApprovals'] => {
+  return (state: ThreadState): SingleThreadState['pendingApprovals'] => {
     return state.threads[threadId]?.pendingApprovals ?? EMPTY_PENDING_APPROVALS
   }
 }
@@ -333,7 +333,7 @@ export function selectPendingApprovalsForThread(threadId: string) {
 /**
  * Select all queued messages for the focused thread.
  */
-export function selectQueuedMessages(state: ThreadState): ThreadState['queuedMessages'] {
+export function selectQueuedMessages(state: ThreadState): SingleThreadState['queuedMessages'] {
   const focusedThread = selectFocusedThread(state)
   return focusedThread?.queuedMessages ?? EMPTY_QUEUED_MESSAGES
 }
@@ -357,7 +357,7 @@ export function selectHasQueuedMessages(state: ThreadState): boolean {
 /**
  * Select token usage information for the focused thread.
  */
-export function selectTokenUsage(state: ThreadState): ThreadState['tokenUsage'] {
+export function selectTokenUsage(state: ThreadState): SingleThreadState['tokenUsage'] {
   const focusedThread = selectFocusedThread(state)
   return focusedThread?.tokenUsage ?? defaultTokenUsage
 }
@@ -383,7 +383,7 @@ export function selectContextWindowUsage(state: ThreadState): number | null {
 /**
  * Select turn timing information for the focused thread.
  */
-export function selectTurnTiming(state: ThreadState): ThreadState['turnTiming'] {
+export function selectTurnTiming(state: ThreadState): SingleThreadState['turnTiming'] {
   const focusedThread = selectFocusedThread(state)
   return focusedThread?.turnTiming ?? defaultTurnTiming
 }
@@ -404,7 +404,7 @@ export function selectTurnDuration(state: ThreadState): number | null {
 /**
  * Select session overrides for the focused thread.
  */
-export function selectSessionOverrides(state: ThreadState): ThreadState['sessionOverrides'] {
+export function selectSessionOverrides(state: ThreadState): SingleThreadState['sessionOverrides'] {
   const focusedThread = selectFocusedThread(state)
   return focusedThread?.sessionOverrides ?? EMPTY_SESSION_OVERRIDES
 }
@@ -412,7 +412,7 @@ export function selectSessionOverrides(state: ThreadState): ThreadState['session
 /**
  * Select a specific session override value.
  */
-export function selectSessionOverride(key: keyof ThreadState['sessionOverrides']) {
+export function selectSessionOverride(key: keyof SingleThreadState['sessionOverrides']) {
   return (state: ThreadState): string | undefined => {
     return selectSessionOverrides(state)[key]
   }
@@ -471,31 +471,10 @@ export function selectSnapshots(state: ThreadState): ThreadState['snapshots'] {
   return state.snapshots
 }
 
-// ==================== Backward Compatibility Selectors ====================
-/**
- * These selectors provide backward-compatible access to state
- * for components that expect the old single-thread API.
- */
+// ==================== Aliases ====================
 
 /**
- * Select the active thread (backward compatibility).
- * This is an alias for selectFocusedThread.
+ * Select the active thread.
+ * Alias for selectFocusedThread for convenience.
  */
 export const selectActiveThread = selectFocusedThread
-
-/**
- * Select the active thread info (backward compatibility).
- */
-export function selectActiveThreadInfo(state: ThreadState): ThreadState['activeThread'] {
-  return state.activeThread
-}
-
-/**
- * Select items using backward-compatible accessor.
- */
-export const selectItemsBC = selectItems
-
-/**
- * Select item order using backward-compatible accessor.
- */
-export const selectItemOrderBC = selectItemOrder

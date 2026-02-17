@@ -2,10 +2,8 @@ import { useAppStore } from '../stores/app'
 import { useThreadStore } from '../stores/thread'
 
 function getNextPendingApprovalItemId(threadId: string, afterCreatedAt?: number): string | null {
-  const threadState = useThreadStore.getState() as unknown as {
-    threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
-  }
-  const pending = threadState.threads?.[threadId]?.pendingApprovals ?? []
+  const threadState = useThreadStore.getState()
+  const pending = threadState.threads[threadId]?.pendingApprovals ?? []
   if (pending.length === 0) return null
 
   const sorted = [...pending].sort((a, b) => a.createdAt - b.createdAt)
@@ -17,7 +15,7 @@ function getNextPendingApprovalItemId(threadId: string, afterCreatedAt?: number)
 }
 
 export function focusNextApprovalInThreadOrInput(threadId: string, afterCreatedAt?: number): void {
-  const threadState = useThreadStore.getState() as unknown as { focusedThreadId?: string | null }
+  const threadState = useThreadStore.getState()
   // Only move focus within the currently focused thread. Avoid surprising cross-thread jumps.
   if (threadState.focusedThreadId !== threadId) {
     useAppStore.getState().triggerFocusInput()

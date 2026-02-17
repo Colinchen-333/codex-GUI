@@ -1,6 +1,7 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { MessageSquare, Sparkles, ChevronDown, Gamepad2, FileText, Newspaper } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { useProjectsStore } from '../../stores/projects'
 
 export interface ChatEmptyStateProps {
   isFiltered?: boolean
@@ -30,10 +31,19 @@ export const ChatEmptyState = memo(function ChatEmptyState({
   isFiltered = false,
   message,
   className,
-  projectName = 'codex-GUI',
+  projectName,
   onProjectSelect,
   onSuggestionClick,
 }: ChatEmptyStateProps) {
+  const { projects, selectedProjectId } = useProjectsStore()
+  const resolvedProjectName = useMemo(() => {
+    if (projectName) return projectName
+    const selected = projects.find((p) => p.id === selectedProjectId)
+    if (selected) {
+      return selected.displayName || selected.path.split('/').pop() || 'Project'
+    }
+    return 'Project'
+  }, [projectName, projects, selectedProjectId])
   if (isFiltered) {
     return (
       <div
@@ -75,7 +85,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
           onClick={onProjectSelect}
           className="flex items-center justify-center gap-1 text-text-3 cursor-pointer hover:text-text-2 transition-colors mx-auto"
         >
-          <span className="text-lg">{projectName}</span>
+          <span className="text-lg">{resolvedProjectName}</span>
           <ChevronDown size={20} />
         </button>
       </div>

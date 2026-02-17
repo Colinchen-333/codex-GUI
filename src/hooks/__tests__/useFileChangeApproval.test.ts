@@ -73,7 +73,14 @@ describe('useFileChangeApproval', () => {
     })
 
     Object.defineProperty(useThreadStore, 'getState', {
-      value: () => ({ activeThread: { id: 'thread-1' } }),
+      value: () => ({
+        thread: { id: 'thread-1' },
+        threads: {
+          'thread-1': {
+            pendingApprovals: [{ itemId: 'item-1', createdAt: Date.now() }],
+          },
+        },
+      }),
       writable: true,
     })
 

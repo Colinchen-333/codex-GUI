@@ -2,11 +2,21 @@
 
 use std::path::Path;
 
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::database::Snapshot;
 use crate::state::AppState;
 use crate::Result;
+
+/// Get the snapshots directory under the app data dir
+fn get_snapshots_dir(state: &AppState) -> Option<std::path::PathBuf> {
+    state
+        .app_handle
+        .path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("snapshots"))
+}
 
 /// Create a snapshot for a session
 #[tauri::command]
@@ -16,7 +26,13 @@ pub async fn create_snapshot(
     project_path: String,
 ) -> Result<Snapshot> {
     let path = Path::new(&project_path);
-    crate::snapshots::create_snapshot(&state.database, &session_id, path)
+    let snapshots_dir = get_snapshots_dir(&state);
+    crate::snapshots::create_snapshot(
+        &state.database,
+        &session_id,
+        path,
+        snapshots_dir.as_deref(),
+    )
 }
 
 /// Revert to a snapshot

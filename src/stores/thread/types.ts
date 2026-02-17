@@ -304,19 +304,6 @@ export interface ThreadState {
   isLoading: boolean
   globalError: string | null
 
-  // Backward-compatible getters (computed from focusedThreadId)
-  activeThread: ThreadInfo | null
-  items: Record<string, AnyThreadItem>
-  itemOrder: string[]
-  turnStatus: TurnStatus
-  currentTurnId: string | null
-  pendingApprovals: PendingApproval[]
-  tokenUsage: TokenUsage
-  turnTiming: TurnTiming
-  sessionOverrides: SessionOverrides
-  queuedMessages: QueuedMessage[]
-  error: string | null
-
   // Actions
   // P1 Fix: startThread now returns the created threadId for reliable access
   startThread: (

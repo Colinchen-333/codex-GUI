@@ -82,18 +82,6 @@ function createMockState(threads: Record<string, SingleThreadState>): ThreadStat
     snapshots: [],
     isLoading: false,
     globalError: null,
-    // Backward-compatible getters
-    activeThread: threadIds[0] ? threads[threadIds[0]].thread : null,
-    items: threadIds[0] ? threads[threadIds[0]].items : {},
-    itemOrder: threadIds[0] ? threads[threadIds[0]].itemOrder : [],
-    turnStatus: threadIds[0] ? threads[threadIds[0]].turnStatus : 'idle',
-    currentTurnId: threadIds[0] ? threads[threadIds[0]].currentTurnId : null,
-    pendingApprovals: threadIds[0] ? threads[threadIds[0]].pendingApprovals : [],
-    tokenUsage: threadIds[0] ? threads[threadIds[0]].tokenUsage : defaultTokenUsage,
-    turnTiming: threadIds[0] ? threads[threadIds[0]].turnTiming : defaultTurnTiming,
-    sessionOverrides: threadIds[0] ? threads[threadIds[0]].sessionOverrides : {},
-    queuedMessages: threadIds[0] ? threads[threadIds[0]].queuedMessages : [],
-    error: threadIds[0] ? threads[threadIds[0]].error : null,
     // Mock actions
     startThread: vi.fn(),
     resumeThread: vi.fn(),

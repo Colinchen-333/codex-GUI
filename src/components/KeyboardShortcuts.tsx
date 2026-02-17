@@ -10,7 +10,7 @@ import { useToast } from './ui/Toast'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useUndoRedoStore } from '../stores/undoRedo'
 import { logError } from '../lib/errorUtils'
-import { selectGlobalNextPendingApproval } from '../stores/thread/selectors'
+import { selectGlobalNextPendingApproval, selectTurnStatus } from '../stores/thread/selectors'
 import { APP_EVENTS, dispatchAppEvent } from '../lib/appEvents'
 
 // Double-escape timeout (like CLI)
@@ -43,7 +43,8 @@ export function KeyboardShortcuts() {
 
   // Handle double-escape like CLI
   const handleEscape = useCallback(() => {
-    const { turnStatus, interrupt } = useThreadStore.getState()
+    const { interrupt } = useThreadStore.getState()
+    const turnStatus = selectTurnStatus(useThreadStore.getState())
     const currentEscapePending = useAppStore.getState().escapePending
 
     // If AI is running, require double-escape

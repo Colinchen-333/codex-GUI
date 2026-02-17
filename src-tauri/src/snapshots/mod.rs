@@ -283,13 +283,25 @@ struct FileBackupMetadata {
     description: String,
 }
 
+/// Prefix used to indicate a file path reference in snapshot metadata
+/// When a value in the files HashMap starts with this prefix, the rest is a path to the file on disk
+const FILE_REF_PREFIX: &str = "file://";
+
 /// Check if a path is a git repository
 pub fn is_git_repo(path: &Path) -> bool {
     path.join(".git").exists()
 }
 
 /// Create a snapshot before applying changes
-pub fn create_snapshot(db: &Database, session_id: &str, project_path: &Path) -> Result<Snapshot> {
+///
+/// When `snapshots_dir` is provided, file backup contents are stored on disk
+/// instead of inline in the database, reducing database bloat.
+pub fn create_snapshot(
+    db: &Database,
+    session_id: &str,
+    project_path: &Path,
+    snapshots_dir: Option<&Path>,
+) -> Result<Snapshot> {
     // Security: Canonicalize path to prevent symlink attacks and traversal
     let canonical_path = project_path
         .canonicalize()
@@ -298,7 +310,7 @@ pub fn create_snapshot(db: &Database, session_id: &str, project_path: &Path) -> 
     if is_git_repo(&canonical_path) {
         create_git_snapshot(db, session_id, &canonical_path)
     } else {
-        create_file_backup_snapshot(db, session_id, &canonical_path)
+        create_file_backup_snapshot(db, session_id, &canonical_path, snapshots_dir)
     }
 }
 
@@ -345,8 +357,21 @@ fn collect_project_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>>
 }
 
 /// Create a file backup snapshot for non-git directories
-fn create_file_backup_snapshot(db: &Database, session_id: &str, project_path: &Path) -> Result<Snapshot> {
+///
+/// When `snapshots_dir` is provided, file contents are written to disk under
+/// `<snapshots_dir>/<snapshot_id>/` and the metadata stores `file://` references.
+/// Otherwise, file contents are stored inline as base64 (legacy behavior).
+fn create_file_backup_snapshot(
+    db: &Database,
+    session_id: &str,
+    project_path: &Path,
+    snapshots_dir: Option<&Path>,
+) -> Result<Snapshot> {
     let files = collect_project_files(project_path)?;
+
+    // Pre-generate snapshot ID so we can use it for the disk directory
+    let snapshot_id = uuid::Uuid::new_v4().to_string();
+    let disk_dir = snapshots_dir.map(|d| d.join(&snapshot_id));
 
     let mut backup_files: HashMap<String, String> = HashMap::new();
 
@@ -363,10 +388,27 @@ fn create_file_backup_snapshot(db: &Database, session_id: &str, project_path: &P
                 .strip_prefix(project_path)
                 .map_err(|e| Error::Other(format!("Failed to get relative path: {e}")))?;
 
-            backup_files.insert(
-                relative_path.to_string_lossy().to_string(),
-                BASE64.encode(&contents),
-            );
+            let rel_str = relative_path.to_string_lossy().to_string();
+
+            if let Some(ref dir) = disk_dir {
+                // Store on disk: write raw bytes to snapshots/<id>/<relative_path>
+                let dest = dir.join(&rel_str);
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent)
+                        .map_err(|e| Error::Other(format!("Failed to create snapshot dir: {e}")))?;
+                }
+                fs::write(&dest, &contents)
+                    .map_err(|e| Error::Other(format!("Failed to write snapshot file: {e}")))?;
+
+                // Store file reference in metadata
+                backup_files.insert(
+                    rel_str,
+                    format!("{}{}", FILE_REF_PREFIX, dest.to_string_lossy()),
+                );
+            } else {
+                // Legacy: store inline as base64
+                backup_files.insert(rel_str, BASE64.encode(&contents));
+            }
         }
     }
 
@@ -378,7 +420,7 @@ fn create_file_backup_snapshot(db: &Database, session_id: &str, project_path: &P
     let metadata_json = serde_json::to_string(&metadata)
         .map_err(|e| Error::Other(format!("Failed to serialize metadata: {e}")))?;
 
-    let snapshot = Snapshot::new_file_backup(session_id, &metadata_json);
+    let snapshot = Snapshot::new_file_backup_with_id(&snapshot_id, session_id, &metadata_json);
     db.insert_snapshot(&snapshot)?;
 
     // Cleanup: Keep only 10 most recent snapshots per session
@@ -394,9 +436,10 @@ fn create_file_backup_snapshot(db: &Database, session_id: &str, project_path: &P
     }
 
     tracing::info!(
-        "Created file backup snapshot: {} ({} files)",
+        "Created file backup snapshot: {} ({} files, storage: {})",
         snapshot.id,
-        backup_files.len()
+        backup_files.len(),
+        if disk_dir.is_some() { "disk" } else { "inline" }
     );
 
     Ok(snapshot)
@@ -513,7 +556,7 @@ fn revert_file_backup_snapshot(snapshot: &Snapshot, project_path: &Path) -> Resu
     let mut restored_count = 0;
     let mut skipped_paths: Vec<String> = Vec::new();
 
-    for (relative_path, base64_content) in &metadata.files {
+    for (relative_path, content_or_ref) in &metadata.files {
         // Use the unified path validation function
         // This performs all security checks in one place
         let validated_path = match prepare_restore_path(relative_path, &canonical_project) {
@@ -530,15 +573,22 @@ fn revert_file_backup_snapshot(snapshot: &Snapshot, project_path: &Path) -> Resu
             }
         };
 
-        // Decode the base64 content
-        let contents = BASE64
-            .decode(base64_content)
-            .map_err(|e| Error::Other(format!("Failed to decode file content for '{relative_path}': {e}")))?;
+        // Resolve file contents: either read from disk (file:// ref) or decode inline base64
+        let contents = if let Some(file_path) = content_or_ref.strip_prefix(FILE_REF_PREFIX) {
+            // Disk-based storage: read raw bytes from the referenced file
+            fs::read(file_path)
+                .map_err(|e| Error::Other(format!("Failed to read snapshot file for '{relative_path}': {e}")))?
+        } else {
+            // Legacy inline base64
+            BASE64
+                .decode(content_or_ref)
+                .map_err(|e| Error::Other(format!("Failed to decode file content for '{relative_path}': {e}")))?
+        };
 
         // Final symlink check right before writing (TOCTOU mitigation)
         // This minimizes the window between check and use
-        if let Ok(metadata) = fs::symlink_metadata(validated_path.as_path()) {
-            if metadata.file_type().is_symlink() {
+        if let Ok(file_meta) = fs::symlink_metadata(validated_path.as_path()) {
+            if file_meta.file_type().is_symlink() {
                 tracing::warn!(
                     "Skipping file - symlink detected at write time: {}",
                     relative_path

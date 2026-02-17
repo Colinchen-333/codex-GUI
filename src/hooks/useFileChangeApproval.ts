@@ -150,9 +150,7 @@ export function useFileChangeApproval(
       // Capture thread ID at start to detect if it changes during async operations
       const threadIdAtStart = activeThread.id
       const approvalCreatedAtAtStart =
-        (useThreadStore.getState() as unknown as {
-          threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
-        }).threads?.[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === itemId)?.createdAt
+        useThreadStore.getState().threads[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === itemId)?.createdAt
 
       // Try to create snapshot before applying changes
       let snapshotId: string | undefined
@@ -169,7 +167,7 @@ export function useFileChangeApproval(
       }
 
       // CRITICAL: Validate thread hasn't changed during snapshot creation
-      const currentThread = useThreadStore.getState().activeThread
+      const currentThread = selectFocusedThread(useThreadStore.getState())?.thread ?? null
       if (!currentThread || currentThread.id !== threadIdAtStart) {
         log.error(
           `Thread changed during apply - threadIdAtStart: ${threadIdAtStart}, currentThread: ${currentThread?.id}`,
@@ -258,9 +256,7 @@ export function useFileChangeApproval(
     try {
       const threadIdAtStart = activeThread.id
       const approvalCreatedAtAtStart =
-        (useThreadStore.getState() as unknown as {
-          threads?: Record<string, { pendingApprovals?: Array<{ itemId: string; createdAt: number }> }>
-        }).threads?.[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === itemId)?.createdAt
+        useThreadStore.getState().threads[threadIdAtStart]?.pendingApprovals?.find((p) => p.itemId === itemId)?.createdAt
       await respondToApproval(itemId, 'decline')
       focusNextApprovalInThreadOrInput(threadIdAtStart, approvalCreatedAtAtStart)
     } finally {

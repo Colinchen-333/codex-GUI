@@ -525,4 +525,50 @@ impl Database {
         )?;
         Ok(())
     }
+
+    // ==================== Maintenance Operations ====================
+
+    /// Run VACUUM if at least `interval_days` have passed since the last vacuum.
+    /// Tracks the last vacuum timestamp in an `app_metadata` table.
+    /// Returns `true` if VACUUM was executed.
+    pub fn vacuum_if_needed(&self, interval_days: i64) -> Result<bool> {
+        let conn = self.conn.lock();
+
+        // Ensure metadata table exists
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS app_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+        )?;
+
+        // Check last vacuum time
+        let last_vacuum: Option<i64> = conn
+            .query_row(
+                "SELECT CAST(value AS INTEGER) FROM app_metadata WHERE key = 'last_vacuum_at'",
+                [],
+                |row| row.get(0),
+            )
+            .ok();
+
+        let now = chrono::Utc::now().timestamp();
+        let threshold = interval_days * 86400;
+
+        if let Some(last) = last_vacuum {
+            if now - last < threshold {
+                return Ok(false);
+            }
+        }
+
+        // Run VACUUM (must be outside a transaction)
+        tracing::info!("Running database VACUUM");
+        conn.execute_batch("VACUUM;")?;
+
+        // Update last vacuum time
+        conn.execute(
+            "INSERT INTO app_metadata (key, value) VALUES ('last_vacuum_at', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![now.to_string()],
+        )?;
+
+        tracing::info!("Database VACUUM completed successfully");
+        Ok(true)
+    }
 }

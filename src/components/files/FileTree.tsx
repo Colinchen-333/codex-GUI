@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, type CSSProperties } from 'react'
 import {
   File,
   FileCode,
@@ -7,6 +7,7 @@ import {
   Search,
   ChevronRight,
 } from 'lucide-react'
+import { List } from 'react-window'
 import { cn } from '../../lib/utils'
 import { Input } from '../ui/Input'
 import type { FileEntry } from '../../lib/api'
@@ -23,6 +24,12 @@ interface TreeNode {
   path: string
   isDir: boolean
   children: TreeNode[]
+}
+
+/** A flattened row for virtualized rendering */
+interface FlatRow {
+  node: TreeNode
+  depth: number
 }
 
 /** Map file extension to icon color class */
@@ -136,27 +143,54 @@ function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
   return result
 }
 
-function TreeRow({
-  node,
-  depth,
+/** Flatten tree into a list of rows based on expanded directories */
+function flattenNodes(nodes: TreeNode[], expandedDirs: Set<string>, depth: number = 0): FlatRow[] {
+  const rows: FlatRow[] = []
+  for (const node of nodes) {
+    rows.push({ node, depth })
+    if (node.isDir && expandedDirs.has(node.path)) {
+      rows.push(...flattenNodes(node.children, expandedDirs, depth + 1))
+    }
+  }
+  return rows
+}
+
+/** Row height in pixels - matches the py-1 (4px top + 4px bottom) + text line height */
+const ROW_HEIGHT = 28
+
+/** Props passed via rowProps to each virtualized row */
+interface FileRowCustomProps {
+  flatRows: FlatRow[]
+  selectedPath: string | null
+  expandedDirs: Set<string>
+  onToggleDir: (path: string) => void
+  onSelectFile: (path: string) => void
+}
+
+function FileRowComponent({
+  index,
+  style,
+  flatRows,
   selectedPath,
   expandedDirs,
   onToggleDir,
   onSelectFile,
 }: {
-  node: TreeNode
-  depth: number
-  selectedPath: string | null
-  expandedDirs: Set<string>
-  onToggleDir: (path: string) => void
-  onSelectFile: (path: string) => void
-}) {
+  index: number
+  style: CSSProperties
+  ariaAttributes: {
+    'aria-posinset': number
+    'aria-setsize': number
+    role: 'listitem'
+  }
+} & FileRowCustomProps) {
+  const { node, depth } = flatRows[index]
   const isExpanded = expandedDirs.has(node.path)
   const isSelected = selectedPath === node.path
 
   if (node.isDir) {
     return (
-      <>
+      <div style={style}>
         <button
           type="button"
           className={cn(
@@ -180,19 +214,7 @@ function TreeRow({
           )}
           <span className="text-text-2 truncate">{node.name}</span>
         </button>
-        {isExpanded &&
-          node.children.map((child) => (
-            <TreeRow
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              selectedPath={selectedPath}
-              expandedDirs={expandedDirs}
-              onToggleDir={onToggleDir}
-              onSelectFile={onSelectFile}
-            />
-          ))}
-      </>
+      </div>
     )
   }
 
@@ -200,24 +222,29 @@ function TreeRow({
   const iconColor = getFileIconColor(node.name)
 
   return (
-    <button
-      type="button"
-      className={cn(
-        'file-tree-row flex items-center w-full gap-1.5 py-1 px-2 text-left text-sm',
-        'hover:bg-hover/5 rounded-md transition-colors duration-100',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40',
-        isSelected && 'bg-primary/10 text-text-1'
-      )}
-      style={{ paddingLeft: `${depth * 16 + 24}px` }}
-      onClick={() => onSelectFile(node.path)}
-    >
-      <IconComponent className={cn('icon-sm shrink-0', iconColor)} />
-      <span className={cn('truncate', isSelected ? 'text-text-1' : 'text-text-2')}>
-        {node.name}
-      </span>
-    </button>
+    <div style={style}>
+      <button
+        type="button"
+        className={cn(
+          'file-tree-row flex items-center w-full gap-1.5 py-1 px-2 text-left text-sm',
+          'hover:bg-hover/5 rounded-md transition-colors duration-100',
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40',
+          isSelected && 'bg-primary/10 text-text-1'
+        )}
+        style={{ paddingLeft: `${depth * 16 + 24}px` }}
+        onClick={() => onSelectFile(node.path)}
+      >
+        <IconComponent className={cn('icon-sm shrink-0', iconColor)} />
+        <span className={cn('truncate', isSelected ? 'text-text-1' : 'text-text-2')}>
+          {node.name}
+        </span>
+      </button>
+    </div>
   )
 }
+
+/** Threshold: only virtualize when there are many rows */
+const VIRTUALIZATION_THRESHOLD = 50
 
 export function FileTree({ files, selectedPath, onSelectFile, isLoading }: FileTreeProps) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -241,6 +268,24 @@ export function FileTree({ files, selectedPath, onSelectFile, isLoading }: FileT
       return next
     })
   }, [])
+
+  const flatRows = useMemo(
+    () => flattenNodes(displayTree, expandedDirs),
+    [displayTree, expandedDirs]
+  )
+
+  const shouldVirtualize = flatRows.length > VIRTUALIZATION_THRESHOLD
+
+  const rowProps: FileRowCustomProps = useMemo(
+    () => ({
+      flatRows,
+      selectedPath,
+      expandedDirs,
+      onToggleDir: handleToggleDir,
+      onSelectFile,
+    }),
+    [flatRows, selectedPath, expandedDirs, handleToggleDir, onSelectFile]
+  )
 
   // Generate stable skeleton widths to prevent flickering on re-renders
   const skeletonWidths = useMemo(
@@ -273,23 +318,81 @@ export function FileTree({ files, selectedPath, onSelectFile, isLoading }: FileT
           icon={<Search className="icon-xs" />}
         />
       </div>
-      <div className="flex-1 overflow-y-auto py-1">
-        {displayTree.length === 0 ? (
+      <div className="flex-1 overflow-hidden">
+        {flatRows.length === 0 ? (
           <div className="px-3 py-6 text-center text-text-3 text-sm">
             {searchQuery ? 'No matching files' : 'No files found'}
           </div>
+        ) : shouldVirtualize ? (
+          <List<FileRowCustomProps>
+            style={{ height: '100%', width: '100%' }}
+            rowCount={flatRows.length}
+            rowHeight={ROW_HEIGHT}
+            rowProps={rowProps}
+            rowComponent={FileRowComponent}
+            overscanCount={10}
+            defaultHeight={ROW_HEIGHT * 10}
+          />
         ) : (
-          displayTree.map((node) => (
-            <TreeRow
-              key={node.path}
-              node={node}
-              depth={0}
-              selectedPath={selectedPath}
-              expandedDirs={expandedDirs}
-              onToggleDir={handleToggleDir}
-              onSelectFile={onSelectFile}
-            />
-          ))
+          <div className="overflow-y-auto h-full py-1">
+            {flatRows.map((row) => {
+              const { node, depth } = row
+              const isExpanded = expandedDirs.has(node.path)
+              const isSelected = selectedPath === node.path
+
+              if (node.isDir) {
+                return (
+                  <button
+                    key={node.path}
+                    type="button"
+                    className={cn(
+                      'file-tree-row flex items-center w-full gap-1.5 py-1 px-2 text-left text-sm',
+                      'hover:bg-hover/5 rounded-md transition-colors duration-100',
+                      'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40'
+                    )}
+                    style={{ paddingLeft: `${depth * 16 + 8}px` }}
+                    onClick={() => handleToggleDir(node.path)}
+                  >
+                    <ChevronRight
+                      className={cn(
+                        'icon-xxs text-text-3 shrink-0 transition-transform duration-100',
+                        isExpanded && 'rotate-90'
+                      )}
+                    />
+                    {isExpanded ? (
+                      <FolderOpen className="icon-sm text-text-2 shrink-0" />
+                    ) : (
+                      <FolderClosed className="icon-sm text-text-3 shrink-0" />
+                    )}
+                    <span className="text-text-2 truncate">{node.name}</span>
+                  </button>
+                )
+              }
+
+              const IconComponent = isCodeFile(node.name) ? FileCode : File
+              const iconColor = getFileIconColor(node.name)
+
+              return (
+                <button
+                  key={node.path}
+                  type="button"
+                  className={cn(
+                    'file-tree-row flex items-center w-full gap-1.5 py-1 px-2 text-left text-sm',
+                    'hover:bg-hover/5 rounded-md transition-colors duration-100',
+                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40',
+                    isSelected && 'bg-primary/10 text-text-1'
+                  )}
+                  style={{ paddingLeft: `${depth * 16 + 24}px` }}
+                  onClick={() => onSelectFile(node.path)}
+                >
+                  <IconComponent className={cn('icon-sm shrink-0', iconColor)} />
+                  <span className={cn('truncate', isSelected ? 'text-text-1' : 'text-text-2')}>
+                    {node.name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
     </div>

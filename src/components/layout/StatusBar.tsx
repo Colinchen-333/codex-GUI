@@ -67,20 +67,20 @@ export function StatusBar() {
       }
     }
 
-    const globalKey = '__codex_statusbar_keydown__'
-    const existing = (window as unknown as Record<string, EventListener | undefined>)[globalKey]
+    // Track previous handler for HMR cleanup via module-level ref
+    const win = window as Window & { __codex_statusbar_keydown__?: EventListener }
+    const existing = win.__codex_statusbar_keydown__
     if (existing) {
       window.removeEventListener('keydown', existing)
     }
 
     window.addEventListener('keydown', handleKeyDown as EventListener)
-    ;(window as unknown as Record<string, EventListener | undefined>)[globalKey] = handleKeyDown as EventListener
+    win.__codex_statusbar_keydown__ = handleKeyDown as EventListener
 
     const cleanup = () => {
       window.removeEventListener('keydown', handleKeyDown)
-      const current = (window as unknown as Record<string, EventListener | undefined>)[globalKey]
-      if (current === handleKeyDown) {
-        delete (window as unknown as Record<string, EventListener | undefined>)[globalKey]
+      if (win.__codex_statusbar_keydown__ === handleKeyDown) {
+        delete win.__codex_statusbar_keydown__
       }
     }
     if (import.meta.hot) {

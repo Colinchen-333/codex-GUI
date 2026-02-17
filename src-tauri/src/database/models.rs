@@ -236,6 +236,17 @@ impl Snapshot {
             metadata_json: Some(metadata_json.to_string()),
         }
     }
+
+    /// Create a new file backup snapshot with a pre-generated ID
+    pub fn new_file_backup_with_id(id: &str, session_id: &str, metadata_json: &str) -> Self {
+        Self {
+            id: id.to_string(),
+            session_id: session_id.to_string(),
+            created_at: chrono::Utc::now().timestamp(),
+            snapshot_type: "file_backup".to_string(),
+            metadata_json: Some(metadata_json.to_string()),
+        }
+    }
 }
 
 /// Project settings stored as JSON

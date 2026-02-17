@@ -1,5 +1,6 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo, useState, useCallback, type CSSProperties } from 'react'
 import { ChevronDown, ChevronRight, Folder, MessageSquare, Settings } from 'lucide-react'
+import { List } from 'react-window'
 import { cn, formatSessionTime } from '../../../lib/utils'
 import { useProjectsStore } from '../../../stores/projects'
 import { useSessionsStore } from '../../../stores/sessions'
@@ -18,6 +19,121 @@ interface ProjectGroup {
   projectId: string
   projectName: string
   sessions: Session[]
+}
+
+/** A flattened row: either a project group header or a session item */
+type FlatRow =
+  | { type: 'header'; group: ProjectGroup; isExpanded: boolean }
+  | { type: 'session'; session: Session; isSelected: boolean; displayName: string; timeStr: string; isRunning: boolean }
+  | { type: 'empty'; projectId: string }
+
+const HEADER_HEIGHT = 36
+const SESSION_HEIGHT = 32
+const EMPTY_HEIGHT = 28
+
+/** Threshold: only virtualize when there are many rows */
+const VIRTUALIZATION_THRESHOLD = 50
+
+/** Props passed via rowProps to each virtualized row */
+interface GroupedRowCustomProps {
+  flatRows: FlatRow[]
+  onToggleProject: (projectId: string) => void
+  onSelectSession: (sessionId: string | null, projectId?: string) => void
+  onOpenProjectSettings?: (projectId: string) => void
+}
+
+function GroupedRowComponent({
+  index,
+  style,
+  flatRows,
+  onToggleProject,
+  onSelectSession,
+  onOpenProjectSettings,
+}: {
+  index: number
+  style: CSSProperties
+  ariaAttributes: {
+    'aria-posinset': number
+    'aria-setsize': number
+    role: 'listitem'
+  }
+} & GroupedRowCustomProps) {
+  const row = flatRows[index]
+
+  if (row.type === 'header') {
+    const { group, isExpanded } = row
+    return (
+      <div style={style}>
+        <div className="flex h-9 w-full items-center rounded-md transition-colors hover:bg-surface-hover/[0.06]">
+          <button
+            type="button"
+            onClick={() => onToggleProject(group.projectId)}
+            className="flex h-9 flex-1 items-center gap-1.5 px-2.5 text-left"
+          >
+            {isExpanded ? (
+              <ChevronDown size={14} className="text-text-3" />
+            ) : (
+              <ChevronRight size={14} className="text-text-3" />
+            )}
+            <Folder size={15} className="text-text-2" />
+            <span className="flex-1 truncate text-[14px] font-semibold text-text-1">{group.projectName}</span>
+            <span className="text-[11px] text-text-3">{group.sessions.length}</span>
+          </button>
+          {onOpenProjectSettings && (
+            <IconButton
+              size="sm"
+              variant="ghost"
+              className="mr-1 h-7 w-7 text-text-3 hover:bg-surface-hover/[0.06] hover:text-text-1"
+              title="Project Settings"
+              aria-label="Project Settings"
+              onClick={() => onOpenProjectSettings(group.projectId)}
+            >
+              <Settings size={14} />
+            </IconButton>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (row.type === 'empty') {
+    return (
+      <div style={style}>
+        <div className="rounded-md px-2.5 py-1.5 text-[12px] text-text-3 pl-5">No sessions yet</div>
+      </div>
+    )
+  }
+
+  // session row
+  const { session, isSelected, displayName, timeStr, isRunning } = row
+  return (
+    <div style={style}>
+      <div className="pl-5">
+        <button
+          onClick={() => onSelectSession(session.sessionId, session.projectId)}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-2xl px-2.5 py-1.5 text-left transition-colors',
+            isSelected
+              ? 'bg-surface-hover/[0.08] text-text-1'
+              : 'text-text-2 hover:bg-surface-hover/[0.06]'
+          )}
+        >
+          <span className={cn(
+            'min-w-0 flex-1 truncate text-[15px] leading-6',
+            isSelected ? 'font-semibold text-text-1' : 'font-medium'
+          )}>
+            {displayName}
+          </span>
+
+          {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
+
+          {timeStr && (
+            <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>
+          )}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export const GroupedSessionList = memo(function GroupedSessionList({
@@ -63,7 +179,7 @@ export const GroupedSessionList = memo(function GroupedSessionList({
 
   const hasAnySessions = sessions.length > 0
 
-  const toggleProject = (projectId: string) => {
+  const toggleProject = useCallback((projectId: string) => {
     setExpandedProjects((prev) => {
       const next = new Set(prev)
       if (next.has(projectId)) {
@@ -73,7 +189,50 @@ export const GroupedSessionList = memo(function GroupedSessionList({
       }
       return next
     })
-  }
+  }, [])
+
+  /** Flatten groups into a single list for virtualization */
+  const flatRows = useMemo((): FlatRow[] => {
+    const rows: FlatRow[] = []
+    for (const group of groupedSessions) {
+      const isExpanded = expandedProjects.has(group.projectId)
+      rows.push({ type: 'header', group, isExpanded })
+      if (isExpanded) {
+        if (group.sessions.length === 0) {
+          rows.push({ type: 'empty', projectId: group.projectId })
+        } else {
+          for (const session of group.sessions) {
+            const isSelected = selectedSessionId === session.sessionId
+            const displayName = getSessionDisplayName(session)
+            const timestamp = session.lastAccessedAt || session.createdAt
+            const timeStr = formatSessionTime(timestamp)
+            const isRunning = session.status === 'running'
+            rows.push({ type: 'session', session, isSelected, displayName, timeStr, isRunning })
+          }
+        }
+      }
+    }
+    return rows
+  }, [groupedSessions, expandedProjects, selectedSessionId, getSessionDisplayName])
+
+  const shouldVirtualize = flatRows.length > VIRTUALIZATION_THRESHOLD
+
+  const getRowHeight = useCallback((index: number): number => {
+    const row = flatRows[index]
+    if (row.type === 'header') return HEADER_HEIGHT
+    if (row.type === 'empty') return EMPTY_HEIGHT
+    return SESSION_HEIGHT
+  }, [flatRows])
+
+  const rowProps: GroupedRowCustomProps = useMemo(
+    () => ({
+      flatRows,
+      onToggleProject: toggleProject,
+      onSelectSession,
+      onOpenProjectSettings,
+    }),
+    [flatRows, toggleProject, onSelectSession, onOpenProjectSettings]
+  )
 
   if (isLoading) {
     return (
@@ -103,6 +262,23 @@ export const GroupedSessionList = memo(function GroupedSessionList({
     )
   }
 
+  if (shouldVirtualize) {
+    return (
+      <div className="h-full min-h-0 flex-1 pb-2">
+        <List<GroupedRowCustomProps>
+          style={{ height: '100%', width: '100%' }}
+          rowCount={flatRows.length}
+          rowHeight={getRowHeight}
+          rowProps={rowProps}
+          rowComponent={GroupedRowComponent}
+          overscanCount={8}
+          defaultHeight={SESSION_HEIGHT * 10}
+        />
+      </div>
+    )
+  }
+
+  // Non-virtualized rendering for small lists
   return (
     <div className="space-y-3 pb-2">
       {groupedSessions.map((group) => {

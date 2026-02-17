@@ -16,6 +16,7 @@ function makeTask(overrides: Partial<SwarmTask> = {}): SwarmTask {
     status: 'pending',
     assignedWorker: null,
     dependsOn: [],
+    mergeCommitSha: null,
     ...overrides,
   }
 }

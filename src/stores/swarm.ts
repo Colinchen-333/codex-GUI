@@ -25,6 +25,7 @@ export interface SwarmTask {
   status: SwarmTaskStatus
   assignedWorker: string | null
   dependsOn: string[]
+  mergeCommitSha: string | null
 }
 
 export interface SwarmWorker {
@@ -84,6 +85,12 @@ export interface SwarmState {
   testsPass: boolean | null
   stagingDiff: string | null
 
+  // Per-task accept/reject decisions
+  taskDecisions: Record<string, 'accept' | 'reject'>
+
+  // Token usage tracking
+  tokenUsage: { totalTokens: number; perWorker: Record<string, number> }
+
   // Elapsed time
   startedAt: number | null
 
@@ -108,6 +115,13 @@ export interface SwarmState {
   approvePlan: () => void
   rejectPlan: () => void
 
+  setTaskMergeCommit: (taskId: string, sha: string) => void
+
+  setTaskDecision: (taskId: string, decision: 'accept' | 'reject') => void
+  clearTaskDecisions: () => void
+
+  updateTokenUsage: (workerId: string, tokens: number) => void
+
   setTestResults: (output: string, pass: boolean) => void
   setStagingDiff: (diff: string) => void
   setError: (error: string | null) => void
@@ -122,16 +136,18 @@ const initialState = {
   phase: 'idle' as SwarmPhase,
   userRequest: null,
   teamLeadThreadId: null,
-  tasks: [],
-  workers: [],
-  messages: [],
-  context: null,
+  tasks: [] as SwarmTask[],
+  workers: [] as SwarmWorker[],
+  messages: [] as SwarmMessage[],
+  context: null as SwarmContext | null,
   approvalState: null as 'pending' | 'approved' | 'rejected' | null,
-  error: null,
-  testOutput: null,
-  testsPass: null,
-  stagingDiff: null,
-  startedAt: null,
+  taskDecisions: {} as Record<string, 'accept' | 'reject'>,
+  tokenUsage: { totalTokens: 0, perWorker: {} as Record<string, number> },
+  error: null as string | null,
+  testOutput: null as string | null,
+  testsPass: null as boolean | null,
+  stagingDiff: null as string | null,
+  startedAt: null as number | null,
 }
 
 // ==================== Store ====================
@@ -145,6 +161,7 @@ export const useSwarmStore = create<SwarmState>((set) => ({
       phase: 'idle',
       startedAt: null,
       error: null,
+      taskDecisions: {},
     })
   },
 
@@ -231,6 +248,36 @@ export const useSwarmStore = create<SwarmState>((set) => ({
 
   rejectPlan: () => {
     set({ approvalState: 'rejected' })
+  },
+
+  setTaskMergeCommit: (taskId, sha) => {
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === taskId ? { ...t, mergeCommitSha: sha } : t
+      ),
+    }))
+  },
+
+  setTaskDecision: (taskId, decision) => {
+    set((state) => ({
+      taskDecisions: { ...state.taskDecisions, [taskId]: decision },
+    }))
+  },
+
+  clearTaskDecisions: () => {
+    set({ taskDecisions: {} })
+  },
+
+  updateTokenUsage: (workerId, tokens) => {
+    set((state) => ({
+      tokenUsage: {
+        totalTokens: state.tokenUsage.totalTokens + tokens,
+        perWorker: {
+          ...state.tokenUsage.perWorker,
+          [workerId]: (state.tokenUsage.perWorker[workerId] || 0) + tokens,
+        },
+      },
+    }))
   },
 
   setTestResults: (output, pass) => {

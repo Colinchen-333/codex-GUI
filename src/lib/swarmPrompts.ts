@@ -33,7 +33,8 @@ After your analysis, output EXACTLY one JSON code block with the task list:
     "title": "Short task title",
     "description": "Clear description of what to implement, which files to modify, and acceptance criteria.",
     "testCommand": "npm test",
-    "dependsOn": []
+    "dependsOn": [],
+    "files": ["src/path/to/file1.ts", "src/path/to/file2.ts"]
   }
 ]
 \`\`\`
@@ -41,6 +42,7 @@ After your analysis, output EXACTLY one JSON code block with the task list:
 RULES:
 - Each task needs a concrete testCommand that verifies the work (use the project's existing test setup).
 - If tasks have ordering dependencies, use the dependsOn array with task titles.
+- For each task, list the specific files that will be modified under the "files" key in the JSON output.
 - Keep descriptions specific: mention file paths, function names, or components when possible.
 - If the request is small enough for one person, output a single task.`
 }

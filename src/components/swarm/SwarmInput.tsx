@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { useSwarmStore } from '../../stores/swarm'
 import { useProjectsStore } from '../../stores/projects'
 import { runSwarm, cancelSwarm } from '../../lib/swarmOrchestrator'
+import { selectiveMergeToMain } from '../../lib/swarmHarness'
 import { projectApi } from '../../lib/api'
 import { Button } from '../ui/Button'
-import { Send, CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react'
+import { Send, CheckCircle2, XCircle, AlertTriangle, Info, Square, CheckSquare } from 'lucide-react'
 
 export function SwarmInput() {
   const phase = useSwarmStore((s) => s.phase)
@@ -14,6 +15,8 @@ export function SwarmInput() {
   const stagingDiff = useSwarmStore((s) => s.stagingDiff)
   const testsPass = useSwarmStore((s) => s.testsPass)
   const tasks = useSwarmStore((s) => s.tasks)
+  const taskDecisions = useSwarmStore((s) => s.taskDecisions)
+  const setTaskDecision = useSwarmStore((s) => s.setTaskDecision)
   const approvePlan = useSwarmStore((s) => s.approvePlan)
   const rejectPlan = useSwarmStore((s) => s.rejectPlan)
   const [draft, setDraft] = useState('')
@@ -46,23 +49,63 @@ export function SwarmInput() {
     }
   }
 
+  // Toggle a task's accept/reject decision
+  const toggleTaskDecision = useCallback(
+    (taskId: string) => {
+      const current = taskDecisions[taskId]
+      setTaskDecision(taskId, current === 'reject' ? 'accept' : 'reject')
+    },
+    [taskDecisions, setTaskDecision]
+  )
+
+  // Compute accepted task IDs from the decisions map
+  const acceptedTaskIds = useMemo(() => {
+    return tasks
+      .filter((t) => t.status === 'merged')
+      .filter((t) => taskDecisions[t.id] !== 'reject')
+      .map((t) => t.id)
+  }, [tasks, taskDecisions])
+
+  const allMergedAccepted = useMemo(() => {
+    const mergedTasks = tasks.filter((t) => t.status === 'merged')
+    return mergedTasks.length > 0 && acceptedTaskIds.length === mergedTasks.length
+  }, [tasks, acceptedTaskIds])
+
   const handleMerge = async () => {
     const ctx = useSwarmStore.getState().context
     if (!ctx) return
     setMerging(true)
     try {
-      await projectApi.gitCheckoutBranch(ctx.projectPath, ctx.originalBranch)
-      const result = await projectApi.gitMergeNoFf(
-        ctx.projectPath,
-        ctx.stagingBranch,
-        'Merge Self-Driving changes'
-      )
-      if (result.success) {
-        await cancelSwarm()
-      } else {
-        useSwarmStore.getState().setError(
-          `Merge conflict: ${result.conflictFiles.join(', ')}`
+      if (allMergedAccepted) {
+        // All merged tasks accepted: normal merge
+        await projectApi.gitCheckoutBranch(ctx.projectPath, ctx.originalBranch)
+        const result = await projectApi.gitMergeNoFf(
+          ctx.projectPath,
+          ctx.stagingBranch,
+          'Merge Self-Driving changes'
         )
+        if (result.success) {
+          await cancelSwarm()
+        } else {
+          useSwarmStore.getState().setError(
+            `Merge conflict: ${result.conflictFiles.join(', ')}`
+          )
+        }
+      } else {
+        // Selective merge: cherry-pick only accepted task commits
+        const currentTasks = useSwarmStore.getState().tasks
+        const result = await selectiveMergeToMain(
+          ctx.projectPath,
+          ctx.stagingBranch,
+          ctx.originalBranch,
+          acceptedTaskIds,
+          currentTasks
+        )
+        if (result.success) {
+          await cancelSwarm()
+        } else {
+          useSwarmStore.getState().setError(result.message)
+        }
       }
     } catch (err) {
       useSwarmStore.getState().setError(
@@ -166,41 +209,97 @@ export function SwarmInput() {
     )
   }
 
-  // Completed state: show approval buttons
+  // Completed state: show task list with checkboxes + merge/discard
   if (phase === 'completed') {
+    const mergedTasks = tasks.filter((t) => t.status === 'merged')
+    const failedTasks = tasks.filter((t) => t.status === 'failed')
+
     return (
       <div className="border-t border-stroke/10 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[13px]">
-            {testsPass === true && (
-              <span className="flex items-center gap-1 text-status-success">
-                <CheckCircle2 size={14} /> Tests passed
-              </span>
-            )}
-            {testsPass === false && (
-              <span className="flex items-center gap-1 text-status-error">
-                <XCircle size={14} /> Tests failed
-              </span>
-            )}
-            {stagingDiff && <span className="text-text-3">· Changes ready to merge</span>}
+        {/* Test status */}
+        <div className="mb-3 flex items-center gap-2 text-[13px]">
+          {testsPass === true && (
+            <span className="flex items-center gap-1 text-status-success">
+              <CheckCircle2 size={14} /> Tests passed
+            </span>
+          )}
+          {testsPass === false && (
+            <span className="flex items-center gap-1 text-status-error">
+              <XCircle size={14} /> Tests failed
+            </span>
+          )}
+          {stagingDiff && <span className="text-text-3">· Changes ready to merge</span>}
+        </div>
+
+        {/* Task list with checkboxes */}
+        {(mergedTasks.length > 0 || failedTasks.length > 0) && (
+          <div className="mb-3 space-y-1">
+            <p className="text-[12px] font-medium text-text-2">Select tasks to merge:</p>
+            <ul className="space-y-0.5">
+              {tasks.map((task) => {
+                const isMerged = task.status === 'merged'
+                const isFailed = task.status === 'failed'
+                const isAccepted = isMerged && taskDecisions[task.id] !== 'reject'
+                const isDisabled = isFailed
+
+                return (
+                  <li key={task.id} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isAccepted}
+                      aria-label={`${isAccepted ? 'Deselect' : 'Select'} task: ${task.title}`}
+                      disabled={isDisabled}
+                      onClick={() => isMerged && toggleTaskDecision(task.id)}
+                      className={`shrink-0 ${isDisabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:text-primary'}`}
+                    >
+                      {isAccepted ? (
+                        <CheckSquare size={14} className="text-primary" />
+                      ) : (
+                        <Square size={14} className="text-text-3" />
+                      )}
+                    </button>
+                    <span className={`text-[12px] ${isDisabled ? 'text-text-3 line-through' : 'text-text-2'}`}>
+                      {task.title}
+                    </span>
+                    {isMerged && (
+                      <span className="rounded bg-status-success/10 px-1.5 py-0.5 text-[10px] text-status-success">
+                        merged
+                      </span>
+                    )}
+                    {isFailed && (
+                      <span className="rounded bg-status-error/10 px-1.5 py-0.5 text-[10px] text-status-error">
+                        failed
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => cancelSwarm()}
-            >
-              Discard
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleMerge}
-              disabled={merging}
-            >
-              {merging ? 'Merging...' : 'Merge to Main'}
-            </Button>
-          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => cancelSwarm()}
+          >
+            Discard All
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleMerge}
+            disabled={merging || acceptedTaskIds.length === 0}
+          >
+            {merging
+              ? 'Merging...'
+              : allMergedAccepted
+                ? 'Merge to Main'
+                : `Merge Selected (${acceptedTaskIds.length})`}
+          </Button>
         </div>
       </div>
     )

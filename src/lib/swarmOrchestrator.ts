@@ -56,6 +56,7 @@ function parseTaskList(response: string): Array<{
   description: string
   testCommand: string
   dependsOn: string[]
+  files: string[]
 }> {
   // Look for ```json ... ``` block in the response (case-insensitive, allow jsonc)
   const jsonMatch = response.match(/```json[c]?\s*\n([\s\S]*?)\n?\s*```/i)
@@ -89,6 +90,7 @@ function parseTaskList(response: string): Array<{
     description: String(t.description || ''),
     testCommand: String(t.testCommand || 'echo "no test"'),
     dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn.map(String) : [],
+    files: Array.isArray(t.files) ? t.files.map(String) : [],
   }))
 }
 
@@ -291,6 +293,7 @@ export async function runSwarm(
       dependsOn: t.dependsOn
         .map((dep) => titleToId.get(dep.toLowerCase()) || dep)
         .filter((dep) => dep !== `task-${i + 1}`), // remove self-references
+      mergeCommitSha: null,
     }))
 
     store.setTasks(swarmTasks)
@@ -299,6 +302,29 @@ export async function runSwarm(
       content: `Planned ${swarmTasks.length} task(s):\n${swarmTasks.map((t, i) => `  ${i + 1}. ${t.title}`).join('\n')}`,
       type: 'broadcast',
     })
+
+    // MT-6: File ownership overlap detection
+    {
+      const fileToTasks = new Map<string, string[]>()
+      for (const pt of parsedTasks) {
+        for (const file of pt.files) {
+          const existing = fileToTasks.get(file) || []
+          existing.push(pt.title)
+          fileToTasks.set(file, existing)
+        }
+      }
+      const overlaps: string[] = []
+      for (const [file, tasks] of fileToTasks) {
+        if (tasks.length > 1) {
+          overlaps.push(`  ${file}: ${tasks.join(', ')}`)
+        }
+      }
+      if (overlaps.length > 0) {
+        const overlapMsg = `Warning: potential file conflicts detected:\n${overlaps.join('\n')}`
+        store.addMessage({ from: 'System', content: overlapMsg, type: 'error' })
+        log.warn(`[Swarm] ${overlapMsg}`, 'SwarmOrchestrator')
+      }
+    }
 
     // ---- Phase 2b: AWAIT APPROVAL ----
     store.setPhase('awaiting_approval')
@@ -531,6 +557,37 @@ export async function runSwarm(
         return
       }
 
+      // MT-5: Run per-task test in worker's worktree BEFORE merging
+      if (task.testCommand && task.testCommand !== 'echo "no test"') {
+        store.addMessage({
+          from: worker.name,
+          content: `Running tests before merge: ${task.testCommand}`,
+          type: 'status',
+        })
+        try {
+          const testResult = await terminalApi.execute(worker.worktreePath, task.testCommand)
+          if (testResult.exitCode !== 0) {
+            store.updateWorker(worker.id, { status: 'idle', currentTaskId: null })
+            store.updateTaskStatus(task.id, 'failed')
+            store.addMessage({
+              from: worker.name,
+              content: `Tests failed before merge (exit code ${testResult.exitCode}): ${task.title}`,
+              type: 'error',
+            })
+            return
+          }
+        } catch (err) {
+          store.updateWorker(worker.id, { status: 'idle', currentTaskId: null })
+          store.updateTaskStatus(task.id, 'failed')
+          store.addMessage({
+            from: worker.name,
+            content: `Test execution failed before merge: ${err instanceof Error ? err.message : String(err)}`,
+            type: 'error',
+          })
+          return
+        }
+      }
+
       // Merge worker's changes to staging
       store.updateWorker(worker.id, { status: 'merging' })
       store.updateTaskStatus(task.id, 'merging')
@@ -545,6 +602,9 @@ export async function runSwarm(
       if (mergeResult.success) {
         store.updateWorker(worker.id, { status: 'idle', currentTaskId: null })
         store.updateTaskStatus(task.id, 'merged')
+        if (mergeResult.commitSha) {
+          store.setTaskMergeCommit(task.id, mergeResult.commitSha)
+        }
         store.addMessage({
           from: worker.name,
           content: `Merged: ${task.title}`,
@@ -569,6 +629,9 @@ export async function runSwarm(
     async function workerLoop(
       worker: { id: string; name: string; threadId: string; worktreePath: string; worktreeBranch: string }
     ): Promise<void> {
+      // MT-3: Track retry counts locally per task
+      const retryCount = new Map<string, number>()
+
       while (taskQueue.length > 0) {
         // Check if swarm was cancelled during work
         if (useSwarmStore.getState().phase === 'cleaning_up') {
@@ -581,7 +644,10 @@ export async function runSwarm(
 
         const currentTasks = useSwarmStore.getState().tasks
         const task = currentTasks.find((t) => t.id === taskId)
-        if (!task || task.status !== 'pending') continue
+        if (!task || (task.status !== 'pending' && task.status !== 'failed')) continue
+
+        // For retried tasks, only process if this worker is retrying it
+        if (task.status === 'failed' && !retryCount.has(taskId)) continue
 
         // QW-2: Check dependencies by task ID instead of title string
         if (task.dependsOn.length > 0) {
@@ -613,7 +679,33 @@ export async function runSwarm(
           }
         }
 
+        // Reset task to pending if it was a retry
+        if (task.status === 'failed') {
+          store.updateTaskStatus(task.id, 'pending')
+        }
+
         await processTask(task, worker)
+
+        // MT-3: On failure, check retry eligibility and re-queue once
+        {
+          const latestTask = useSwarmStore.getState().tasks.find((t) => t.id === taskId)
+          if (latestTask?.status === 'failed') {
+            const currentRetries = retryCount.get(taskId) || 0
+            if (currentRetries < 1) {
+              retryCount.set(taskId, currentRetries + 1)
+              taskQueue.push(taskId)
+              store.addMessage({
+                from: 'System',
+                content: `Retrying task "${latestTask.title}" (attempt ${currentRetries + 2})`,
+                type: 'status',
+              })
+              log.info(
+                `[Swarm] Retrying task "${latestTask.title}" (attempt ${currentRetries + 2})`,
+                'SwarmOrchestrator'
+              )
+            }
+          }
+        }
 
         // QW-6: Circuit breaker -- abort if >50% of tasks have failed
         const latestTasks = useSwarmStore.getState().tasks

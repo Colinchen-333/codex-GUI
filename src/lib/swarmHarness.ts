@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { projectApi, type TerminalOutput } from './api'
+import type { SwarmTask } from '../stores/swarm'
 import { log } from './logger'
 
 // ==================== Types ====================
@@ -17,6 +18,7 @@ export interface MergeResult {
   success: boolean
   conflictFiles: string[]
   message: string
+  commitSha: string | null
 }
 
 // ==================== Helpers ====================
@@ -186,6 +188,7 @@ export async function mergeToStaging(
       success: false,
       conflictFiles: [],
       message: `Failed to checkout staging branch: ${err instanceof Error ? err.message : String(err)}`,
+      commitSha: null,
     }
   }
 
@@ -199,12 +202,30 @@ export async function mergeToStaging(
       await execCapture(projectPath, 'git merge --abort').catch((abortErr) => {
         log.error(`[Swarm] git merge --abort failed: ${abortErr}`, 'SwarmHarness')
       })
+      return {
+        success: false,
+        conflictFiles: result.conflictFiles,
+        message: result.message,
+        commitSha: null,
+      }
+    }
+
+    // Capture the merge commit SHA for selective merge support
+    let commitSha: string | null = null
+    try {
+      const shaResult = await execCapture(projectPath, 'git rev-parse HEAD')
+      if (shaResult.exitCode === 0 && shaResult.stdout.trim()) {
+        commitSha = shaResult.stdout.trim()
+      }
+    } catch {
+      // Non-fatal: SHA capture failure doesn't affect merge success
     }
 
     return {
-      success: result.success,
-      conflictFiles: result.conflictFiles,
+      success: true,
+      conflictFiles: [],
       message: result.message,
+      commitSha,
     }
   } catch (err) {
     // QW-5: Also abort on unexpected merge errors to prevent dirty state
@@ -214,6 +235,7 @@ export async function mergeToStaging(
       success: false,
       conflictFiles: [],
       message: `Merge failed: ${err instanceof Error ? err.message : String(err)}`,
+      commitSha: null,
     }
   }
 }
@@ -264,6 +286,135 @@ export async function cleanupSwarm(
   }
 
   log.info('[Swarm] Cleanup completed', 'SwarmHarness')
+}
+
+/**
+ * Selectively merge only accepted tasks to the main branch.
+ *
+ * Strategy:
+ * - If all merged tasks are accepted, do a normal merge of staging into original.
+ * - If some tasks are rejected, create a temporary branch from original and
+ *   cherry-pick only the merge commits of accepted tasks, then merge that
+ *   temporary branch into original.
+ *
+ * @param projectPath - The project root path
+ * @param stagingBranch - The staging branch with all merged task commits
+ * @param originalBranch - The user's original branch to merge into
+ * @param acceptedTaskIds - IDs of tasks the user accepted
+ * @param allTasks - All swarm tasks (to look up merge commit SHAs)
+ * @returns MergeResult indicating success/failure
+ */
+export async function selectiveMergeToMain(
+  projectPath: string,
+  stagingBranch: string,
+  originalBranch: string,
+  acceptedTaskIds: string[],
+  allTasks: SwarmTask[]
+): Promise<MergeResult> {
+  // Determine which tasks were merged and accepted
+  const mergedTasks = allTasks.filter((t) => t.status === 'merged')
+  const acceptedMergedTasks = mergedTasks.filter((t) => acceptedTaskIds.includes(t.id))
+
+  // If all merged tasks are accepted, just do a normal merge
+  if (acceptedMergedTasks.length === mergedTasks.length) {
+    try {
+      await projectApi.gitCheckoutBranch(projectPath, originalBranch)
+      const result = await projectApi.gitMergeNoFf(
+        projectPath,
+        stagingBranch,
+        'Merge Self-Driving changes'
+      )
+      return {
+        success: result.success,
+        conflictFiles: result.conflictFiles,
+        message: result.message,
+        commitSha: null,
+      }
+    } catch (err) {
+      return {
+        success: false,
+        conflictFiles: [],
+        message: `Merge failed: ${err instanceof Error ? err.message : String(err)}`,
+        commitSha: null,
+      }
+    }
+  }
+
+  // Selective merge: cherry-pick only accepted task commits onto a temp branch
+  const tempBranch = `swarm/selective-${Date.now()}`
+
+  try {
+    // Create a temp branch from original
+    const createResult = await execCapture(
+      projectPath,
+      `git checkout -b ${tempBranch} ${originalBranch}`
+    )
+    if (createResult.exitCode !== 0) {
+      return {
+        success: false,
+        conflictFiles: [],
+        message: `Failed to create temp branch: ${createResult.stderr}`,
+        commitSha: null,
+      }
+    }
+
+    // Cherry-pick each accepted task's merge commit
+    for (const task of acceptedMergedTasks) {
+      if (!task.mergeCommitSha) {
+        log.warn(
+          `[Swarm] No merge commit SHA for task "${task.title}", skipping`,
+          'SwarmHarness'
+        )
+        continue
+      }
+
+      const cherryResult = await execCapture(
+        projectPath,
+        `git cherry-pick -m 1 ${task.mergeCommitSha}`
+      )
+      if (cherryResult.exitCode !== 0) {
+        // Abort the cherry-pick and clean up
+        await execCapture(projectPath, 'git cherry-pick --abort').catch(() => {})
+        await projectApi.gitCheckoutBranch(projectPath, originalBranch).catch(() => {})
+        await execCapture(projectPath, `git branch -D ${tempBranch}`).catch(() => {})
+        return {
+          success: false,
+          conflictFiles: [],
+          message: `Cherry-pick conflict on "${task.title}": ${cherryResult.stderr}`,
+          commitSha: null,
+        }
+      }
+    }
+
+    // Now merge the temp branch into original
+    await projectApi.gitCheckoutBranch(projectPath, originalBranch)
+    const mergeResult = await projectApi.gitMergeNoFf(
+      projectPath,
+      tempBranch,
+      'Merge selected Self-Driving changes'
+    )
+
+    // Clean up temp branch
+    await execCapture(projectPath, `git branch -D ${tempBranch}`).catch(() => {})
+
+    return {
+      success: mergeResult.success,
+      conflictFiles: mergeResult.conflictFiles,
+      message: mergeResult.message,
+      commitSha: null,
+    }
+  } catch (err) {
+    // Clean up on failure
+    await projectApi.gitCheckoutBranch(projectPath, originalBranch).catch(() => {})
+    await execCapture(projectPath, `git branch -D ${tempBranch}`).catch(() => {})
+
+    return {
+      success: false,
+      conflictFiles: [],
+      message: `Selective merge failed: ${err instanceof Error ? err.message : String(err)}`,
+      commitSha: null,
+    }
+  }
 }
 
 /**

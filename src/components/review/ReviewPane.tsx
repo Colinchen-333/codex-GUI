@@ -19,6 +19,7 @@ import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { IconButton } from '../ui/IconButton'
 import { cn } from '../../lib/utils'
+import { log } from '../../lib/logger'
 import { projectApi, type GitFileStatus } from '../../lib/api'
 import { parseGitDiff, buildFileTree, flattenTree } from '../../lib/gitDiffUtils'
 import { useProjectsStore } from '../../stores/projects'
@@ -133,11 +134,11 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
         try {
           rawDiff = await projectApi.gitDiffBranch(selectedProject.path, baseBranch)
         } catch {
-          // Base branch (e.g. 'main') may not exist, fall back to 'master'
+          // Expected: base branch (e.g. 'main') may not exist, safe to fall back to 'master'
           try {
             rawDiff = await projectApi.gitDiffBranch(selectedProject.path, 'master')
-          } catch {
-            // Neither main nor master exists — cannot determine base branch
+          } catch (err) {
+            log.warn(`Failed to diff against base branch: ${err}`, 'ReviewPane')
             setLoadState('error')
             setFileDiffs([])
             return
@@ -158,8 +159,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
       if (parsed.length > 0 && !selectedPath) {
         setSelectedPath(parsed[0].path)
       }
-    } catch {
-      // Network or API error fetching diff — show error state
+    } catch (err) {
+      log.warn(`Failed to fetch diff: ${err}`, 'ReviewPane')
       setLoadState('error')
       setFileDiffs([])
     }
@@ -239,8 +240,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
     try {
       await projectApi.gitStageFiles(selectedProject.path, unstaged)
       void fetchDiff()
-    } catch {
-      // Stage operation failed — toast system handles user-facing errors
+    } catch (err) {
+      log.warn(`Failed to stage files: ${err}`, 'ReviewPane')
     }
   }, [selectedProject, fileStatuses, fetchDiff])
 
@@ -252,8 +253,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
     try {
       await projectApi.gitUnstageFiles(selectedProject.path, staged)
       void fetchDiff()
-    } catch {
-      // Unstage operation failed — toast system handles user-facing errors
+    } catch (err) {
+      log.warn(`Failed to unstage files: ${err}`, 'ReviewPane')
     }
   }, [selectedProject, fileStatuses, fetchDiff])
 

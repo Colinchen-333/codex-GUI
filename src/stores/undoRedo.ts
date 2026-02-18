@@ -18,6 +18,7 @@ function areOperationStatesEquivalent(a?: OperationState, b?: OperationState): b
       const bContent = b.itemData?.content ?? null
       return JSON.stringify(aContent) === JSON.stringify(bContent)
     } catch {
+      // JSON serialization failed; treat as not equal
       return false
     }
   }

@@ -82,6 +82,7 @@ export function CreateAutomationDialog({
       const response = await serverApi.listSkills([selectedProject.path], false, selectedProjectId ?? undefined)
       setSkills(response.data.flatMap((entry) => entry.skills))
     } catch {
+      // Skills fetch failed; reset to empty list
       setSkills([])
     } finally {
       setIsLoadingSkills(false)

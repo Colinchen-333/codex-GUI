@@ -168,6 +168,7 @@ export function SnapshotListDialog({ isOpen, onClose }: SnapshotListDialogProps)
                   try {
                     metadata = JSON.parse(snapshot.metadataJson) as Record<string, unknown>
                   } catch {
+                    // Malformed metadata JSON; use empty object
                     metadata = {}
                   }
                 }

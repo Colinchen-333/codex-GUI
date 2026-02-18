@@ -28,6 +28,7 @@ function ensureErrorMessage(message: unknown): string {
     try {
       return JSON.stringify(message)
     } catch {
+      // JSON.stringify failed (circular ref, etc.)
       return '[Error object]'
     }
   }

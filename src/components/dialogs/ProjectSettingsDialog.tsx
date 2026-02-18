@@ -71,6 +71,7 @@ export function ProjectSettingsDialog({
         : {}
       setSettings(parsed)
     } catch {
+      // Invalid JSON in settingsJson; fall back to defaults
       setSettings({})
     }
   }, [project])

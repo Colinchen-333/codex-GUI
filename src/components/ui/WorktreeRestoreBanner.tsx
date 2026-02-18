@@ -27,6 +27,7 @@ export function WorktreeRestoreBanner({
       await onRestore()
       setStatus('success')
     } catch {
+      // Restore failed; surface error state in UI
       setStatus('error')
     }
   }

@@ -53,6 +53,7 @@ function formatTimestamp(timestamp: string): string {
 
     return date.toLocaleDateString()
   } catch {
+    // Date parsing failed; return raw timestamp string
     return timestamp
   }
 }

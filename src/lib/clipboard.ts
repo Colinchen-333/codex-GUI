@@ -28,6 +28,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
     document.body.removeChild(el)
     return true
   } catch {
+    // execCommand('copy') fallback failed
     return false
   }
 }

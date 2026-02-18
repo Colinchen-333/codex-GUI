@@ -53,6 +53,7 @@ function computeLocalStorageBytes(): number {
     }
     return bytes
   } catch {
+    // localStorage access denied or unavailable
     return 0
   }
 }
@@ -80,6 +81,7 @@ export function DebugPage() {
         try {
           return localStorage.length
         } catch {
+          // localStorage access denied
           return 0
         }
       })(),
@@ -118,6 +120,7 @@ export function DebugPage() {
           try {
             return localStorage.length
           } catch {
+            // localStorage access denied
             return 0
           }
         })(),

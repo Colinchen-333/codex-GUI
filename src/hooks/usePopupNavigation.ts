@@ -1,11 +1,11 @@
 /**
  * usePopupNavigation Hook
  *
- * 提取自 SlashCommandPopup 和 FileMentionPopup 的通用键盘导航逻辑
- * 用于处理弹窗列表的键盘交互：
- * - ArrowUp/Down: 切换选中项
- * - Enter/Tab: 确认选择
- * - Escape: 关闭弹窗
+ * Shared keyboard navigation logic extracted from SlashCommandPopup and FileMentionPopup.
+ * Handles keyboard interactions for popup lists:
+ * - ArrowUp/Down: Navigate selected item
+ * - Enter/Tab: Confirm selection
+ * - Escape: Close popup
  *
  * @example
  * const { selectedIndex, setSelectedIndex } = usePopupNavigation({
@@ -19,42 +19,42 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, type SetStateAction } from 'react'
 
 /**
- * 弹窗导航配置选项
+ * Popup navigation configuration options
  */
 export interface UsePopupNavigationOptions<T> {
-  /** 可选项列表 */
+  /** List of selectable items */
   items: T[]
-  /** 选中某项时的回调 */
+  /** Callback when an item is selected */
   onSelect: (item: T) => void
-  /** 关闭弹窗的回调 */
+  /** Callback to close the popup */
   onClose: () => void
-  /** 弹窗是否可见 */
+  /** Whether the popup is visible */
   isVisible: boolean
-  /** 是否循环滚动（默认 false，到达边界时停止） */
+  /** Whether to loop navigation (default false, stops at boundary) */
   loop?: boolean
 }
 
 /**
- * 弹窗导航 Hook 返回值
+ * Popup navigation hook return value
  */
 export interface UsePopupNavigationReturn {
-  /** 当前选中项的索引 */
+  /** Index of the currently selected item */
   selectedIndex: number
-  /** 手动设置选中索引（用于鼠标悬停等场景） */
+  /** Manually set selected index (e.g., for mouse hover) */
   setSelectedIndex: React.Dispatch<React.SetStateAction<number>>
 }
 
 /**
- * 弹窗键盘导航 Hook
+ * Popup keyboard navigation hook
  *
- * 提供统一的弹窗列表键盘导航功能，支持：
- * - 上下箭头键切换选中项
- * - Enter/Tab 确认选择
- * - Escape 关闭弹窗
- * - 自动重置选中状态
+ * Provides unified keyboard navigation for popup lists:
+ * - Arrow Up/Down to navigate items
+ * - Enter/Tab to confirm selection
+ * - Escape to close popup
+ * - Auto-reset selected state
  *
- * @param options - 导航配置选项
- * @returns 选中索引状态和设置函数
+ * @param options - Navigation configuration options
+ * @returns Selected index state and setter
  */
 export function usePopupNavigation<T>({
   items,
@@ -90,8 +90,8 @@ export function usePopupNavigation<T>({
     })
   }, [])
 
-  // 当弹窗显示或列表项变化时，重置选中索引
-  // 确保用户始终从第一项开始浏览
+  // Reset selected index when popup becomes visible or items change
+  // Ensures the user always starts browsing from the first item
   useEffect(() => {
     if (isVisible) {
       setSelectedIndexSafe(0)
@@ -106,37 +106,37 @@ export function usePopupNavigation<T>({
     }
   }, [isVisible, items, setSelectedIndexSafe])
 
-  // 处理向下导航
+  // Handle downward navigation
   const handleArrowDown = useCallback(() => {
     setSelectedIndexSafe((prev) => {
       const currentItems = itemsRef.current
       const currentLoop = loopRef.current
       if (currentItems.length === 0) return 0
       if (currentLoop) {
-        // 循环模式：到达末尾后回到开头
+        // Loop mode: wrap to beginning after reaching end
         return (prev + 1) % currentItems.length
       }
-      // 非循环模式：到达末尾时停止
+      // Non-loop mode: stop at end
       return Math.min(prev + 1, currentItems.length - 1)
     })
   }, [setSelectedIndexSafe]) // P1 Fix: uses refs internally
 
-  // 处理向上导航
+  // Handle upward navigation
   const handleArrowUp = useCallback(() => {
     setSelectedIndexSafe((prev) => {
       const currentItems = itemsRef.current
       const currentLoop = loopRef.current
       if (currentItems.length === 0) return 0
       if (currentLoop) {
-        // 循环模式：到达开头后回到末尾
+        // Loop mode: wrap to end after reaching beginning
         return (prev - 1 + currentItems.length) % currentItems.length
       }
-      // 非循环模式：到达开头时停止
+      // Non-loop mode: stop at beginning
       return Math.max(prev - 1, 0)
     })
   }, [setSelectedIndexSafe]) // P1 Fix: uses refs internally
 
-  // 处理选择确认
+  // Handle selection confirmation
   const handleSelect = useCallback(() => {
     const currentItems = itemsRef.current
     const currentIndex = selectedIndexRef.current
@@ -145,12 +145,12 @@ export function usePopupNavigation<T>({
     }
   }, []) // P1 Fix: Empty deps - uses refs internally
 
-  // 处理关闭
+  // Handle close
   const handleClose = useCallback(() => {
     onCloseRef.current()
   }, []) // P1 Fix: Empty deps - uses refs internally
 
-  // 键盘事件监听
+  // Keyboard event listener
   useEffect(() => {
     if (!isVisible) return
 

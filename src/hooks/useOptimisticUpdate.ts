@@ -1,14 +1,15 @@
 /**
  * useOptimisticUpdate Hook
  *
- * 提供乐观更新和自动回滚机制。允许在异步操作完成前立即更新 UI，
- * 并在操作失败时自动回滚到之前的状态。
+ * Provides optimistic updates with automatic rollback. Allows UI to update
+ * immediately before async operations complete, and automatically rolls back
+ * to the previous state on failure.
  *
- * 特性:
- * - 乐观更新：立即应用状态变更
- * - 自动回滚：操作失败时恢复原始状态
- * - 嵌套回滚：支持多个操作的回滚栈
- * - 手动回滚 API：允许在任何时候手动触发回滚
+ * Features:
+ * - Optimistic update: Apply state changes immediately
+ * - Auto rollback: Restore original state on failure
+ * - Nested rollback: Rollback stack for multiple operations
+ * - Manual rollback API: Trigger rollback at any time
  *
  * @example
  * const { execute, isLoading, error, rollback } = useOptimisticUpdate({
@@ -16,11 +17,11 @@
  *   optimisticUpdate: () => {
  *     const previousState = store.getState().user
  *     store.setState({ user: newData })
- *     return previousState // 返回用于回滚的状态
+ *     return previousState // Return previous state for rollback
  *   },
  *   onError: (error, rollbackFn) => {
  *     console.error('Update failed:', error)
- *     // 自动回滚已启用，或手动调用 rollbackFn()
+ *     // Auto rollback is enabled, or manually call rollbackFn()
  *   },
  *   autoRollback: true
  * })
@@ -29,108 +30,108 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 
 /**
- * 回滚操作记录
+ * Rollback operation record
  */
 interface RollbackEntry<T> {
-  /** 唯一标识 */
+  /** Unique identifier */
   id: string
-  /** 之前的状态 */
+  /** Previous state */
   previousState: T
-  /** 回滚函数 */
+  /** Rollback function */
   rollbackFn: (state: T) => void
-  /** 创建时间戳 */
+  /** Creation timestamp */
   timestamp: number
 }
 
 /**
- * 乐观更新配置选项
+ * Optimistic update configuration options
  */
 export interface UseOptimisticUpdateOptions<T, R> {
   /**
-   * 执行实际的异步操作
+   * Execute the actual async operation
    */
   execute: () => Promise<R>
 
   /**
-   * 乐观更新状态
-   * 应该返回之前的状态用于回滚
+   * Apply optimistic state update
+   * Should return the previous state for rollback
    */
   optimisticUpdate: () => T
 
   /**
-   * 回滚函数 - 将状态恢复到之前的值
-   * 如果不提供，将使用默认的回滚逻辑
+   * Rollback function - restores state to the previous value
+   * If not provided, default rollback logic will be used
    */
   rollbackFn?: (previousState: T) => void
 
   /**
-   * 成功回调
+   * Success callback
    */
   onSuccess?: (result: R) => void
 
   /**
-   * 失败时的回调
-   * @param error - 发生的错误
-   * @param rollback - 手动回滚函数
+   * Error callback
+   * @param error - The error that occurred
+   * @param rollback - Manual rollback function
    */
   onError?: (error: Error, rollback: () => void) => void
 
   /**
-   * 是否自动回滚（默认 true）
-   * 如果为 false，需要在 onError 中手动调用 rollback
+   * Whether to auto-rollback on failure (default true)
+   * If false, rollback must be called manually in onError
    */
   autoRollback?: boolean
 
   /**
-   * 是否在组件卸载后忽略结果（默认 true）
+   * Whether to ignore results after unmount (default true)
    */
   ignoreOnUnmount?: boolean
 
   /**
- * 操作的唯一标识，用于嵌套回滚
- */
+   * Unique operation identifier for nested rollback
+   */
   operationId?: string
 
   /**
-   * 回滚栈作用域标识，用于组件隔离
+   * Rollback stack scope identifier for component isolation
    */
   scopeId?: string
 }
 
 /**
- * 乐观更新 Hook 返回值
+ * Optimistic update hook return value
  */
 export interface UseOptimisticUpdateReturn<R> {
-  /** 执行乐观更新操作 */
+  /** Execute the optimistic update operation */
   execute: () => Promise<R | undefined>
-  /** 是否正在加载 */
+  /** Whether the operation is loading */
   isLoading: boolean
-  /** 错误信息 */
+  /** Error information */
   error: Error | null
-  /** 手动回滚到上一个状态 */
+  /** Manually rollback to the previous state */
   rollback: () => void
-  /** 回滚到指定的操作 */
+  /** Rollback to a specific operation */
   rollbackTo: (operationId: string) => void
-  /** 清除回滚历史 */
+  /** Clear rollback history */
   clearRollbackHistory: () => void
-  /** 获取回滚历史记录 */
+  /** Get rollback history records */
   getRollbackHistory: () => Array<{ id: string; timestamp: number }>
-  /** 检查是否有可回滚的状态（函数形式避免渲染期间访问 ref） */
+  /** Check if there is a rollback-able state (function form to avoid ref access during render) */
   getCanRollback: () => boolean
 }
 
 /**
- * 全局回滚栈管理器
- * 用于支持跨组件的嵌套回滚
+ * Global rollback stack manager
+ * Supports nested rollback across components
  */
 class RollbackStackManager {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private stack: RollbackEntry<any>[] = []
-  private maxSize = 50 // 最大回滚历史记录数
+  private maxSize = 50 // Maximum rollback history size
 
   push<T>(entry: RollbackEntry<T>): void {
     this.stack.push(entry)
-    // 限制栈大小
+    // Limit stack size
     if (this.stack.length > this.maxSize) {
       this.stack.shift()
     }
@@ -157,7 +158,7 @@ class RollbackStackManager {
     const index = this.stack.findIndex((entry) => entry.id === id)
     if (index === -1) return []
 
-    // 回滚从栈顶到指定位置的所有操作（包含指定操作本身）
+    // Rollback all operations from stack top to the target (inclusive)
     const entriesToRollback = this.stack.splice(index)
     return entriesToRollback.reverse()
   }
@@ -215,23 +216,23 @@ if (import.meta && 'hot' in import.meta) {
 }
 
 /**
- * 生成唯一 ID
+ * Generate a unique ID
  */
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 }
 
 /**
- * 乐观更新 Hook
+ * Optimistic update hook
  *
- * 提供统一的乐观更新模式，支持：
- * - 立即应用状态变更
- * - 操作失败时自动回滚
- * - 嵌套操作的回滚管理
- * - 手动回滚 API
+ * Provides a unified optimistic update pattern:
+ * - Apply state changes immediately
+ * - Auto-rollback on failure
+ * - Nested operation rollback management
+ * - Manual rollback API
  *
- * @param options - 配置选项
- * @returns 乐观更新控制接口
+ * @param options - Configuration options
+ * @returns Optimistic update control interface
  */
 export function useOptimisticUpdate<T, R>(
   options: UseOptimisticUpdateOptions<T, R>
@@ -251,14 +252,14 @@ export function useOptimisticUpdate<T, R>(
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  // 组件挂载状态
+  // Component mount state
   const isMountedRef = useRef(true)
-  // 当前操作的 ID
+  // Current operation ID
   const currentOperationIdRef = useRef<string | null>(null)
   const scopeIdRef = useRef(scopeId ?? generateId())
   const rollbackStackRef = useRef<RollbackStackManager | null>(null)
   const hasAcquiredRef = useRef(false)
-  // 本地回滚栈（用于组件级别的回滚）
+  // Local rollback stack (for component-level rollback)
   const localRollbackStackRef = useRef<RollbackEntry<T>[]>([])
 
   const ensureRollbackStack = useCallback(() => {
@@ -292,7 +293,7 @@ export function useOptimisticUpdate<T, R>(
   }, [ensureRollbackStack])
 
   /**
-   * 执行单个回滚操作
+   * Execute a single rollback operation
    */
   const executeRollback = useCallback(
     (entry: RollbackEntry<T>) => {
@@ -304,10 +305,10 @@ export function useOptimisticUpdate<T, R>(
   )
 
   /**
-   * 手动回滚到上一个状态
+   * Manually rollback to the previous state
    */
   const rollback = useCallback(() => {
-    // 先尝试从本地栈回滚
+    // Try local stack rollback first
     const localEntry = localRollbackStackRef.current.pop()
     if (localEntry) {
       executeRollback(localEntry)
@@ -315,7 +316,7 @@ export function useOptimisticUpdate<T, R>(
       return
     }
 
-    // 如果本地栈为空，从全局栈回滚
+    // If local stack is empty, rollback from global stack
     const globalEntry = ensureRollbackStack().pop<T>()
     if (globalEntry && rollbackFn) {
       rollbackFn(globalEntry.previousState)
@@ -323,7 +324,7 @@ export function useOptimisticUpdate<T, R>(
   }, [executeRollback, rollbackFn, ensureRollbackStack])
 
   /**
-   * 回滚到指定的操作
+   * Rollback to a specific operation
    */
   const rollbackTo = useCallback(
     (targetOperationId: string) => {
@@ -334,7 +335,7 @@ export function useOptimisticUpdate<T, R>(
         }
       })
 
-      // 同步更新本地栈
+      // Sync local stack
       localRollbackStackRef.current = localRollbackStackRef.current.filter(
         (entry) => !entries.some((e) => e.id === entry.id)
       )
@@ -343,7 +344,7 @@ export function useOptimisticUpdate<T, R>(
   )
 
   /**
-   * 清除回滚历史
+   * Clear rollback history
    */
   const clearRollbackHistory = useCallback(() => {
     localRollbackStackRef.current = []
@@ -351,14 +352,14 @@ export function useOptimisticUpdate<T, R>(
   }, [ensureRollbackStack])
 
   /**
-   * 获取回滚历史记录
+   * Get rollback history records
    */
   const getRollbackHistory = useCallback(() => {
     return ensureRollbackStack().getHistory()
   }, [ensureRollbackStack])
 
   /**
-   * 执行乐观更新操作
+   * Execute the optimistic update operation
    */
   const execute = useCallback(async (): Promise<R | undefined> => {
     const operationId = customOperationId || generateId()
@@ -367,7 +368,7 @@ export function useOptimisticUpdate<T, R>(
     setIsLoading(true)
     setError(null)
 
-    // 1. 执行乐观更新，保存之前的状态
+    // 1. Apply optimistic update and save previous state
     let previousState: T
     try {
       previousState = optimisticUpdate()
@@ -378,7 +379,7 @@ export function useOptimisticUpdate<T, R>(
       return undefined
     }
 
-    // 2. 创建回滚记录
+    // 2. Create rollback entry
     const rollbackEntry: RollbackEntry<T> = {
       id: operationId,
       previousState,
@@ -386,20 +387,20 @@ export function useOptimisticUpdate<T, R>(
       timestamp: Date.now(),
     }
 
-    // 添加到回滚栈
+    // Push to rollback stack
     localRollbackStackRef.current.push(rollbackEntry)
     ensureRollbackStack().push(rollbackEntry)
 
     try {
-      // 3. 执行实际的异步操作
+      // 3. Execute the actual async operation
       const result = await executeAsync()
 
-      // 4. 操作成功，从回滚栈中移除
+      // 4. Operation succeeded, remove from rollback stack
       if (isMountedRef.current || !ignoreOnUnmount) {
         setIsLoading(false)
         setError(null)
 
-        // 成功后清除该操作的回滚记录
+        // Clear rollback entry for this operation on success
         localRollbackStackRef.current = localRollbackStackRef.current.filter(
           (entry) => entry.id !== operationId
         )
@@ -416,7 +417,7 @@ export function useOptimisticUpdate<T, R>(
         setError(asyncError)
         setIsLoading(false)
 
-        // 创建回滚函数供 onError 使用
+        // Create rollback function for onError callback
         const manualRollback = () => {
           const entry = localRollbackStackRef.current.find(
             (e) => e.id === operationId
@@ -430,7 +431,7 @@ export function useOptimisticUpdate<T, R>(
           }
         }
 
-        // 5. 如果启用自动回滚，立即执行回滚
+        // 5. If auto-rollback is enabled, execute rollback immediately
         if (autoRollback && rollbackFn) {
           const entry = localRollbackStackRef.current.find(
             (e) => e.id === operationId
@@ -444,7 +445,7 @@ export function useOptimisticUpdate<T, R>(
           }
         }
 
-        // 调用错误回调
+        // Call error callback
         onError?.(asyncError, manualRollback)
       }
 
@@ -463,8 +464,8 @@ export function useOptimisticUpdate<T, R>(
   ])
 
   /**
-   * 检查是否有可回滚的状态
-   * 使用函数形式避免在渲染期间访问 ref
+   * Check if there is a rollback-able state
+   * Uses function form to avoid accessing ref during render
    */
   const getCanRollback = useCallback(() => {
     return localRollbackStackRef.current.length > 0 || ensureRollbackStack().size > 0
@@ -483,9 +484,9 @@ export function useOptimisticUpdate<T, R>(
 }
 
 /**
- * 简化版本：用于状态更新的乐观更新 Hook
+ * Simplified version: optimistic update hook for state updates
  *
- * 专门为 Zustand store 状态更新设计，提供更简洁的 API。
+ * Designed specifically for Zustand store state updates with a simpler API.
  *
  * @example
  * const { execute, isLoading } = useOptimisticStateUpdate({
@@ -496,19 +497,19 @@ export function useOptimisticUpdate<T, R>(
  * })
  */
 export interface UseOptimisticStateUpdateOptions<T, R> {
-  /** 获取当前状态 */
+  /** Get current state */
   getState: () => T
-  /** 设置状态 */
+  /** Set state */
   setState: (state: T) => void
-  /** 异步操作 */
+  /** Async operation */
   asyncOperation: () => Promise<R>
-  /** 乐观更新值 */
+  /** Optimistic update value */
   optimisticValue: T
-  /** 成功回调 */
+  /** Success callback */
   onSuccess?: (result: R) => void
-  /** 失败回调 */
+  /** Error callback */
   onError?: (error: Error) => void
-  /** 是否自动回滚（默认 true） */
+  /** Whether to auto-rollback on failure (default true) */
   autoRollback?: boolean
 }
 
@@ -547,12 +548,12 @@ export function useOptimisticStateUpdate<T, R>(
 }
 
 /**
- * 创建一个带回滚支持的 Zustand store 更新器
+ * Create a Zustand store updater with rollback support
  *
  * @example
  * const updateWithRollback = createOptimisticUpdater(useMyStore)
  *
- * // 使用
+ * // Usage
  * await updateWithRollback({
  *   selector: (state) => state.items,
  *   updater: (set) => set({ items: newItems }),
@@ -560,23 +561,23 @@ export function useOptimisticStateUpdate<T, R>(
  * })
  */
 export interface OptimisticUpdaterOptions<TStore, TSlice, R> {
-  /** 选择要更新的状态片段 */
+  /** Select the state slice to update */
   selector: (state: TStore) => TSlice
-  /** 更新状态 */
+  /** Update the state */
   updater: (set: (partial: Partial<TStore>) => void) => void
-  /** 异步操作 */
+  /** Async operation */
   asyncOperation: () => Promise<R>
-  /** 成功回调 */
+  /** Success callback */
   onSuccess?: (result: R) => void
-  /** 失败回调 */
+  /** Error callback */
   onError?: (error: Error) => void
 }
 
 /**
- * 批量乐观更新 Hook
+ * Batch optimistic update hook
  *
- * 支持多个操作的原子性回滚。如果任何一个操作失败，
- * 所有已执行的操作都会被回滚。
+ * Supports atomic rollback for multiple operations. If any operation fails,
+ * all previously applied operations will be rolled back.
  *
  * @example
  * const { executeBatch, isLoading } = useBatchOptimisticUpdate()
@@ -634,10 +635,10 @@ export function useBatchOptimisticUpdate(): UseBatchOptimisticUpdateReturn {
   }, [])
 
   /**
-   * 回滚所有已执行的操作
+   * Rollback all executed operations
    */
   const rollbackAll = useCallback(() => {
-    // 从后往前回滚
+    // Rollback in reverse order
     while (rollbackStackRef.current.length > 0) {
       const entry = rollbackStackRef.current.pop()
       if (entry) {
@@ -647,7 +648,7 @@ export function useBatchOptimisticUpdate(): UseBatchOptimisticUpdateReturn {
   }, [])
 
   /**
-   * 执行批量乐观更新
+   * Execute batch optimistic updates
    */
   const executeBatch = useCallback(
     async <T, R>(
@@ -660,7 +661,7 @@ export function useBatchOptimisticUpdate(): UseBatchOptimisticUpdateReturn {
       const results: R[] = []
 
       try {
-        // 1. 先执行所有乐观更新
+        // 1. Apply all optimistic updates first
         for (const op of operations) {
           const previousState = op.optimisticUpdate()
           rollbackStackRef.current.push({
@@ -669,7 +670,7 @@ export function useBatchOptimisticUpdate(): UseBatchOptimisticUpdateReturn {
           })
         }
 
-        // 2. 然后执行所有异步操作
+        // 2. Then execute all async operations
         for (let i = 0; i < operations.length; i++) {
           const op = operations[i]
           const result = await op.execute()
@@ -677,7 +678,7 @@ export function useBatchOptimisticUpdate(): UseBatchOptimisticUpdateReturn {
           op.onSuccess?.(result)
         }
 
-        // 3. 所有操作成功，清除回滚栈
+        // 3. All operations succeeded, clear rollback stack
         if (isMountedRef.current) {
           rollbackStackRef.current = []
           setIsLoading(false)
@@ -691,7 +692,7 @@ export function useBatchOptimisticUpdate(): UseBatchOptimisticUpdateReturn {
           setError(batchError)
           setIsLoading(false)
 
-          // 回滚所有已执行的乐观更新
+          // Rollback all applied optimistic updates
           rollbackAll()
         }
 

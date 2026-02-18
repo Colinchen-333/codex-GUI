@@ -686,18 +686,18 @@ export const serverApi = {
     invoke<LoginResponse>('start_login', { loginType, apiKey }),
 
   /**
-   * 登出账户
-   * P2.2 优化：登出时清除所有缓存，确保状态正确重置
+   * Log out of account
+   * P2.2: Clear all caches on logout to ensure correct state reset
    */
   logout: async () => {
     const result = await invoke<void>('logout')
-    clearAllCache() // 清除所有缓存
+    clearAllCache() // Clear all caches
     return result
   },
 
   /**
-   * 获取可用模型列表
-   * P2.2 优化：添加 5 分钟缓存，模型列表很少变化
+   * Get available models list
+   * P2.2: Add 5-minute cache since models rarely change
    */
   getModels: () =>
     withCache(
@@ -707,13 +707,13 @@ export const serverApi = {
     ),
 
   /**
-   * 获取技能列表
-   * P2.2 优化：添加 1 分钟缓存，支持强制刷新
-   * @param cwds 工作目录列表
-   * @param forceReload 是否强制刷新（清除缓存）
+   * Get skills list
+   * P2.2: Add 1-minute cache with force-reload support
+   * @param cwds Working directory list
+   * @param forceReload Whether to force reload (clear cache)
    */
   listSkills: (cwds: string[], forceReload = false, projectId?: string) => {
-    // 使用 cwds 和 projectId 作为缓存键的一部分，确保不同项目使用不同缓存
+    // Use cwds and projectId as part of cache key to isolate caches per project
     const sortedCwds = [...cwds].sort()
     const scope = projectId ?? `cwd:${sortedCwds.join(',')}`
     const cacheKey = `${CACHE_KEYS.SKILLS}:${scope}:${sortedCwds.join(',')}`
@@ -728,8 +728,8 @@ export const serverApi = {
   },
 
   /**
-   * 获取 MCP 服务器列表
-   * P2.2 优化：添加 2 分钟缓存，MCP 服务器配置较稳定
+   * Get MCP servers list
+   * P2.2: Add 2-minute cache since MCP server config is relatively stable
    */
   listMcpServers: () =>
     withCache(
@@ -912,5 +912,5 @@ export const terminalApi = {
 }
 
 // ==================== Cache Utilities (P2.2) ====================
-// 重新导出缓存工具，供其他模块使用
+// Re-export cache utilities for use by other modules
 export { clearCache, clearAllCache, getCacheStats, CACHE_KEYS, CACHE_TTL } from './apiCache'

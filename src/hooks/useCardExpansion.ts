@@ -1,8 +1,8 @@
 /**
  * useCardExpansion Hook
  *
- * 管理卡片展开/折叠状态，支持多个卡片独立控制。
- * 常用于折叠面板、FAQ、设置页面等场景。
+ * Manages card expand/collapse state with independent control for multiple cards.
+ * Commonly used for accordion panels, FAQs, settings pages, etc.
  *
  * @example
  * function CardList({ cards }) {
@@ -13,13 +13,13 @@
  *     collapseAll,
  *     expandedCount,
  *   } = useCardExpansion({
- *     defaultExpanded: ['card-1'], // 默认展开第一个
+ *     defaultExpanded: ['card-1'], // Expand the first card by default
  *   })
  *
  *   return (
  *     <div>
- *       <button onClick={expandAll}>展开全部</button>
- *       <button onClick={collapseAll}>折叠全部</button>
+ *       <button onClick={expandAll}>Expand All</button>
+ *       <button onClick={collapseAll}>Collapse All</button>
  *       {cards.map((card) => (
  *         <Card
  *           key={card.id}
@@ -35,53 +35,53 @@
 import { useState, useCallback } from 'react'
 
 /**
- * 卡片展开状态配置选项
+ * Card expansion configuration options
  */
 export interface UseCardExpansionOptions {
-  /** 默认展开的卡片 ID 列表 */
+  /** List of card IDs expanded by default */
   defaultExpanded?: string[]
-  /** 是否允许同时展开多个（默认 true） */
+  /** Whether multiple cards can be expanded simultaneously (default true) */
   allowMultiple?: boolean
-  /** 展开状态变化回调 */
+  /** Callback when expansion state changes */
   onChange?: (expandedIds: string[]) => void
 }
 
 /**
- * 卡片展开状态 Hook 返回值
+ * Card expansion hook return value
  */
 export interface UseCardExpansionReturn {
-  /** 检查指定卡片是否展开 */
+  /** Check if a specific card is expanded */
   isExpanded: (id: string) => boolean
-  /** 切换指定卡片的展开状态 */
+  /** Toggle a specific card's expansion state */
   toggle: (id: string) => void
-  /** 展开指定卡片 */
+  /** Expand a specific card */
   expand: (id: string) => void
-  /** 折叠指定卡片 */
+  /** Collapse a specific card */
   collapse: (id: string) => void
-  /** 展开全部卡片 */
+  /** Expand all cards */
   expandAll: (ids: string[]) => void
-  /** 折叠全部卡片 */
+  /** Collapse all cards */
   collapseAll: () => void
-  /** 获取当前展开的卡片 ID 列表 */
+  /** Get the list of currently expanded card IDs */
   expandedIds: string[]
-  /** 获取当前展开的卡片数量 */
+  /** Get the count of currently expanded cards */
   expandedCount: number
-  /** 设置展开的卡片 ID 列表 */
+  /** Set the list of expanded card IDs */
   setExpandedIds: (ids: string[]) => void
 }
 
 /**
- * 卡片展开状态管理 Hook
+ * Card expansion state management hook
  *
- * 提供以下功能：
- * - 管理多个卡片的独立展开/折叠状态
- * - 支持单选/多选模式
- * - 支持默认展开设置
- * - 支持展开全部/折叠全部
- * - 状态变化回调
+ * Features:
+ * - Manage independent expand/collapse state for multiple cards
+ * - Single/multiple selection modes
+ * - Default expansion settings
+ * - Expand all / collapse all support
+ * - State change callbacks
  *
- * @param options - 配置选项
- * @returns 卡片展开状态控制接口
+ * @param options - Configuration options
+ * @returns Card expansion control interface
  */
 export function useCardExpansion(
   options: UseCardExpansionOptions = {}
@@ -91,7 +91,7 @@ export function useCardExpansion(
   const [expandedIds, setExpandedIdsState] = useState<string[]>(defaultExpanded)
 
   /**
-   * 更新展开状态并触发回调
+   * Update expanded state and trigger callback
    */
   const updateExpandedIds = useCallback(
     (newIds: string[]) => {
@@ -102,7 +102,7 @@ export function useCardExpansion(
   )
 
   /**
-   * 检查指定卡片是否展开
+   * Check if a specific card is expanded
    */
   const isExpanded = useCallback(
     (id: string): boolean => {
@@ -112,19 +112,19 @@ export function useCardExpansion(
   )
 
   /**
-   * 切换指定卡片的展开状态
+   * Toggle a specific card's expansion state
    */
   const toggle = useCallback(
     (id: string) => {
       if (expandedIds.includes(id)) {
-        // 已展开，折叠它
+        // Currently expanded, collapse it
         updateExpandedIds(expandedIds.filter((expandedId) => expandedId !== id))
       } else {
-        // 未展开，展开它
+        // Currently collapsed, expand it
         if (allowMultiple) {
           updateExpandedIds([...expandedIds, id])
         } else {
-          // 单选模式：只保留当前卡片
+          // Single mode: only keep the current card
           updateExpandedIds([id])
         }
       }
@@ -133,7 +133,7 @@ export function useCardExpansion(
   )
 
   /**
-   * 展开指定卡片
+   * Expand a specific card
    */
   const expand = useCallback(
     (id: string) => {
@@ -149,7 +149,7 @@ export function useCardExpansion(
   )
 
   /**
-   * 折叠指定卡片
+   * Collapse a specific card
    */
   const collapse = useCallback(
     (id: string) => {
@@ -160,15 +160,15 @@ export function useCardExpansion(
   )
 
   /**
-   * 展开全部卡片
+   * Expand all cards
    */
   const expandAll = useCallback(
     (ids: string[]) => {
       if (!allowMultiple && ids.length > 0) {
-        // 单选模式：只展开第一个
+        // Single mode: only expand the first one
         updateExpandedIds([ids[0]])
       } else {
-        // 合并现有展开的和新的 ID
+        // Merge existing expanded IDs with new ones
         const newIds = [...new Set([...expandedIds, ...ids])]
         updateExpandedIds(newIds)
       }
@@ -177,19 +177,19 @@ export function useCardExpansion(
   )
 
   /**
-   * 折叠全部卡片
+   * Collapse all cards
    */
   const collapseAll = useCallback(() => {
     updateExpandedIds([])
   }, [updateExpandedIds])
 
   /**
-   * 直接设置展开的卡片 ID 列表
+   * Directly set the list of expanded card IDs
    */
   const setExpandedIds = useCallback(
     (ids: string[]) => {
       if (!allowMultiple && ids.length > 1) {
-        // 单选模式：只保留第一个
+        // Single mode: only keep the first one
         updateExpandedIds([ids[0]])
       } else {
         updateExpandedIds(ids)
@@ -199,7 +199,7 @@ export function useCardExpansion(
   )
 
   /**
-   * 展开的卡片数量
+   * Number of expanded cards
    */
   const expandedCount = expandedIds.length
 
@@ -217,8 +217,8 @@ export function useCardExpansion(
 }
 
 /**
- * 单个卡片的展开状态 Hook
- * 适用于只需要管理单个卡片状态的场景
+ * Single card expansion state hook
+ * For scenarios where only a single card's state needs to be managed
  *
  * @example
  * function Card() {

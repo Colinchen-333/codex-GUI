@@ -47,25 +47,25 @@ export function formatRelativeTime(timestamp: number): string {
   if (days > 7) {
     return new Date(timestamp * 1000).toLocaleDateString()
   } else if (days > 1) {
-    return `${days} 天前`
+    return `${days} days ago`
   } else if (days === 1) {
-    return '昨天'
+    return 'Yesterday'
   } else if (hours > 1) {
-    return `${hours} 小时前`
+    return `${hours} hours ago`
   } else if (hours === 1) {
-    return '1 小时前'
+    return '1 hour ago'
   } else if (minutes > 1) {
-    return `${minutes} 分钟前`
+    return `${minutes} minutes ago`
   } else if (minutes === 1) {
-    return '1 分钟前'
+    return '1 minute ago'
   } else {
-    return '刚刚'
+    return 'Just now'
   }
 }
 
 /**
- * Format timestamp to absolute time in Chinese format
- * e.g., "1月6日 14:31"
+ * Format timestamp to absolute time
+ * e.g., "Jan 6 14:31"
  *
  * @param timestamp - Unix timestamp in either seconds or milliseconds
  *                    (Backend API returns seconds, JS Date expects milliseconds)
@@ -95,10 +95,10 @@ export function formatAbsoluteTime(timestamp: number): string {
   const isCurrentYear = date.getFullYear() === now.getFullYear()
 
   if (isCurrentYear) {
-    return `${month}月${day}日 ${hours}:${minutes}`
+    return `${month}/${day} ${hours}:${minutes}`
   } else {
     const year = date.getFullYear()
-    return `${year}年${month}月${day}日 ${hours}:${minutes}`
+    return `${year}/${month}/${day} ${hours}:${minutes}`
   }
 }
 
@@ -125,10 +125,10 @@ export function formatSessionTime(timestamp: number): string {
     const hours = Math.floor(diff / (60 * 60 * 1000))
     const minutes = Math.floor(diff / (60 * 1000))
 
-    if (minutes < 1) return '刚刚'
-    if (minutes < 60) return `${minutes} 分钟前`
-    if (hours === 1) return '1 小时前'
-    return `${hours} 小时前`
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return `${minutes} min ago`
+    if (hours === 1) return '1 hour ago'
+    return `${hours} hours ago`
   }
 
   // More than 24 hours ago - show absolute time

@@ -1,8 +1,8 @@
 /**
  * useAsyncOperation Hook
  *
- * 管理异步操作的状态，包括加载状态、错误处理和数据管理。
- * 提供统一的异步操作模式，避免重复的 try-catch 和状态管理代码。
+ * Manages async operation state including loading, error handling, and data.
+ * Provides a unified async pattern to avoid repetitive try-catch and state management.
  *
  * @example
  * const { execute, isLoading, error, data, reset } = useAsyncOperation(
@@ -16,42 +16,42 @@
  *   }
  * )
  *
- * // 调用
+ * // Usage
  * await execute('user-123')
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 
 /**
- * 异步操作配置选项
+ * Async operation configuration options
  */
 export interface UseAsyncOperationOptions<T> {
-  /** 操作成功时的回调 */
+  /** Callback on success */
   onSuccess?: (data: T) => void
-  /** 操作失败时的回调 */
+  /** Callback on error */
   onError?: (error: Error) => void
-  /** 是否在组件卸载后忽略结果（默认 true） */
+  /** Whether to ignore results after unmount (default true) */
   ignoreOnUnmount?: boolean
 }
 
 /**
- * 异步操作 Hook 返回值
+ * Async operation hook return value
  */
 export interface UseAsyncOperationReturn<T, Args extends unknown[]> {
-  /** 执行异步操作 */
+  /** Execute the async operation */
   execute: (...args: Args) => Promise<T | undefined>
-  /** 是否正在加载 */
+  /** Whether the operation is loading */
   isLoading: boolean
-  /** 错误信息 */
+  /** Error information */
   error: Error | null
-  /** 操作返回的数据 */
+  /** Data returned by the operation */
   data: T | null
-  /** 重置状态 */
+  /** Reset state */
   reset: () => void
 }
 
 /**
- * 异步操作状态
+ * Async operation state
  */
 interface AsyncState<T> {
   isLoading: boolean
@@ -60,17 +60,17 @@ interface AsyncState<T> {
 }
 
 /**
- * 异步操作管理 Hook
+ * Async operation management hook
  *
- * 提供统一的异步操作状态管理，包括：
- * - 自动管理加载状态
- * - 统一的错误处理
- * - 支持成功/失败回调
- * - 防止组件卸载后的状态更新
+ * Provides unified async operation state management:
+ * - Auto-manages loading state
+ * - Unified error handling
+ * - Success/error callbacks
+ * - Prevents state updates after unmount
  *
- * @param asyncFn - 异步操作函数
- * @param options - 配置选项
- * @returns 异步操作控制接口
+ * @param asyncFn - The async function to execute
+ * @param options - Configuration options
+ * @returns Async operation control interface
  */
 export function useAsyncOperation<T, Args extends unknown[]>(
   asyncFn: (...args: Args) => Promise<T>,
@@ -84,12 +84,12 @@ export function useAsyncOperation<T, Args extends unknown[]>(
     data: null,
   })
 
-  // 用于追踪组件是否已卸载
+  // Track whether the component is still mounted
   const isMountedRef = useRef(true)
-  // 用于取消过期的请求（当新请求发起时，旧请求的结果应被忽略）
+  // Cancel stale requests (when a new request is made, old results should be ignored)
   const latestRequestIdRef = useRef(0)
 
-  // 组件卸载时设置标志
+  // Set flag on component unmount
   useEffect(() => {
     isMountedRef.current = true
     return () => {
@@ -98,11 +98,11 @@ export function useAsyncOperation<T, Args extends unknown[]>(
   }, [])
 
   /**
-   * 执行异步操作
+   * Execute the async operation
    */
   const execute = useCallback(
     async (...args: Args): Promise<T | undefined> => {
-      // 生成新的请求 ID
+      // Generate a new request ID
       const requestId = ++latestRequestIdRef.current
 
       setState((prev) => ({
@@ -114,7 +114,7 @@ export function useAsyncOperation<T, Args extends unknown[]>(
       try {
         const result = await asyncFn(...args)
 
-        // 检查是否应该更新状态
+        // Check whether state should be updated
         const shouldUpdate =
           requestId === latestRequestIdRef.current &&
           (isMountedRef.current || !ignoreOnUnmount)
@@ -132,7 +132,7 @@ export function useAsyncOperation<T, Args extends unknown[]>(
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err))
 
-        // 检查是否应该更新状态
+        // Check whether state should be updated
         const shouldUpdate =
           requestId === latestRequestIdRef.current &&
           (isMountedRef.current || !ignoreOnUnmount)
@@ -153,10 +153,10 @@ export function useAsyncOperation<T, Args extends unknown[]>(
   )
 
   /**
-   * 重置状态
+   * Reset state
    */
   const reset = useCallback(() => {
-    // 增加请求 ID 以取消任何进行中的请求
+    // Increment request ID to cancel any in-flight requests
     latestRequestIdRef.current++
     setState({
       isLoading: false,
@@ -178,7 +178,7 @@ export function useAsyncOperation<T, Args extends unknown[]>(
 }
 
 /**
- * 简化版本：只关心执行和加载状态
+ * Simplified version: only tracks execution and loading state
  */
 export function useAsyncCallback<Args extends unknown[]>(
   asyncFn: (...args: Args) => Promise<void>,

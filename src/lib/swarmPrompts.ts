@@ -40,11 +40,14 @@ After your analysis, output EXACTLY one JSON code block with the task list:
 \`\`\`
 
 RULES:
+- Aim for 2-5 tasks. Research shows 3-5 parallel workers is the sweet spot; more than 5 increases merge conflicts and overhead.
+- If the request is simple enough for one person, output a single task. The system handles single tasks efficiently without spawning workers.
 - Each task needs a concrete testCommand that verifies the work (use the project's existing test setup).
-- If tasks have ordering dependencies, use the dependsOn array with task titles.
+- If tasks have ordering dependencies, use the dependsOn array with task titles. Minimize dependencies to maximize parallelism.
 - For each task, list the specific files that will be modified under the "files" key in the JSON output.
+- Avoid assigning the same file to multiple tasks when possible -- separate tasks should touch separate files or modules.
 - Keep descriptions specific: mention file paths, function names, or components when possible.
-- If the request is small enough for one person, output a single task.`
+- Each worker will receive the full plan, so you can reference other tasks in your descriptions (e.g., "this integrates with the API endpoint from task 1").`
 }
 
 /**
@@ -137,7 +140,7 @@ export function buildCascadePrompt(
   userRequest: string,
   task: { title: string; description: string; testCommand: string }
 ): string {
-  return `You are implementing a task directly (single-agent mode, no workers needed).
+  return `You are implementing a task directly (single-agent cascade mode -- no workers needed for this task).
 
 USER REQUEST:
 ${userRequest}
@@ -148,8 +151,10 @@ Description: ${task.description}
 Test command: ${task.testCommand}
 
 INSTRUCTIONS:
-1. Implement the task as described.
+1. Implement the task as described. Keep changes minimal and focused.
 2. Run the test command to verify: ${task.testCommand}
-3. Commit your changes with a descriptive message.
-4. Keep the implementation minimal and focused on the request.`
+3. Fix any failures until tests pass.
+4. Commit your changes with a descriptive message prefixed with "[swarm] ".
+
+Focus on correctness. Let the test results guide your implementation -- run tests early and iterate.`
 }

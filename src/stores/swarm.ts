@@ -85,6 +85,10 @@ export interface SwarmState {
   testsPass: boolean | null
   stagingDiff: string | null
 
+  // Review verdict from Team Lead (QW-3 enforcement)
+  reviewVerdict: 'approve' | 'request_changes' | null
+  reviewFeedback: string | null
+
   // Per-task accept/reject decisions
   taskDecisions: Record<string, 'accept' | 'reject'>
 
@@ -125,6 +129,7 @@ export interface SwarmState {
   setTestResults: (output: string, pass: boolean) => void
   setStagingDiff: (diff: string) => void
   setError: (error: string | null) => void
+  setReviewVerdict: (verdict: 'approve' | 'request_changes', feedback: string | null) => void
 
   reset: () => void
 }
@@ -147,6 +152,8 @@ const initialState = {
   testOutput: null as string | null,
   testsPass: null as boolean | null,
   stagingDiff: null as string | null,
+  reviewVerdict: null as 'approve' | 'request_changes' | null,
+  reviewFeedback: null as string | null,
   startedAt: null as number | null,
 }
 
@@ -290,6 +297,10 @@ export const useSwarmStore = create<SwarmState>((set) => ({
 
   setError: (error) => {
     set({ error })
+  },
+
+  setReviewVerdict: (verdict, feedback) => {
+    set({ reviewVerdict: verdict, reviewFeedback: feedback })
   },
 
   reset: () => {

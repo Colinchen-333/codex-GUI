@@ -296,6 +296,52 @@ describe('useSwarmStore', () => {
     })
   })
 
+  describe('review verdict', () => {
+    it('has null review verdict initially', () => {
+      const state = useSwarmStore.getState()
+      expect(state.reviewVerdict).toBeNull()
+      expect(state.reviewFeedback).toBeNull()
+    })
+
+    it('setReviewVerdict stores approve verdict', () => {
+      useSwarmStore.getState().setReviewVerdict('approve', 'LGTM')
+
+      const state = useSwarmStore.getState()
+      expect(state.reviewVerdict).toBe('approve')
+      expect(state.reviewFeedback).toBe('LGTM')
+    })
+
+    it('setReviewVerdict stores request_changes verdict', () => {
+      useSwarmStore.getState().setReviewVerdict(
+        'request_changes',
+        'Missing error handling in auth.ts'
+      )
+
+      const state = useSwarmStore.getState()
+      expect(state.reviewVerdict).toBe('request_changes')
+      expect(state.reviewFeedback).toBe('Missing error handling in auth.ts')
+    })
+
+    it('review verdict is cleared on reset', () => {
+      useSwarmStore.getState().setReviewVerdict('approve', 'Good')
+      useSwarmStore.getState().reset()
+
+      const state = useSwarmStore.getState()
+      expect(state.reviewVerdict).toBeNull()
+      expect(state.reviewFeedback).toBeNull()
+    })
+
+    it('review verdict is cleared on deactivate', () => {
+      useSwarmStore.getState().activate()
+      useSwarmStore.getState().setReviewVerdict('request_changes', 'Fix it')
+      useSwarmStore.getState().deactivate()
+
+      const state = useSwarmStore.getState()
+      expect(state.reviewVerdict).toBeNull()
+      expect(state.reviewFeedback).toBeNull()
+    })
+  })
+
   describe('reset', () => {
     it('resets all state to initial values', () => {
       useSwarmStore.getState().activate()

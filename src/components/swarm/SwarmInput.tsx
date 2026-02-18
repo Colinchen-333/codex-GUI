@@ -5,7 +5,8 @@ import { runSwarm, cancelSwarm } from '../../lib/swarmOrchestrator'
 import { selectiveMergeToMain } from '../../lib/swarmHarness'
 import { projectApi } from '../../lib/api'
 import { Button } from '../ui/Button'
-import { Send, CheckCircle2, XCircle, AlertTriangle, Info, Square, CheckSquare } from 'lucide-react'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { Send, CheckCircle2, XCircle, AlertTriangle, Info, Square, CheckSquare, ShieldAlert } from 'lucide-react'
 
 export function SwarmInput() {
   const phase = useSwarmStore((s) => s.phase)
@@ -19,8 +20,10 @@ export function SwarmInput() {
   const setTaskDecision = useSwarmStore((s) => s.setTaskDecision)
   const approvePlan = useSwarmStore((s) => s.approvePlan)
   const rejectPlan = useSwarmStore((s) => s.rejectPlan)
+  const reviewVerdict = useSwarmStore((s) => s.reviewVerdict)
   const [draft, setDraft] = useState('')
   const [merging, setMerging] = useState(false)
+  const [showForceMergeConfirm, setShowForceMergeConfirm] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSubmit = () => {
@@ -209,27 +212,64 @@ export function SwarmInput() {
     )
   }
 
-  // Completed state: show task list with checkboxes + merge/discard
-  if (phase === 'completed') {
+  // Completed or reviewing (blocked) state: show task list with checkboxes + merge/discard
+  if (phase === 'completed' || phase === 'reviewing') {
     const mergedTasks = tasks.filter((t) => t.status === 'merged')
     const failedTasks = tasks.filter((t) => t.status === 'failed')
+    const hasReviewBlock = reviewVerdict === 'request_changes'
+    const hasTestBlock = testsPass === false
+
+    // Determine merge button behavior based on review gate
+    const handleMergeClick = () => {
+      if (hasReviewBlock || hasTestBlock) {
+        setShowForceMergeConfirm(true)
+      } else {
+        handleMerge()
+      }
+    }
 
     return (
       <div className="border-t border-stroke/10 p-4">
-        {/* Test status */}
-        <div className="mb-3 flex items-center gap-2 text-[13px]">
+        {/* Status indicators */}
+        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
           {testsPass === true && (
             <span className="flex items-center gap-1 text-status-success">
               <CheckCircle2 size={14} /> Tests passed
             </span>
           )}
-          {testsPass === false && (
+          {hasTestBlock && (
             <span className="flex items-center gap-1 text-status-error">
               <XCircle size={14} /> Tests failed
             </span>
           )}
-          {stagingDiff && <span className="text-text-3">· Changes ready to merge</span>}
+          {reviewVerdict === 'approve' && (
+            <span className="flex items-center gap-1 text-status-success">
+              <CheckCircle2 size={14} /> Review approved
+            </span>
+          )}
+          {hasReviewBlock && (
+            <span className="flex items-center gap-1 text-status-error">
+              <ShieldAlert size={14} /> Changes requested
+            </span>
+          )}
+          {stagingDiff && !hasReviewBlock && !hasTestBlock && (
+            <span className="text-text-3">· Changes ready to merge</span>
+          )}
         </div>
+
+        {/* Review gate warning */}
+        {(hasReviewBlock || hasTestBlock) && (
+          <div className="mb-3 flex items-start gap-2 rounded-md bg-status-error/10 px-3 py-2 text-[12px] text-status-error">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            <span>
+              {hasReviewBlock && hasTestBlock
+                ? 'Team Lead requested changes and tests failed. Merging is not recommended.'
+                : hasReviewBlock
+                  ? 'Team Lead requested changes. Review the feedback in the Messages tab before merging.'
+                  : 'Tests failed. Review the output before merging.'}
+            </span>
+          </div>
+        )}
 
         {/* Task list with checkboxes */}
         {(mergedTasks.length > 0 || failedTasks.length > 0) && (
@@ -289,18 +329,41 @@ export function SwarmInput() {
             Discard All
           </Button>
           <Button
-            variant="primary"
+            variant={hasReviewBlock || hasTestBlock ? 'destructive' : 'primary'}
             size="sm"
-            onClick={handleMerge}
+            onClick={handleMergeClick}
             disabled={merging || acceptedTaskIds.length === 0}
           >
             {merging
               ? 'Merging...'
-              : allMergedAccepted
-                ? 'Merge to Main'
-                : `Merge Selected (${acceptedTaskIds.length})`}
+              : hasReviewBlock || hasTestBlock
+                ? 'Force Merge'
+                : allMergedAccepted
+                  ? 'Merge to Main'
+                  : `Merge Selected (${acceptedTaskIds.length})`}
           </Button>
         </div>
+
+        {/* Force merge confirmation dialog */}
+        <ConfirmDialog
+          isOpen={showForceMergeConfirm}
+          title="Force merge despite issues?"
+          message={
+            hasReviewBlock && hasTestBlock
+              ? 'The Team Lead requested changes AND tests are failing. Merging may introduce bugs. Are you sure?'
+              : hasReviewBlock
+                ? 'The Team Lead flagged issues in the code review. Merging without addressing them may introduce problems.'
+                : 'Tests are failing. Merging may introduce broken code.'
+          }
+          confirmText="Force Merge"
+          cancelText="Go Back"
+          variant="danger"
+          onConfirm={() => {
+            setShowForceMergeConfirm(false)
+            handleMerge()
+          }}
+          onCancel={() => setShowForceMergeConfirm(false)}
+        />
       </div>
     )
   }

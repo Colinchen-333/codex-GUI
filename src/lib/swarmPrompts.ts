@@ -74,7 +74,11 @@ REVIEW CHECKLIST:
 4. Are there any merge artifacts or conflicting changes?
 5. Does the code follow the project's existing patterns and conventions?
 
-Provide a clear verdict: APPROVE if everything looks good, or REQUEST_CHANGES with specific issues to fix.`
+YOUR VERDICT (required -- use one of these exact strings):
+- VERDICT: APPROVE — if the implementation is correct and tests pass
+- VERDICT: REQUEST_CHANGES — if there are issues that need fixing
+
+After the verdict line, provide a brief explanation. If requesting changes, list specific issues.`
 }
 
 /**
@@ -110,6 +114,17 @@ INSTRUCTIONS:
 3. Run the test command to verify your work: ${task.testCommand}
 4. Commit all changes with a descriptive message prefixed with "[swarm] ".
 5. Do not merge or push -- the orchestrator handles that.
+
+TOOLS YOU SHOULD USE:
+- Read, Edit, Write, Grep, Glob (code exploration and modification)
+- Bash (git operations and running test commands only)
+
+DO NOT:
+- Use WebSearch or WebFetch (you have all the code locally)
+- Spawn sub-agents or create teams
+- Modify files outside your worktree
+- Run destructive git commands (push, reset --hard, clean -f)
+- Install new dependencies without it being part of the task description
 
 Focus on correctness and simplicity. If something is unclear, make a reasonable assumption and note it in your commit message.`
 }

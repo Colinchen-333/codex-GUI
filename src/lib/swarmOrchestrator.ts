@@ -424,6 +424,14 @@ export async function runSwarm(
 
           if (!isTimeoutResult(reviewResult)) {
             store.addMessage({ from: 'Team Lead', content: reviewResult, type: 'discovery' })
+
+            // Parse review verdict for cascade path too
+            const upperReview = reviewResult.toUpperCase()
+            if (upperReview.includes('REQUEST_CHANGES') || upperReview.includes('REQUEST CHANGES')) {
+              store.setReviewVerdict('request_changes', reviewResult)
+            } else if (upperReview.includes('APPROVE')) {
+              store.setReviewVerdict('approve', reviewResult)
+            }
           }
         }
       } catch (err) {
@@ -822,15 +830,17 @@ export async function runSwarm(
 
           // QW-3: Parse review verdict from Team Lead response
           const upperReview = reviewResult.toUpperCase()
-          if (upperReview.includes('REQUEST_CHANGES') || upperReview.includes('REQUEST CHANGES')) {
+          if (upperReview.includes('VERDICT: REQUEST_CHANGES') || upperReview.includes('REQUEST_CHANGES') || upperReview.includes('REQUEST CHANGES')) {
             log.info('[Swarm] Team Lead requested changes', 'SwarmOrchestrator')
+            store.setReviewVerdict('request_changes', reviewResult)
             store.addMessage({
               from: 'System',
               content: 'Team Lead requested changes. Review the feedback above before merging.',
               type: 'error',
             })
-            // Stay in reviewing phase -- don't auto-transition to completed
-            // User can still force-merge from the UI
+          } else if (upperReview.includes('VERDICT: APPROVE') || upperReview.includes('APPROVE')) {
+            log.info('[Swarm] Team Lead approved changes', 'SwarmOrchestrator')
+            store.setReviewVerdict('approve', reviewResult)
           }
         }
       } catch (err) {
@@ -838,19 +848,18 @@ export async function runSwarm(
       }
     }
 
-    // QW-4: Gate on test results -- block auto-completion if tests failed
+    // ---- Phase 8: COMPLETE ----
+    // Always transition to completed. Review verdict and test status are tracked
+    // in the store -- the UI enforces the gate (force-merge confirmation dialog).
+    store.setPhase('completed')
+
     if (!allTestsPassed) {
-      log.info('[Swarm] Tests failed -- blocking auto-completion', 'SwarmOrchestrator')
       store.addMessage({
         from: 'System',
-        content: 'Tests failed. Review failures above. You can still force-merge from the UI.',
+        content: 'Swarm completed with test failures. Force merge available if you wish to proceed.',
         type: 'error',
       })
-      // Stay in reviewing phase so user must explicitly approve
-      // Don't transition to completed
     } else {
-      // ---- Phase 8: COMPLETE ----
-      store.setPhase('completed')
       store.addMessage({
         from: 'System',
         content: 'Swarm completed. Review results and decide to merge or discard.',

@@ -36,8 +36,11 @@ export function SwarmView() {
         {/* Right: Message Feed / Diff Viewer / Output */}
         <div className="flex flex-1 min-w-[300px] flex-col overflow-hidden">
           {/* Tab bar */}
-          <div className="flex items-center border-b border-stroke/10 px-4">
+          <div className="flex items-center border-b border-stroke/10 px-4" role="tablist" aria-label="Swarm details">
             <button
+              role="tab"
+              aria-selected={rightTab === 'messages'}
+              aria-controls="swarm-panel-messages"
               className={`px-3 py-2 text-[13px] font-medium border-b-2 transition-colors ${
                 rightTab === 'messages'
                   ? 'border-primary text-text-1'
@@ -49,6 +52,9 @@ export function SwarmView() {
             </button>
             {hasDiff && (
               <button
+                role="tab"
+                aria-selected={rightTab === 'diff'}
+                aria-controls="swarm-panel-diff"
                 className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors ${
                   rightTab === 'diff'
                     ? 'border-primary text-text-1'
@@ -64,6 +70,9 @@ export function SwarmView() {
               </button>
             )}
             <button
+              role="tab"
+              aria-selected={rightTab === 'output'}
+              aria-controls="swarm-panel-output"
               className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors ${
                 rightTab === 'output'
                   ? 'border-primary text-text-1'
@@ -81,15 +90,19 @@ export function SwarmView() {
 
           {/* Tab content */}
           {rightTab === 'messages' ? (
-            <div className="flex-1 overflow-y-auto p-4">
+            <div id="swarm-panel-messages" role="tabpanel" className="flex-1 overflow-y-auto p-4">
               <SwarmMessageFeed />
             </div>
           ) : rightTab === 'diff' && hasDiff ? (
-            <SwarmDiffPanel fileDiffs={fileDiffs} />
+            <div id="swarm-panel-diff" role="tabpanel" className="flex flex-1 flex-col overflow-hidden">
+              <SwarmDiffPanel fileDiffs={fileDiffs} />
+            </div>
           ) : rightTab === 'output' ? (
-            <SwarmOutputPanel />
+            <div id="swarm-panel-output" role="tabpanel" className="flex flex-1 flex-col overflow-hidden">
+              <SwarmOutputPanel />
+            </div>
           ) : (
-            <div className="flex-1 overflow-y-auto p-4">
+            <div id="swarm-panel-messages" role="tabpanel" className="flex-1 overflow-y-auto p-4">
               <SwarmMessageFeed />
             </div>
           )}

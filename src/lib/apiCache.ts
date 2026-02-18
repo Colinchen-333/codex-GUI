@@ -1,31 +1,30 @@
 /**
- * P2.2 优化：API 请求缓存层
- * 为频繁调用但数据很少变化的 API 添加缓存机制，减少不必要的 IPC 调用
+ * API Request Cache Layer
  *
- * 使用场景：
- * - getModels: 模型列表很少变化，缓存 5 分钟
- * - listSkills: 技能列表可能变化，缓存 1 分钟，支持强制刷新
- * - listMcpServers: MCP 服务器列表较稳定，缓存 2 分钟
+ * Caches frequently called APIs whose data changes infrequently,
+ * reducing unnecessary IPC round-trips to the Tauri backend.
+ *
+ * Usage:
+ * - getModels: model list rarely changes, cached 5 min
+ * - listSkills: skills may change, cached 1 min, supports force reload
+ * - listMcpServers: MCP server list is stable, cached 2 min
  */
 
 /**
- * P1 Fix: Enhanced cache entry with error support
+ * Cache entry with error support (errors use shorter TTL).
  */
 interface CacheEntry<T> {
   data: T
   expiry: number
-  isError?: boolean  // P1 Fix: Flag to indicate if this is an error response
+  isError?: boolean
 }
 
-// 使用 Map 存储缓存，key 为缓存键，value 为缓存条目
 const cache = new Map<string, CacheEntry<unknown>>()
 const inFlight = new Map<string, Promise<unknown>>()
 const requestSeq = new Map<string, number>()
 const inFlightTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-/**
- * P1 Fix: Error TTL (5 seconds) - shorter than success responses
- */
+/** Error responses are cached with a shorter TTL to avoid locking in error state */
 const ERROR_TTL_MS = 5000
 const MAX_CACHE_ENTRIES = 200
 const MAX_IN_FLIGHT_MS = 5 * 60 * 1000
@@ -86,31 +85,29 @@ function pruneCache(now: number): void {
 }
 
 /**
- * 使用缓存包装 API 调用
- * 如果缓存有效则返回缓存数据，否则调用 fetcher 获取新数据并更新缓存
+ * Wrap an API call with caching.
+ * Returns cached data if valid, otherwise calls the fetcher and updates the cache.
  *
- * @param key 缓存键，用于标识不同的 API 调用
- * @param fetcher 实际的 API 调用函数
- * @param ttlMs 缓存有效期（毫秒），默认 60 秒
- * @returns Promise<T> 返回缓存或新获取的数据
+ * @param key - Cache key identifying the API call
+ * @param fetcher - The actual API call function
+ * @param ttlMs - Cache TTL in milliseconds (default 60s)
+ * @param cacheErrors - Whether to cache error responses (default true, with shorter TTL)
  *
  * @example
- * // 缓存 5 分钟
  * const models = await withCache('models', () => invoke<Model[]>('get_models'), 300000)
  */
 export async function withCache<T>(
   key: string,
   fetcher: () => Promise<T>,
   ttlMs: number = 60000,
-  cacheErrors: boolean = true  // P1 Fix: New parameter to control error caching
+  cacheErrors: boolean = true
 ): Promise<T> {
   const now = Date.now()
   pruneCache(now)
   const cached = cache.get(key) as CacheEntry<T> | undefined
 
-  // 如果缓存存在且未过期
+  // Return cached data if valid and not expired
   if (cached && cached.expiry > now) {
-    // P1 Fix: If cached entry is an error, re-throw it
     if (cached.isError) {
       if (!cacheErrors) {
         deleteCacheEntry(key)
@@ -127,14 +124,14 @@ export async function withCache<T>(
     return existing
   }
 
-  // 调用实际的 API 获取数据
+  // Call the actual API
   const requestId = (requestSeq.get(key) ?? 0) + 1
   requestSeq.set(key, requestId)
 
   const request = Promise.resolve()
     .then(fetcher)
     .then((data) => {
-      // P1 Fix: Calculate expiry at completion time, not request start time
+      // Calculate expiry at completion time, not request start time
       if (requestSeq.get(key) === requestId) {
         cache.set(key, { data, expiry: Date.now() + ttlMs, isError: false })
       }
@@ -144,8 +141,7 @@ export async function withCache<T>(
       return data
     })
     .catch((error) => {
-      // P1 Fix: Cache error responses with shorter TTL
-      // Also use completion time for expiry calculation
+      // Cache error responses with shorter TTL
       if (cacheErrors && requestSeq.get(key) === requestId) {
         cache.set(key, {
           data: error,
@@ -177,13 +173,7 @@ export async function withCache<T>(
 }
 
 /**
- * 清除指定的缓存
- * 用于需要强制刷新数据的场景
- *
- * @param key 要清除的缓存键
- *
- * @example
- * clearCache('skills') // 清除技能列表缓存
+ * Clear a specific cache entry. Used when data must be force-refreshed.
  */
 export function clearCache(key: string): void {
   const hadInFlight = inFlight.has(key)
@@ -198,8 +188,8 @@ export function clearCache(key: string): void {
 }
 
 /**
- * 清除所有缓存
- * 用于登出、切换项目等需要完全刷新状态的场景
+ * Clear all cache entries. Used on logout, project switch, or other
+ * scenarios requiring a full state refresh.
  */
 export function clearAllCache(): void {
   cache.clear()
@@ -212,15 +202,15 @@ export function clearAllCache(): void {
 }
 
 /**
- * 获取缓存统计信息（用于调试）
- * @returns 缓存条目数量和各缓存键的过期时间
+ * Get cache statistics for debugging.
+ * @returns Cache size and remaining TTL per entry (ms)
  */
 export function getCacheStats(): { size: number; entries: Record<string, number> } {
   const entries: Record<string, number> = {}
   const now = Date.now()
 
   cache.forEach((entry, key) => {
-    entries[key] = Math.max(0, entry.expiry - now) // 剩余有效时间（毫秒）
+    entries[key] = Math.max(0, entry.expiry - now)
   })
 
   return {
@@ -229,7 +219,7 @@ export function getCacheStats(): { size: number; entries: Record<string, number>
   }
 }
 
-// 缓存键常量，避免魔法字符串
+// Cache key constants
 export const CACHE_KEYS = {
   MODELS: 'models',
   SKILLS: 'skills',
@@ -240,13 +230,13 @@ export const CACHE_KEYS = {
   GIT_INFO: 'gitInfo',
 } as const
 
-// 缓存 TTL 常量（毫秒）
+// Cache TTL constants (milliseconds)
 export const CACHE_TTL = {
-  MODELS: 5 * 60 * 1000,      // 5 分钟 - 模型列表很少变化
-  SKILLS: 60 * 1000,          // 1 分钟 - 技能可能动态变化
-  MCP_SERVERS: 2 * 60 * 1000, // 2 分钟 - MCP 服务器较稳定
-  ACCOUNT_INFO: 60 * 1000,    // 1 分钟 - 账户信息可能变化
-  SERVER_STATUS: 10 * 1000,   // 10 秒 - 服务器状态需要较高实时性
-  RATE_LIMITS: 30 * 1000,     // 30 秒 - 速率限制适度缓存
-  GIT_INFO: 30 * 1000,        // 30 秒 - Git 信息适度缓存
+  MODELS: 5 * 60 * 1000,      // 5 min - model list rarely changes
+  SKILLS: 60 * 1000,          // 1 min - skills may change dynamically
+  MCP_SERVERS: 2 * 60 * 1000, // 2 min - MCP servers are stable
+  ACCOUNT_INFO: 60 * 1000,    // 1 min - account info may change
+  SERVER_STATUS: 10 * 1000,   // 10s - server status needs high freshness
+  RATE_LIMITS: 30 * 1000,     // 30s - rate limits moderately cached
+  GIT_INFO: 30 * 1000,        // 30s - git info moderately cached
 } as const

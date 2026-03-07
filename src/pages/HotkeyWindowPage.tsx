@@ -1,18 +1,26 @@
 import { memo, useState, useRef, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Send, ChevronDown, ChevronUp, X, MessageSquare, Zap } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { useSessionsStore } from '../stores/sessions'
 import { normalizeTimestampToMs } from '../lib/utils'
 
 export const HotkeyWindowPage = memo(function HotkeyWindowPage() {
-  const { conversationId: _conversationId } = useParams()
-  const navigate = useNavigate()
+  const { conversationId } = useParams()
   const [input, setInput] = useState('')
   const [expanded, setExpanded] = useState(false)
   const [sending, setSending] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const sessions = useSessionsStore((s) => s.sessions)
+
+  // If we have a conversationId, we could open that thread directly
+  useEffect(() => {
+    if (conversationId) {
+      sessionStorage.setItem('hotkey-open-thread', conversationId)
+      void invoke('show_main_window').catch(() => {})
+      void invoke('hide_hotkey_window').catch(() => {})
+    }
+  }, [conversationId])
 
   // Auto-focus on mount
   useEffect(() => {
@@ -42,13 +50,8 @@ export const HotkeyWindowPage = memo(function HotkeyWindowPage() {
     if (!input.trim() || sending) return
     setSending(true)
     try {
-      // Hide the hotkey window and navigate to the main window
-      // The main window will handle opening a new thread with the input
-      // For now we store the prompt in sessionStorage so the main window can pick it up
       sessionStorage.setItem('hotkey-pending-prompt', input.trim())
-      await invoke('show_main_window').catch(() => {
-        // Fallback: just hide hotkey window
-      })
+      await invoke('show_main_window').catch(() => {})
       await invoke('hide_hotkey_window').catch(() => {})
     } finally {
       setSending(false)
@@ -76,18 +79,12 @@ export const HotkeyWindowPage = memo(function HotkeyWindowPage() {
     .slice(0, 6)
 
   return (
-    <div
-      className="flex flex-col bg-transparent select-none"
-      style={{ minHeight: '100vh' }}
-    >
+    <div className="flex flex-col bg-transparent select-none min-h-screen">
       {/* Draggable title bar — invisible but enables window drag */}
       <div className="h-5 w-full" data-tauri-drag-region />
 
       {/* Composer card */}
-      <div
-        className="mx-2.5 mb-2 rounded-2xl border border-stroke/20 bg-surface-solid shadow-xl overflow-hidden"
-        style={{ backdropFilter: 'blur(20px)' }}
-      >
+      <div className="mx-2.5 mb-2 rounded-2xl border border-stroke/20 bg-surface-solid shadow-xl overflow-hidden backdrop-blur-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-3.5 pt-3 pb-1.5">
           <div className="flex items-center gap-2">
@@ -111,9 +108,9 @@ export const HotkeyWindowPage = memo(function HotkeyWindowPage() {
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             placeholder="Ask Codex anything..."
-            className="w-full bg-transparent text-sm text-text-1 resize-none outline-none placeholder:text-text-3 leading-relaxed"
+            className="w-full bg-transparent text-sm text-text-1 resize-none outline-none placeholder:text-text-3 leading-relaxed min-h-12 max-h-[120px]"
             rows={2}
-            style={{ minHeight: '48px', maxHeight: '120px' }}
+            aria-label="Quick prompt input"
           />
         </div>
 
@@ -130,7 +127,8 @@ export const HotkeyWindowPage = memo(function HotkeyWindowPage() {
           <button
             onClick={() => void handleSend()}
             disabled={!input.trim() || sending}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium disabled:opacity-40 hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 hover:bg-primary/90 transition-colors"
+            aria-label="Send message"
           >
             <Send size={11} />
             Send
@@ -140,11 +138,8 @@ export const HotkeyWindowPage = memo(function HotkeyWindowPage() {
 
       {/* Expanded panel — recent threads */}
       {expanded && (
-        <div
-          className="mx-2.5 mb-3 rounded-xl overflow-hidden border border-stroke/20 bg-surface-solid"
-          style={{ maxHeight: '220px', backdropFilter: 'blur(20px)' }}
-        >
-          <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>
+        <div className="mx-2.5 mb-3 rounded-xl overflow-hidden border border-stroke/20 bg-surface-solid backdrop-blur-xl max-h-56">
+          <div className="overflow-y-auto max-h-56 hide-scrollbar">
             {recentSessions.length === 0 ? (
               <div className="px-4 py-6 text-center text-text-3 text-xs">
                 No recent threads
@@ -163,7 +158,6 @@ export const HotkeyWindowPage = memo(function HotkeyWindowPage() {
                     onClick={() => {
                       void invoke('show_main_window').catch(() => {})
                       void invoke('hide_hotkey_window').catch(() => {})
-                      // Navigate main window to the thread via sessionStorage signal
                       sessionStorage.setItem('hotkey-open-thread', session.sessionId)
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-hover/[0.08] text-left transition-colors border-b border-stroke/10 last:border-b-0"

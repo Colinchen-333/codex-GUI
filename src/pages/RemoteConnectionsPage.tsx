@@ -78,17 +78,19 @@ export const RemoteConnectionsPage = memo(function RemoteConnectionsPage() {
 
                 <div className="flex items-center gap-1 shrink-0">
                   <IconButton
-                    icon={<RefreshCw size={14} />}
                     variant="ghost"
                     size="sm"
                     aria-label="Reconnect"
-                  />
+                  >
+                    <RefreshCw size={14} />
+                  </IconButton>
                   <IconButton
-                    icon={<Trash2 size={14} />}
                     variant="ghost"
                     size="sm"
                     aria-label="Remove connection"
-                  />
+                  >
+                    <Trash2 size={14} />
+                  </IconButton>
                 </div>
               </div>
             ))}

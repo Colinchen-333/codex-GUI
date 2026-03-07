@@ -101,7 +101,7 @@ export const RemoteThreadPage = memo(function RemoteThreadPage() {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-stroke/20">
         <button
           onClick={() => navigate(-1)}
-          className="p-1 rounded hover:bg-hover text-text-2 transition-colors"
+          className="p-1 rounded hover:bg-surface-hover/[0.08] text-text-2 transition-colors"
           aria-label="Go back"
         >
           <ArrowLeft size={18} />
@@ -183,7 +183,7 @@ export const RemoteThreadPage = memo(function RemoteThreadPage() {
             {task.error && (
               <div className="bg-status-error-muted rounded-xl p-4 border border-status-error/20">
                 <h3 className="text-sm font-medium text-status-error mb-2">Error</h3>
-                <pre className="text-sm text-status-error whitespace-pre-wrap font-mono">
+                <pre className="text-sm text-status-error whitespace-pre-wrap font-mono overflow-x-auto">
                   {task.error}
                 </pre>
               </div>

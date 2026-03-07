@@ -18,12 +18,24 @@ import { SkillsPage } from './pages/SkillsPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { WorktreeInitPage } from './pages/WorktreeInitPage'
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
+import { RemoteConnectionsPage } from './pages/RemoteConnectionsPage'
+import { RemoteThreadPage } from './pages/RemoteThreadPage'
 import { ThreadOverlayPage } from './pages/ThreadOverlayPage'
 import { SettingsLicensesPage } from './pages/settings/SettingsLicensesPage'
 import { SettingsSectionPage } from './pages/settings/SettingsSectionPage'
 import { SettingsShellPage } from './pages/settings/SettingsShellPage'
+import { HotkeyWindowPage } from './pages/HotkeyWindowPage'
+import { HotkeyLayout } from './components/layout/HotkeyLayout'
 
 export const router = createBrowserRouter([
+  // Hotkey mini-window — frameless transparent window, no app chrome
+  {
+    element: <HotkeyLayout />,
+    children: [
+      { path: '/hotkey-window', element: <HotkeyWindowPage /> },
+      { path: '/hotkey-window/thread/:conversationId', element: <HotkeyWindowPage /> },
+    ],
+  },
   {
     element: <StandaloneLayout />,
     children: [
@@ -50,6 +62,9 @@ export const router = createBrowserRouter([
       { path: '/skills', element: <SkillsPage /> },
       { path: '/thread-overlay', element: <ThreadOverlayPage /> },
       { path: '/thread-overlay/:conversationId', element: <ThreadOverlayPage /> },
+      { path: '/remote/:taskId', element: <RemoteThreadPage /> },
+      { path: '/remote-conversation/:conversationId', element: <RemoteThreadPage /> },
+      { path: '/remote-connections', element: <RemoteConnectionsPage /> },
       {
         path: '/settings',
         element: <SettingsShellPage />,

@@ -137,6 +137,64 @@ pub async fn stop_keep_awake(state: State<'_, CaffeinateState>) -> Result<(), St
     Ok(())
 }
 
+/// Show or create the hotkey quick-prompt mini-window
+#[tauri::command]
+pub async fn show_hotkey_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Reuse existing window if it was already created
+    if let Some(window) = app_handle.get_webview_window("hotkey") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    // Create a new frameless, always-on-top, transparent mini-window
+    let window = tauri::WebviewWindowBuilder::new(
+        &app_handle,
+        "hotkey",
+        tauri::WebviewUrl::App("/hotkey-window".into()),
+    )
+    .title("Codex Quick Prompt")
+    .inner_size(440.0, 220.0)
+    .min_inner_size(320.0, 160.0)
+    .max_inner_size(560.0, 480.0)
+    .resizable(false)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .visible_on_all_workspaces(true)
+    .shadow(true)
+    .center()
+    .build()
+    .map_err(|e| format!("Failed to create hotkey window: {}", e))?;
+
+    let _ = window.show();
+    let _ = window.set_focus();
+
+    tracing::info!("Hotkey window created and shown");
+    Ok(())
+}
+
+/// Hide the hotkey mini-window without destroying it (keeps it ready to reuse)
+#[tauri::command]
+pub async fn hide_hotkey_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app_handle.get_webview_window("hotkey") {
+        let _ = window.hide();
+        tracing::debug!("Hotkey window hidden");
+    }
+    Ok(())
+}
+
+/// Bring the main window to the front
+#[tauri::command]
+pub async fn show_main_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+    Ok(())
+}
+
 /// Check if caffeinate is currently active
 #[tauri::command]
 pub async fn is_keep_awake_active(state: State<'_, CaffeinateState>) -> Result<bool, String> {

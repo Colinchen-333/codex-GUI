@@ -327,6 +327,8 @@ pub fn run() {
             // MCP server status (paginated) + OAuth
             commands::app_server::list_mcp_server_status,
             commands::app_server::mcp_server_oauth_login,
+            // Git worker proxy
+            commands::app_server::git_worker_request,
             // Allowlist commands
             commands::allowlist::get_allowlist,
             commands::allowlist::add_to_allowlist,
@@ -354,6 +356,10 @@ pub fn run() {
             commands::system::start_keep_awake,
             commands::system::stop_keep_awake,
             commands::system::is_keep_awake_active,
+            // Hotkey mini-window
+            commands::system::show_hotkey_window,
+            commands::system::hide_hotkey_window,
+            commands::system::show_main_window,
             // Diagnostics
             commands::system::get_app_paths,
             commands::system::get_log_tail,

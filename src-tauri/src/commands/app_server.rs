@@ -881,3 +881,57 @@ pub async fn mcp_server_oauth_login(
         .await?;
     Ok(response)
 }
+
+// ==================== Git Worker Proxy ====================
+
+/// Generic proxy for the git worker channel.
+///
+/// Mirrors the official `codex_desktop:worker:git:from-view/for-view` channel
+/// by forwarding requests to the app-server JSON-RPC endpoint with `cwd`
+/// injected into params.  The frontend (`src/lib/gitWorker.ts`) owns all
+/// caching and cache-invalidation logic; this command is a thin, stateless
+/// pass-through.
+///
+/// Supported methods (16 total):
+///   stable-metadata, current-branch, upstream-branch, branch-ahead-count,
+///   recent-branches, branch-changes, status-summary,
+///   staged-and-unstaged-changes, untracked-changes,
+///   tracked-uncommitted-changes, index-info, submodule-paths,
+///   synced-branch, synced-branch-state, default-branch, base-branch
+#[tauri::command]
+pub async fn git_worker_request(
+    state: State<'_, AppState>,
+    method: String,
+    cwd: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    // Inject `cwd` into the params object so the app-server knows which
+    // repository to query, regardless of what extra fields the caller passed.
+    let full_params = match params {
+        serde_json::Value::Object(mut map) => {
+            map.insert("cwd".to_string(), serde_json::Value::String(cwd));
+            serde_json::Value::Object(map)
+        }
+        // Caller passed null / non-object — build a fresh object with just cwd.
+        _ => {
+            let mut map = serde_json::Map::new();
+            map.insert("cwd".to_string(), serde_json::Value::String(cwd));
+            serde_json::Value::Object(map)
+        }
+    };
+
+    tracing::debug!("git_worker_request: method={}", method);
+
+    let response: serde_json::Value = server
+        .send_request(&method, full_params)
+        .await
+        .map_err(|e| crate::Error::AppServer(format!("Git worker request '{}' failed: {}", method, e)))?;
+
+    Ok(response)
+}

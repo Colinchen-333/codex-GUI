@@ -20,6 +20,7 @@ import { useSessionsStore } from '../../stores/sessions'
 import { useToast } from '../ui/useToast'
 import { PanelLeftOpen } from 'lucide-react'
 import { isTauriAvailable } from '../../lib/tauri'
+import { CollaborationBar } from '../chat/CollaborationBar'
 
 export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
@@ -157,6 +158,7 @@ export function AppShell() {
         >
           <div className="flex flex-1 overflow-hidden">
             <div className="flex flex-1 flex-col overflow-hidden">
+              <CollaborationBar />
               <PageTransition className="flex flex-1 flex-col overflow-hidden">
                 <Outlet context={{ onToggleRightPanel: handleToggleRightPanel, rightPanelOpen, onOpenCommitDialog: handleOpenCommitDialog }} />
               </PageTransition>

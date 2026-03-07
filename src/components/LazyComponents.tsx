@@ -100,7 +100,7 @@ export const LazyCreatePRDialog = lazy(
  */
 function LazyErrorFallback({ onRetry }: { onRetry?: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-overlay backdrop-blur-sm">
       <div className="w-full max-w-md rounded-lg bg-surface-solid shadow-xl border border-stroke/20 p-6 text-center">
         <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-status-error-muted">
           <AlertTriangle size={18} className="text-status-error" />

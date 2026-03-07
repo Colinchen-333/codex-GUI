@@ -94,7 +94,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
       role="presentation"
       aria-hidden="false"

@@ -116,7 +116,7 @@ export function AutomationCard({ automation, onToggle, onEdit, onDelete }: Autom
               <MoreHorizontal size={14} />
             </IconButton>
             {menuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg border border-stroke/20 bg-surface-solid py-1 shadow-[var(--shadow-2)]">
+              <div className="absolute right-0 top-full z-dropdown mt-1 w-36 rounded-lg border border-stroke/20 bg-surface-solid py-1 shadow-[var(--shadow-2)]">
                 <button
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-2 hover:bg-surface-hover/[0.08]"
                   onClick={() => {

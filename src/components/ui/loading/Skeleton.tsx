@@ -67,7 +67,7 @@ export interface DialogSkeletonProps {
 
 export function DialogSkeleton({ title = 'Loading...', className }: DialogSkeletonProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-overlay">
       <div
         className={cn(
           'w-full max-w-md rounded-lg bg-background shadow-xl animate-in zoom-in-95 duration-200',
@@ -119,7 +119,7 @@ export function DialogSkeleton({ title = 'Loading...', className }: DialogSkelet
  */
 export function SettingsDialogSkeleton() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm p-8">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-overlay backdrop-blur-sm p-8">
       <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-2xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-200">
         {/* Sidebar skeleton */}
         <div className="w-60 bg-surface-solid/80 p-6 border-r border-stroke/20 flex flex-col gap-1">
@@ -160,7 +160,7 @@ export function SettingsDialogSkeleton() {
  */
 export function ListDialogSkeleton({ title = 'Loading...' }: { title?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-overlay backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 max-h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">
@@ -199,7 +199,7 @@ export function ListDialogSkeleton({ title = 'Loading...' }: { title?: string })
  */
 export function FormDialogSkeleton({ title = 'Loading...' }: { title?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-overlay">
       <div className="w-full max-w-lg rounded-lg bg-background shadow-xl animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-stroke/20 px-6 py-4">

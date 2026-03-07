@@ -156,20 +156,23 @@ export function FindInThread({ isOpen, onClose, containerRef }: FindInThreadProp
       <button
         onClick={() => navigateMatch('prev')}
         disabled={matches.length === 0}
-        className="p-0.5 rounded hover:bg-surface-hover/[0.08] disabled:opacity-30"
+        className="p-0.5 rounded hover:bg-surface-hover/[0.08] disabled:opacity-30 transition-colors"
+        aria-label="Previous match"
       >
         <ChevronUp size={14} className="text-text-2" />
       </button>
       <button
         onClick={() => navigateMatch('next')}
         disabled={matches.length === 0}
-        className="p-0.5 rounded hover:bg-surface-hover/[0.08] disabled:opacity-30"
+        className="p-0.5 rounded hover:bg-surface-hover/[0.08] disabled:opacity-30 transition-colors"
+        aria-label="Next match"
       >
         <ChevronDown size={14} className="text-text-2" />
       </button>
       <button
         onClick={onClose}
-        className="p-0.5 rounded hover:bg-surface-hover/[0.08]"
+        className="p-0.5 rounded hover:bg-surface-hover/[0.08] transition-colors"
+        aria-label="Close search"
       >
         <X size={14} className="text-text-3" />
       </button>

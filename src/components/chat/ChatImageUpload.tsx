@@ -185,7 +185,7 @@ export const DragOverlay = memo(function DragOverlay({
 }) {
   return (
     <div
-      className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary/10 via-background/95 to-primary/10 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
+      className="absolute inset-0 z-overlay flex items-center justify-center bg-gradient-to-br from-primary/10 via-background/95 to-primary/10 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       onDragOver={(e) => e.preventDefault()}

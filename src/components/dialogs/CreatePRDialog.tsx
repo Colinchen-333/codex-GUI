@@ -182,7 +182,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
   if (!tauriAvailable) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+        className="fixed inset-0 z-modal flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
         onClick={handleBackdropClick}
         role="presentation"
       >
@@ -222,7 +222,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
   if (!selectedProject?.path) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+        className="fixed inset-0 z-modal flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
         onClick={handleBackdropClick}
         role="presentation"
       >
@@ -261,7 +261,7 @@ export function CreatePRDialog({ isOpen, onClose }: CreatePRDialogProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
       role="presentation"
     >

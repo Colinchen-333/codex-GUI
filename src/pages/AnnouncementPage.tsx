@@ -14,7 +14,7 @@ export function AnnouncementPage() {
   }
 
   return (
-    <div className="bg-background pointer-events-auto fixed inset-0 z-50 flex h-full w-full items-center justify-center overflow-hidden px-8 py-10 text-center">
+    <div className="bg-background pointer-events-auto fixed inset-0 z-modal flex h-full w-full items-center justify-center overflow-hidden px-8 py-10 text-center">
       <div className="relative m-auto flex h-full max-w-lg flex-col justify-between gap-10 overflow-auto">
         <div className="flex-1" />
         

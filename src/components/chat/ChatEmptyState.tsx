@@ -84,6 +84,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
         <button
           onClick={onProjectSelect}
           className="flex items-center justify-center gap-1 text-text-3 cursor-pointer hover:text-text-2 transition-colors mx-auto"
+          aria-label="Select project"
         >
           <span className="text-lg">{resolvedProjectName}</span>
           <ChevronDown size={20} />
@@ -96,6 +97,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
             key={index}
             onClick={() => onSuggestionClick?.(card.text)}
             className="bg-surface-solid border border-stroke/10 p-5 rounded-2xl hover:border-ring/50 cursor-pointer transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Suggestion: ${card.text}`}
           >
             <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stroke/10 bg-surface-hover/[0.06]">
               {card.icon}

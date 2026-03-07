@@ -223,7 +223,7 @@ export function ChatView() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden relative">
       {shouldShowContinue && (
-        <div className="absolute right-8 top-6 z-10">
+        <div className="absolute right-8 top-6 z-sticky">
           <button
             className="rounded-full border border-stroke/20 bg-surface-hover/[0.08] px-4 py-2 text-sm font-semibold text-text-2 shadow-[var(--shadow-1)] transition-colors hover:bg-surface-hover/[0.14]"
             onClick={handleQuickContinue}
@@ -254,7 +254,7 @@ export function ChatView() {
       <button
         onClick={handleScrollToBottom}
         className={cn(
-          'absolute bottom-28 right-6 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-stroke bg-surface-solid shadow-lg transition-all duration-200',
+          'absolute bottom-28 right-6 z-sticky flex h-9 w-9 items-center justify-center rounded-full border border-stroke bg-surface-solid shadow-lg transition-all duration-200',
           showScrollButton
             ? 'opacity-100 translate-y-0'
             : 'pointer-events-none opacity-0 translate-y-2'

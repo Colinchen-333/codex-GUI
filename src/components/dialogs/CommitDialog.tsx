@@ -363,7 +363,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
   if (!tauriAvailable) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+        className="fixed inset-0 z-modal flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
         onClick={handleBackdropClick}
         role="presentation"
       >
@@ -403,7 +403,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
   if (!selectedProject?.path) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+        className="fixed inset-0 z-modal flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
         onClick={handleBackdropClick}
         role="presentation"
       >
@@ -442,7 +442,7 @@ export function CommitDialog({ isOpen, initialIntent = 'commit', onClose }: Comm
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-overlay-heavy backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
       role="presentation"
     >

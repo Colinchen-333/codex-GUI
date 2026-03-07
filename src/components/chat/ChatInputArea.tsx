@@ -142,6 +142,7 @@ export default memo(function ChatInputArea({
   const models = useModelsStore((state) => state.models)
   const fetchModels = useModelsStore((state) => state.fetchModels)
   const updateSetting = useSettingsStore((state) => state.updateSetting)
+  const addToPromptHistory = useSettingsStore((state) => state.addToPromptHistory)
   const { toast } = useToast()
 
   const gitInfo = useProjectsStore((state) =>
@@ -258,14 +259,15 @@ export default memo(function ChatInputArea({
     restoreFocus()
   }, [setInputValue, setShowSlashCommands, restoreFocus])
 
-  // Wrapped onSend to add command to history
+  // Wrapped onSend to add command to history (both session navigation store and persisted settings)
   const handleSendWithHistory = useCallback(async () => {
     const text = inputValue.trim()
     if (text) {
       addToHistory(text)
+      addToPromptHistory(text)
     }
     await onSend()
-  }, [inputValue, addToHistory, onSend])
+  }, [inputValue, addToHistory, addToPromptHistory, onSend])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

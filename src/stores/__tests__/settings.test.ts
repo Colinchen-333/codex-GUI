@@ -43,6 +43,7 @@ const defaultSettings: Settings = {
   skipFullAccessConfirm: false,
   bestOfN: 1,
   skipBranchMismatchConfirm: false,
+  promptHistory: [],
 }
 
 describe('useSettingsStore', () => {

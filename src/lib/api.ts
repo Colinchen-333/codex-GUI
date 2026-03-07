@@ -869,11 +869,78 @@ export const serverApi = {
 // ==================== Config API ====================
 
 export const configApi = {
-  read: (includeLayers?: boolean) =>
-    invoke<ConfigReadResponse>('read_config', { includeLayers }),
+  /**
+   * Read the resolved configuration, optionally including per-layer details.
+   * Pass `cwd` to resolve project-scoped config layers for a specific directory.
+   * Maps to `config/read`.
+   */
+  read: (includeLayers = false, cwd?: string) =>
+    invokeOrFallback<ConfigReadResponse>(
+      { config: {}, layers: null, origins: {} },
+      'read_config',
+      { includeLayers, cwd },
+    ),
 
+  /**
+   * Legacy single-key write (maps to `config/write`).
+   * Prefer `writeValue` for new callers.
+   */
   write: (key: string, value: string | number | boolean | null) =>
     invoke<void>('write_config', { key, value }),
+
+  /**
+   * Write a single config value by dot-separated key path.
+   * Maps to the official `config/value/write` JSON-RPC method.
+   *
+   * @param keyPath - Dot-separated key path, e.g. `"model"` or `"sandbox.policy"`
+   * @param value - JSON-serialisable value to store
+   * @param options.mergeStrategy - `"replace"` (default) or `"merge"` for objects
+   * @param options.filePath - Target config file path (defaults to user config)
+   * @param options.expectedVersion - Optimistic-concurrency token for conflict detection
+   */
+  writeValue: (
+    keyPath: string,
+    value: unknown,
+    options?: {
+      mergeStrategy?: string;
+      filePath?: string;
+      expectedVersion?: string;
+    },
+  ) =>
+    invokeOrFallback<Record<string, unknown>>(
+      {},
+      'write_config_value',
+      { keyPath, value, ...options },
+    ),
+
+  /**
+   * Atomically write multiple config values in a single request.
+   * Maps to the official `config/batchWrite` JSON-RPC method.
+   *
+   * @param edits - Array of `{ keyPath, value, mergeStrategy? }` objects
+   * @param filePath - Target config file (all edits land in the same file)
+   * @param expectedVersion - Optimistic-concurrency token applied to all edits
+   */
+  batchWrite: (
+    edits: Array<{ keyPath: string; value: unknown; mergeStrategy?: string }>,
+    filePath?: string,
+    expectedVersion?: string,
+  ) =>
+    invokeOrFallback<Record<string, unknown>>(
+      {},
+      'batch_write_config',
+      { edits, filePath, expectedVersion },
+    ),
+
+  /**
+   * Read schema requirements the app-server enforces for config keys.
+   * Maps to the official `configRequirements/read` JSON-RPC method.
+   */
+  readRequirements: () =>
+    invokeOrFallback<{ requirements: unknown }>(
+      { requirements: null },
+      'read_config_requirements',
+    ),
 }
 
 // ==================== Model API ====================
@@ -1150,6 +1217,158 @@ export const automationApi = {
 
   listRuns: (automationId: string) =>
     invoke<AutomationRun[]>('list_automation_runs', { automationId }),
+}
+
+// ==================== Experimental Features API ====================
+
+export interface ExperimentalFeatureEntry {
+  name: string
+  enabled: boolean
+  description?: string
+}
+
+export interface ExperimentalFeatureListResponse {
+  data: ExperimentalFeatureEntry[]
+  nextCursor: string | null
+}
+
+export const experimentalFeaturesApi = {
+  /**
+   * List experimental feature flags (app-server `experimentalFeature/list`).
+   * Falls back to empty list when app-server is unavailable.
+   */
+  list: (cursor?: string, limit = 100) =>
+    invokeOrFallback<ExperimentalFeatureListResponse>(
+      { data: [], nextCursor: null },
+      'list_experimental_features',
+      { cursor, limit }
+    ),
+
+  /**
+   * Toggle an experimental feature on or off.
+   * Persists via `config/write` with key `experimentalFeatures.<name>`.
+   */
+  toggle: (name: string, enabled: boolean) =>
+    invokeOrFallback<void>(
+      undefined,
+      'toggle_experimental_feature',
+      { name, enabled }
+    ),
+}
+
+// ==================== MCP API ====================
+// Paginated MCP server status and OAuth flows for MCP connectors.
+
+export const mcpApi = {
+  /**
+   * List MCP server statuses with cursor-based pagination.
+   * Maps to app-server `mcpServerStatus/list`.
+   * Falls back to an empty page when not running in Tauri.
+   */
+  listServerStatus: (cursor?: string, limit = 100) =>
+    invokeOrFallback<McpServerStatusResponse>(
+      { data: [], nextCursor: null },
+      'list_mcp_server_status',
+      { cursor, limit }
+    ),
+
+  /**
+   * Initiate an OAuth login flow for a named MCP server.
+   * Maps to app-server `mcpServer/oauth/login`.
+   * Returns the redirect URL (and any state) that the frontend should open.
+   */
+  oauthLogin: (serverName: string, scope?: string) =>
+    invokeOrFallback<Record<string, unknown>>(
+      {},
+      'mcp_server_oauth_login',
+      { serverName, scope }
+    ),
+}
+
+// ==================== File Search API ====================
+
+export interface FileSearchResult {
+  /** Relative or absolute path to the matched file */
+  path: string
+  /** Relevance score — higher is a better match */
+  score: number
+}
+
+export interface FileSearchResponse {
+  results: FileSearchResult[]
+}
+
+export interface FileSearchSessionStartResponse {
+  /** Opaque session identifier — pass to sessionUpdate / sessionStop */
+  sessionId: string
+  results: FileSearchResult[]
+}
+
+/**
+ * Fuzzy file search API
+ *
+ * Mirrors the official Codex Desktop file-search protocol:
+ *   - `fuzzyFileSearch`               → one-shot search
+ *   - `fuzzyFileSearch/sessionStart`  → start incremental session
+ *   - `fuzzyFileSearch/sessionUpdate` → update query within session
+ *   - `fuzzyFileSearch/sessionStop`   → close session
+ */
+export const fileSearchApi = {
+  /**
+   * One-shot fuzzy file search.
+   * Falls back to `{ results: [] }` when Tauri is unavailable (web/dev mode).
+   */
+  search: (query: string, cwd?: string, limit = 50) =>
+    invokeOrFallback<FileSearchResponse>({ results: [] }, 'fuzzy_file_search', { query, cwd, limit }),
+
+  /**
+   * Start a search session.  The session keeps state server-side so that
+   * rapid query updates are batched efficiently.
+   * Returns the initial result set together with a `sessionId`.
+   */
+  sessionStart: (query: string, cwd?: string) =>
+    invokeOrFallback<FileSearchSessionStartResponse>(
+      { sessionId: '', results: [] },
+      'fuzzy_file_search_session_start',
+      { query, cwd }
+    ),
+
+  /**
+   * Update the active query within an existing session.
+   * Returns a new result set for the updated query.
+   */
+  sessionUpdate: (sessionId: string, query: string) =>
+    invokeOrFallback<FileSearchResponse>({ results: [] }, 'fuzzy_file_search_session_update', { sessionId, query }),
+
+  /**
+   * Close the session and release server-side resources.
+   * Safe to call even if the session has already expired.
+   */
+  sessionStop: (sessionId: string) =>
+    invokeOrFallback<null>(null, 'fuzzy_file_search_session_stop', { sessionId }),
+}
+
+// ==================== Git Worker API ====================
+
+export const gitWorkerApi = {
+  /** Get diff between local and remote branch */
+  diffToRemote: (cwd: string, branch?: string) =>
+    invokeOrFallback<{ diff: string | null }>({ diff: null }, 'git_diff_to_remote', { cwd, branch }),
+}
+
+// ==================== Collaboration API ====================
+
+export interface CollaborationMode {
+  id: string
+  name: string
+  description: string
+  enabled: boolean
+}
+
+export const collaborationApi = {
+  /** List available collaboration modes */
+  list: () =>
+    invokeOrFallback<{ data: CollaborationMode[] }>({ data: [] }, 'list_collaboration_modes'),
 }
 
 // ==================== Cache Utilities (P2.2) ====================

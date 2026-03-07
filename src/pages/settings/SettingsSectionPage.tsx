@@ -12,11 +12,14 @@ import { UsageSettings } from './UsageSettings'
 import { WorktreesSettingsPage } from './WorktreesSettingsPage'
 import { ShortcutsSettings } from './ShortcutsSettings'
 import { AboutSettings } from './AboutSettings'
+import { EnvironmentsSettings } from './EnvironmentsSettings'
+import { ExperimentalFeaturesSettings } from './ExperimentalFeaturesSettings'
 
 type SettingsSectionId =
   | 'account' | 'general' | 'configuration' | 'sandbox' | 'git'
   | 'archived-threads' | 'personalization' | 'usage'
   | 'worktrees' | 'mcp' | 'skills' | 'shortcuts' | 'about'
+  | 'environments' | 'experimental'
 
 function normalizeSection(section?: string): SettingsSectionId {
   switch (section) {
@@ -32,6 +35,8 @@ function normalizeSection(section?: string): SettingsSectionId {
     case 'skills':
     case 'shortcuts':
     case 'about':
+    case 'environments':
+    case 'experimental':
       return section
     // Legacy routes
     case 'model':
@@ -78,6 +83,10 @@ export function SettingsSectionPage() {
         return <ShortcutsSettings />
       case 'about':
         return <AboutSettings />
+      case 'environments':
+        return <EnvironmentsSettings />
+      case 'experimental':
+        return <ExperimentalFeaturesSettings />
       case 'general':
       default:
         return <GeneralSettings />

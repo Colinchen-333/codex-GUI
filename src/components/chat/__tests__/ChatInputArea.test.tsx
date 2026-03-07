@@ -32,8 +32,15 @@ vi.mock('../../../stores/settings', () => ({
         model: 'gpt-5.2-codex',
         reasoningEffort: 'medium',
         approvalPolicy: 'on-request',
+        enterBehavior: 'enter',
+        agentMode: 'auto',
+        autoContextEnabled: true,
+        fastMode: true,
+        planMode: false,
+        skipFullAccessConfirm: false,
       },
       updateSetting: vi.fn(),
+      addToPromptHistory: vi.fn(),
     }
     return typeof selector === 'function' ? selector(state) : state
   }),

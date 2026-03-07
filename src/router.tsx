@@ -17,6 +17,7 @@ import { SelectWorkspacePage } from './pages/SelectWorkspacePage'
 import { SkillsPage } from './pages/SkillsPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { WorktreeInitPage } from './pages/WorktreeInitPage'
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
 import { ThreadOverlayPage } from './pages/ThreadOverlayPage'
 import { SettingsLicensesPage } from './pages/settings/SettingsLicensesPage'
 import { SettingsSectionPage } from './pages/settings/SettingsSectionPage'
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: '/first-run', element: <FirstRunPage /> },
       { path: '/announcement', element: <AnnouncementPage /> },
       { path: '/worktree-init-v2/:pendingWorktreeId', element: <WorktreeInitPage /> },
+      { path: '/connector/oauth_callback', element: <OAuthCallbackPage /> },
     ],
   },
   {

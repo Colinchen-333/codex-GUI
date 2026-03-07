@@ -2676,6 +2676,131 @@ pre[class*=language-] {
   backdrop-filter: blur(10px);
 }
 
+/* ==========================================================================
+   Hotkey Window Tokens (Official Codex v26.305)
+   ========================================================================== */
+
+:root {
+  --hotkey-window-home-collapsed-height: 152px;
+  --hotkey-window-home-expanded-height: 340px;
+  --hotkey-window-home-handle-zone-height: calc(var(--spacing) * 5);
+  --hotkey-window-home-inline-menu-panel-background: color-mix(in oklab, var(--color-token-dropdown-background, hsl(var(--surface-solid))) 95%, transparent);
+  --hotkey-window-home-menu-horizontal-inset: 50px;
+  --hotkey-window-home-menu-neck-horizontal-outset: calc(var(--spacing) * 1);
+  --hotkey-window-home-menu-neck-radius: calc(var(--spacing) * 4);
+  --hotkey-window-home-menu-neck-vertical-lift: calc(var(--spacing) * 3 + 3px);
+  --hotkey-window-home-menu-overlap: calc(var(--spacing) * 5);
+  --hotkey-window-home-overlay-max-height: calc(var(--hotkey-window-home-expanded-height) - var(--hotkey-window-home-collapsed-height));
+}
+
+/* ==========================================================================
+   Diff Virtualization (Official Codex v26.305)
+   ========================================================================== */
+
+.diff-chunk-virtual {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40vh;
+}
+
+.thread-message-virtual {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
+/* ==========================================================================
+   Container Query: Inbox Toolbar (Official)
+   ========================================================================== */
+
+.inbox-toolbar-container {
+  container: inbox-toolbar / inline-size;
+}
+
+@container inbox-toolbar (max-width: 260px) {
+  .inbox-toolbar-collapse {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Scroll-driven Edge Fade (Both Directions)
+   ========================================================================== */
+
+.vertical-scroll-fade-mask-both {
+  --edge-fade-distance: 2rem;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black var(--edge-fade-distance),
+    black calc(100% - var(--edge-fade-distance)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black var(--edge-fade-distance),
+    black calc(100% - var(--edge-fade-distance)),
+    transparent 100%
+  );
+}
+
+.horizontal-scroll-fade-mask {
+  --edge-fade-distance: 2rem;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black var(--edge-fade-distance),
+    black calc(100% - var(--edge-fade-distance)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black var(--edge-fade-distance),
+    black calc(100% - var(--edge-fade-distance)),
+    transparent 100%
+  );
+}
+
+/* ==========================================================================
+   Subagent Indicator (Official)
+   ========================================================================== */
+
+.subagent-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, hsl(var(--primary)) 12%, transparent);
+  color: hsl(var(--primary));
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Sync Dot (Official)
+   ========================================================================== */
+
+@keyframes sync-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: hsl(var(--primary));
+  animation: sync-pulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-dot {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

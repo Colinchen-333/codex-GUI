@@ -487,6 +487,19 @@ impl IpcBridge {
             "writeSkillConfig" => "skills/config/write",
             "uploadFeedback" => "feedback/upload",
             "listApps" => "app/list",
+            // MCP server status + OAuth
+            "listMcpServerStatus" => "mcpServerStatus/list",
+            "mcpServerOauthLogin" => "mcpServer/oauth/login",
+            // Config layer methods
+            "readConfig" => "config/read",
+            "writeConfigValue" => "config/value/write",
+            "batchWriteConfigValue" => "config/batchWrite",
+            "getConfigRequirements" => "configRequirements/read",
+            // Fuzzy file search
+            "fuzzyFileSearch" => "fuzzyFileSearch",
+            "fuzzyFileSearchSessionStart" => "fuzzyFileSearch/sessionStart",
+            "fuzzyFileSearchSessionUpdate" => "fuzzyFileSearch/sessionUpdate",
+            "fuzzyFileSearchSessionStop" => "fuzzyFileSearch/sessionStop",
             _ => method,
         }
     }

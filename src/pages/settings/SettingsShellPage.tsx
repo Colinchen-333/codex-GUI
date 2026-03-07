@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Settings, Shield, User, HardDrive, FileText, Keyboard, Info, Server, GitBranch, Sparkles, Sliders, BarChart3, Archive, Zap } from 'lucide-react'
+import { Settings, Shield, User, HardDrive, FileText, Keyboard, Info, Server, GitBranch, Sparkles, Sliders, BarChart3, Archive, Zap, MonitorDot } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const SETTINGS_NAV = [
@@ -11,6 +11,7 @@ const SETTINGS_NAV = [
   { id: 'archived-threads', label: 'Archived threads', icon: Archive },
   { id: 'personalization', label: 'Personalization', icon: Sparkles },
   { id: 'usage', label: 'Usage', icon: BarChart3 },
+  { id: 'environments', label: 'Environments', icon: MonitorDot },
   { id: 'worktrees', label: 'Worktrees', icon: HardDrive },
   { id: 'mcp', label: 'MCP servers', icon: Server },
   { id: 'skills', label: 'Skills', icon: Zap },

@@ -305,6 +305,9 @@ pub fn run() {
             // Config commands
             commands::app_server::read_config,
             commands::app_server::write_config,
+            commands::app_server::write_config_value,
+            commands::app_server::batch_write_config,
+            commands::app_server::read_config_requirements,
             // Skills config
             commands::app_server::write_skill_config,
             // Feedback
@@ -313,6 +316,17 @@ pub fn run() {
             commands::app_server::list_apps,
             // Account rate limits
             commands::app_server::get_account_rate_limits,
+            // Fuzzy file search
+            commands::app_server::fuzzy_file_search,
+            commands::app_server::fuzzy_file_search_session_start,
+            commands::app_server::fuzzy_file_search_session_update,
+            commands::app_server::fuzzy_file_search_session_stop,
+            // Experimental features
+            commands::app_server::list_experimental_features,
+            commands::app_server::toggle_experimental_feature,
+            // MCP server status (paginated) + OAuth
+            commands::app_server::list_mcp_server_status,
+            commands::app_server::mcp_server_oauth_login,
             // Allowlist commands
             commands::allowlist::get_allowlist,
             commands::allowlist::add_to_allowlist,

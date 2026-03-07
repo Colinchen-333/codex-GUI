@@ -40,6 +40,7 @@ export interface Settings {
   skipFullAccessConfirm: boolean
   bestOfN: number
   skipBranchMismatchConfirm: boolean
+  promptHistory: string[]
 }
 
 const defaultSettings: Settings = {
@@ -58,6 +59,7 @@ const defaultSettings: Settings = {
   skipFullAccessConfirm: false,
   bestOfN: 1,
   skipBranchMismatchConfirm: false,
+  promptHistory: [],
 }
 
 export interface SettingsState {
@@ -66,7 +68,11 @@ export interface SettingsState {
   // Actions
   updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void
   resetSettings: () => void
+  addToPromptHistory: (prompt: string) => void
+  clearPromptHistory: () => void
 }
+
+const MAX_PROMPT_HISTORY = 50
 
 // Valid values for settings (used for migration)
 const VALID_SANDBOX_MODES = ['read-only', 'workspace-write', 'danger-full-access']
@@ -86,10 +92,26 @@ export const useSettingsStore = create<SettingsState>()(
       resetSettings: () => {
         set({ settings: defaultSettings })
       },
+
+      addToPromptHistory: (prompt: string) => {
+        set((state) => {
+          // Deduplicate: remove existing occurrence of this prompt, then prepend
+          const history = state.settings.promptHistory.filter((p) => p !== prompt)
+          history.unshift(prompt)
+          if (history.length > MAX_PROMPT_HISTORY) history.pop()
+          return { settings: { ...state.settings, promptHistory: history } }
+        })
+      },
+
+      clearPromptHistory: () => {
+        set((state) => ({
+          settings: { ...state.settings, promptHistory: [] },
+        }))
+      },
     }),
     {
       name: 'codex-desktop-settings',
-      version: 6, // Increment when settings format changes
+      version: 7, // Increment when settings format changes
       migrate: (persistedState, version) => {
         if (!persistedState || typeof persistedState !== 'object' || !('settings' in persistedState)) {
           return { settings: defaultSettings }
@@ -167,6 +189,12 @@ export const useSettingsStore = create<SettingsState>()(
           }
           if (typeof settings.skipBranchMismatchConfirm !== 'boolean') {
             settings.skipBranchMismatchConfirm = defaultSettings.skipBranchMismatchConfirm
+          }
+        }
+
+        if (version < 7) {
+          if (!Array.isArray(settings.promptHistory)) {
+            settings.promptHistory = defaultSettings.promptHistory
           }
         }
 

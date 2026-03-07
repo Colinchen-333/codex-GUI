@@ -392,6 +392,45 @@ export async function setupEventListeners(
   return validUnlisteners
 }
 
+// ==================== Standalone Event Subscriptions ====================
+
+// Turn plan delta (granular streaming of plan updates)
+export interface TurnPlanDeltaEvent {
+  threadId: string
+  turnId: string
+  delta: unknown
+}
+export function onTurnPlanDelta(callback: (event: TurnPlanDeltaEvent) => void) {
+  return listen<TurnPlanDeltaEvent>('turn-plan-delta', (e) => callback(e.payload))
+}
+
+// Background terminal cleanup (thread-background-terminals-clean)
+export interface BackgroundTerminalCleanEvent {
+  threadId: string
+  terminalIds: string[]
+}
+export function onBackgroundTerminalClean(callback: (event: BackgroundTerminalCleanEvent) => void) {
+  return listen<BackgroundTerminalCleanEvent>('thread-background-terminals-clean', (e) => callback(e.payload))
+}
+
+// Config key changed (config-changed)
+export interface ConfigChangedEvent {
+  key: string
+  value: unknown
+}
+export function onConfigChanged(callback: (event: ConfigChangedEvent) => void) {
+  return listen<ConfigChangedEvent>('config-changed', (e) => callback(e.payload))
+}
+
+// MCP server status changed (mcp-server-status-changed)
+export interface McpServerStatusChangedEvent {
+  serverName: string
+  status: string
+}
+export function onMcpServerStatusChanged(callback: (event: McpServerStatusChangedEvent) => void) {
+  return listen<McpServerStatusChangedEvent>('mcp-server-status-changed', (e) => callback(e.payload))
+}
+
 // Cleanup all listeners with error handling
 export function cleanupEventListeners(unlisteners: UnlistenFn[]) {
   unlisteners.forEach((unlisten) => {

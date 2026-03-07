@@ -88,7 +88,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-overlay backdrop-blur-sm p-4">
       <div className="w-full max-w-lg bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 rounded-3xl p-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Progress indicator */}
         <div className="mb-10 flex justify-center gap-2">

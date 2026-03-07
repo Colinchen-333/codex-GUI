@@ -117,7 +117,7 @@ export function RenameDialog({
 
   return (
     <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-overlay backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
       role="presentation"
       aria-hidden="false"

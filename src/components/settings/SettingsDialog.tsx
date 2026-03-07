@@ -195,7 +195,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-bg/80 backdrop-blur-sm p-8">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-overlay backdrop-blur-sm p-8">
       <div className="flex h-[620px] w-full max-w-5xl overflow-hidden rounded-2xl bg-surface-solid shadow-[var(--shadow-2)] border border-stroke/20 animate-in zoom-in-95 duration-300">
         {/* Sidebar */}
         <SettingsSidebar

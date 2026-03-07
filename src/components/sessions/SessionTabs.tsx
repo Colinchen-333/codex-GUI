@@ -749,6 +749,7 @@ const SessionTab = memo(function SessionTab({
           isLoading && 'cursor-not-allowed opacity-0'
         )}
         title="Close session"
+        aria-label="Close session"
       >
         <X size={12} />
       </button>

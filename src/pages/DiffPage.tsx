@@ -730,6 +730,7 @@ export function DiffPage() {
             className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
             onClick={() => void fetchDiff()}
             title="Refresh"
+            aria-label="Refresh diff"
           >
             <RefreshCw size={14} />
           </button>
@@ -737,6 +738,7 @@ export function DiffPage() {
             className="rounded-full border border-stroke/20 bg-surface-solid p-1.5 text-text-3 shadow-[var(--shadow-1)] hover:bg-surface-hover/[0.12] hover:text-text-1"
             onClick={() => void handleCopyDiff()}
             title="Copy diff"
+            aria-label="Copy diff to clipboard"
             disabled={!diffText}
           >
             <Copy size={14} />
@@ -746,6 +748,7 @@ export function DiffPage() {
             onClick={() => void handleOpenInVSCode()}
             disabled={!tauriAvailable}
             title="Open in VS Code"
+            aria-label="Open in VS Code"
           >
             <Code2 size={14} />
           </button>
@@ -754,6 +757,7 @@ export function DiffPage() {
             onClick={() => dispatchAppEvent(APP_EVENTS.OPEN_COMMIT_DIALOG)}
             disabled={!tauriAvailable}
             title={tauriAvailable ? 'Commit' : 'Unavailable in web mode'}
+            aria-label="Commit changes"
           >
             <GitCommit size={14} />
           </button>

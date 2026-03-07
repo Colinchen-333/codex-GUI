@@ -161,7 +161,7 @@ function ActionEditor({ actions, onChange }: ActionEditorProps) {
             onChange={(e) => updateRow(action.id, 'icon', e.target.value)}
             className={cn(
               'h-7 rounded-md border border-stroke/20 bg-surface text-xs text-text-2',
-              'px-1.5 outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30'
+              'px-1.5 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30'
             )}
             aria-label={`Action ${i + 1} icon`}
           >

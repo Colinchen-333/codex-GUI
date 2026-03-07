@@ -295,6 +295,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                       : 'text-text-3 hover:text-text-1'
                   )}
                   onClick={() => setActiveScope(scope.value)}
+                  aria-label={`Scope: ${scope.label}`}
+                  aria-pressed={activeScope === scope.value}
                 >
                   {scope.label}
                 </button>
@@ -346,6 +348,8 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                           ? 'bg-surface-solid text-text-1 shadow-sm'
                           : 'text-text-3 hover:text-text-2'
                       )}
+                      aria-label={`Filter: ${filter} files`}
+                      aria-pressed={stagedFilter === filter}
                     >
                       {filter}{count > 0 ? ` (${count})` : ''}
                     </button>
@@ -360,6 +364,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                 className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-surface-hover/[0.08] text-text-2 hover:bg-status-success-muted hover:text-status-success transition-colors"
                 onClick={() => void handleStageAll()}
                 title="Stage all"
+                aria-label="Stage all unstaged files"
               >
                 <Plus size={10} />
                 Stage all
@@ -368,6 +373,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                 className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-surface-hover/[0.08] text-text-2 hover:bg-status-error-muted hover:text-status-error transition-colors"
                 onClick={() => void handleUnstageAll()}
                 title="Unstage all"
+                aria-label="Unstage all staged files"
               >
                 <Minus size={10} />
                 Unstage all
@@ -541,6 +547,7 @@ export function ReviewPaneToggle({ onClick, hasChanges }: { onClick: () => void;
           : "border-stroke/30 bg-surface-solid text-text-2 hover:bg-surface-hover/[0.08]"
       )}
       title="Show review panel"
+      aria-label="Show review panel"
     >
       <MoreHorizontal size={12} />
       Review

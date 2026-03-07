@@ -45,7 +45,7 @@ export const ActionBar = memo(function ActionBar({ actions, projectPath }: Actio
           key={action.id}
           type="button"
           onClick={() => void handleRun(action.command)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-text-2 hover:bg-surface-hover/[0.08] hover:text-text-1 transition-colors border border-stroke/10"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-text-2 hover:bg-surface-hover/[0.08] hover:text-text-1 transition-colors duration-fast border border-stroke/10"
           aria-label={`Run: ${action.label}`}
           title={action.command}
         >

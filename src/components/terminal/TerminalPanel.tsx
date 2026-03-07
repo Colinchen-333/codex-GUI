@@ -269,8 +269,22 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
     >
       {/* Drag handle */}
       <div
-        className="h-1 cursor-row-resize bg-transparent transition-colors hover:bg-primary/30"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize terminal"
+        tabIndex={0}
+        className="h-1 cursor-row-resize bg-transparent transition-colors hover:bg-primary/30 focus-visible:bg-primary/30 outline-none"
         onMouseDown={handleDragStart}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setHeight((h) => Math.max(MIN_HEIGHT, h + 20))
+          }
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            setHeight((h) => Math.max(MIN_HEIGHT, h - 20))
+          }
+        }}
       />
 
       <TerminalToolbar cwd={cwd} onClear={handleClear} onClose={onClose} />

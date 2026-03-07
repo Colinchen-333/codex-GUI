@@ -14,6 +14,7 @@ import { projectApi, terminalApi, type GitBranch as GitBranchType } from '../../
 import { useToast } from '../ui/useToast'
 import { SlashCommandPopup } from './SlashCommandPopup'
 import { FileMentionPopup } from './FileMentionPopup'
+import { SkillMentionPopup, type SkillEntry } from './SkillMentionPopup'
 import { type SlashCommand } from '../../lib/slashCommands'
 import { WorkingStatusBar, QueuedMessagesDisplay, RateLimitWarning, InputStatusHint } from './status'
 import {
@@ -190,9 +191,13 @@ export default memo(function ChatInputArea({
     setShowSlashCommands,
     showFileMention,
     setShowFileMention,
+    showSkillMention,
+    setShowSkillMention,
     fileMentionQuery,
+    skillMentionQuery,
+    skillMentionStartPos,
     mentionStartPos,
-    restoreFocus, // P0 Enhancement: Get focus restoration function
+    restoreFocus,
   } = useInputPopups(inputValue, inputRef)
 
   useTextareaResize(inputRef, inputValue)
@@ -207,7 +212,7 @@ export default memo(function ChatInputArea({
     inputRef,
     inputValue,
     setInputValue: (value: string) => setInputValue(value),
-    popupsOpen: showSlashCommands || showFileMention,
+    popupsOpen: showSlashCommands || showFileMention || showSkillMention,
   })
 
   // Reset history cursor when user types (not during navigation)
@@ -255,9 +260,19 @@ export default memo(function ChatInputArea({
   const handleSlashCommandSelect = useCallback((command: SlashCommand) => {
     setInputValue(`/${command.name} `)
     setShowSlashCommands(false)
-    // P0 Enhancement: Use focus restoration function
     restoreFocus()
   }, [setInputValue, setShowSlashCommands, restoreFocus])
+
+  const handleSkillMentionSelect = useCallback((skill: SkillEntry) => {
+    if (skillMentionStartPos >= 0) {
+      const queryEndPos = skillMentionStartPos + 1 + skillMentionQuery.length
+      const before = inputValue.slice(0, skillMentionStartPos)
+      const after = inputValue.slice(queryEndPos)
+      setInputValue(`${before}$${skill.name} ${after}`)
+    }
+    setShowSkillMention(false)
+    restoreFocus()
+  }, [inputValue, skillMentionStartPos, skillMentionQuery, setInputValue, setShowSkillMention, restoreFocus])
 
   // Wrapped onSend to add command to history (both session navigation store and persisted settings)
   const handleSendWithHistory = useCallback(async () => {
@@ -514,6 +529,14 @@ export default memo(function ChatInputArea({
             onSelect={handleFileMentionSelect}
             onClose={() => setShowFileMention(false)}
             isVisible={showFileMention && !!selectedProjectId}
+          />
+          <SkillMentionPopup
+            query={skillMentionQuery}
+            projectCwds={projects.filter((p) => p.path).map((p) => p.path)}
+            projectId={selectedProjectId ?? undefined}
+            onSelect={handleSkillMentionSelect}
+            onClose={() => setShowSkillMention(false)}
+            isVisible={showSkillMention}
           />
 
           <ImagePreview images={attachedImages} onRemove={removeImage} />

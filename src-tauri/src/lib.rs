@@ -360,6 +360,9 @@ pub fn run() {
             commands::system::show_hotkey_window,
             commands::system::hide_hotkey_window,
             commands::system::show_main_window,
+            // Pop-out thread window
+            commands::system::pop_out_thread,
+            commands::system::toggle_always_on_top,
             // Diagnostics
             commands::system::get_app_paths,
             commands::system::get_log_tail,

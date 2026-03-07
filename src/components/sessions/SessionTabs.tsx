@@ -9,6 +9,7 @@ import {
   GitCommit,
   PanelRightClose,
   PanelRightOpen,
+  PictureInPicture2,
   SquareTerminal,
   FolderOpen,
   Code2,
@@ -38,6 +39,7 @@ import { TaskProgressCompact } from '../chat/TaskProgress'
 import { Dropdown } from '../ui/Dropdown'
 import { RenameDialog } from '../ui/RenameDialog'
 import { useToast } from '../ui/useToast'
+import { systemApi } from '../../lib/api'
 import type { SessionStatus } from '../../lib/api'
 
 interface SessionTabsProps {
@@ -282,6 +284,13 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
     setRenameDialogOpen(true)
   }, [focusedThreadId])
 
+  const handlePopOut = useCallback(() => {
+    if (!focusedThreadId || !tauriAvailable) return
+    systemApi.popOutThread(focusedThreadId).catch((err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to open pop-out window')
+    })
+  }, [focusedThreadId, tauriAvailable, toast])
+
   const handleTabArrowNavigate = useCallback((currentThreadId: string, direction: 'prev' | 'next') => {
     if (switchingTabIdRef.current !== null) return
     const ids = threadIdsRef.current
@@ -421,6 +430,18 @@ export function SessionTabs({ onNewSession, onToggleRightPanel, rightPanelOpen, 
                   Commit
                 </button>
               </>
+            )}
+
+            {activeThreadState && (
+              <button
+                onClick={handlePopOut}
+                disabled={!tauriAvailable}
+                className="rounded-lg p-1.5 text-text-3 transition-colors hover:bg-surface-hover/[0.08] hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-40"
+                title={tauriAvailable ? 'Pop out thread into separate window' : 'Unavailable in web mode'}
+                aria-label="Pop out thread"
+              >
+                <PictureInPicture2 size={16} />
+              </button>
             )}
 
             <button

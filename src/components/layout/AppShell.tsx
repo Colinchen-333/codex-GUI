@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
 import { PageTransition } from './PageTransition'
 import { RightPanel, RightPanelToggle } from './RightPanel'
+import { ActionBar } from './ActionBar'
 import { CommitDialog } from '../dialogs/CommitDialog'
 import { CommandPalette, useCommandPalette } from '../ui/CommandPalette'
 import { AsyncErrorBoundary } from '../ui/AsyncErrorBoundary'
@@ -21,6 +22,7 @@ import { useToast } from '../ui/useToast'
 import { PanelLeftOpen } from 'lucide-react'
 import { isTauriAvailable } from '../../lib/tauri'
 import { CollaborationBar } from '../chat/CollaborationBar'
+import { loadEnvironments } from '../../pages/settings/EnvironmentsSettings'
 
 export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
@@ -35,6 +37,14 @@ export function AppShell() {
   const selectedProject = useProjectsStore((state) =>
     state.selectedProjectId ? state.projects.find((p) => p.id === state.selectedProjectId) ?? null : null
   )
+
+  // Resolve environment actions for the selected project path
+  const activeActions = useMemo(() => {
+    if (!selectedProject) return []
+    const envs = loadEnvironments()
+    const match = envs.find((e) => selectedProject.path.startsWith(e.path))
+    return match?.actions ?? []
+  }, [selectedProject])
 
   const handleToggleRightPanel = useCallback(() => {
     setRightPanelOpen((prev) => !prev)
@@ -159,6 +169,12 @@ export function AppShell() {
           <div className="flex flex-1 overflow-hidden">
             <div className="flex flex-1 flex-col overflow-hidden">
               <CollaborationBar />
+              {selectedProject && (
+                <ActionBar
+                  actions={activeActions}
+                  projectPath={selectedProject.path}
+                />
+              )}
               <PageTransition className="flex flex-1 flex-col overflow-hidden">
                 <Outlet context={{ onToggleRightPanel: handleToggleRightPanel, rightPanelOpen, onOpenCommitDialog: handleOpenCommitDialog }} />
               </PageTransition>

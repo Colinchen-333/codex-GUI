@@ -70,8 +70,11 @@ export function useInputPopups(
 ) {
   const [showSlashCommands, setShowSlashCommands] = useState(false)
   const [showFileMention, setShowFileMention] = useState(false)
+  const [showSkillMention, setShowSkillMention] = useState(false)
   const [fileMentionQuery, setFileMentionQuery] = useState('')
+  const [skillMentionQuery, setSkillMentionQuery] = useState('')
   const [mentionStartPos, setMentionStartPos] = useState(-1)
+  const [skillMentionStartPos, setSkillMentionStartPos] = useState(-1)
   const { restoreFocus } = useFocusRestoration(inputRef)
 
   /* eslint-disable react-hooks/set-state-in-effect -- Intentional: sync popup state with input value */
@@ -83,9 +86,10 @@ export function useInputPopups(
       setShowSlashCommands(false)
     }
 
-    // Part 2: @ file mention detection
     const cursorPos = inputRef.current?.selectionStart ?? inputValue.length
     const textBeforeCursor = inputValue.slice(0, cursorPos)
+
+    // Part 2: @ file mention detection
     const lastAtIndex = textBeforeCursor.lastIndexOf('@')
 
     if (lastAtIndex >= 0) {
@@ -96,6 +100,10 @@ export function useInputPopups(
           setShowFileMention(true)
           setFileMentionQuery(query)
           setMentionStartPos(lastAtIndex)
+          // Reset skill mention when file mention is active
+          setShowSkillMention(false)
+          setSkillMentionQuery('')
+          setSkillMentionStartPos(-1)
           return
         }
       }
@@ -104,6 +112,26 @@ export function useInputPopups(
     setShowFileMention(false)
     setFileMentionQuery('')
     setMentionStartPos(-1)
+
+    // Part 3: $ skill mention detection
+    const lastDollarIndex = textBeforeCursor.lastIndexOf('$')
+
+    if (lastDollarIndex >= 0) {
+      const charBefore = lastDollarIndex > 0 ? inputValue[lastDollarIndex - 1] : ' '
+      if (charBefore === ' ' || charBefore === '\n' || lastDollarIndex === 0) {
+        const query = textBeforeCursor.slice(lastDollarIndex + 1)
+        if (!query.includes(' ')) {
+          setShowSkillMention(true)
+          setSkillMentionQuery(query)
+          setSkillMentionStartPos(lastDollarIndex)
+          return
+        }
+      }
+    }
+
+    setShowSkillMention(false)
+    setSkillMentionQuery('')
+    setSkillMentionStartPos(-1)
   }, [inputValue, inputRef])
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -112,11 +140,15 @@ export function useInputPopups(
     setShowSlashCommands,
     showFileMention,
     setShowFileMention,
+    showSkillMention,
+    setShowSkillMention,
     fileMentionQuery,
     setFileMentionQuery,
+    skillMentionQuery,
+    skillMentionStartPos,
     mentionStartPos,
     setMentionStartPos,
-    restoreFocus, // P0 Enhancement: Export focus restoration function
+    restoreFocus,
   }
 }
 

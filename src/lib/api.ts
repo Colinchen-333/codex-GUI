@@ -1052,6 +1052,18 @@ export const systemApi = {
   getAppPaths: () => invokeOrFallback<AppPaths>({ appDataDir: null, logDir: null }, 'get_app_paths'),
   getLogTail: (maxBytes?: number) =>
     invokeOrFallback<LogTailResponse>({ file: null, content: '', truncated: false }, 'get_log_tail', { maxBytes }),
+  /**
+   * Pop out a thread into a standalone floating window.
+   * If the window already exists it is focused instead of recreated.
+   */
+  popOutThread: (threadId: string) =>
+    invokeOrFallback<void>(undefined, 'pop_out_thread', { threadId }),
+  /**
+   * Toggle the always-on-top state of a window by its label.
+   * Returns the new state (true = pinned on top).
+   */
+  toggleAlwaysOnTop: (windowLabel: string) =>
+    invokeOrFallback<boolean>(false, 'toggle_always_on_top', { windowLabel }),
 }
 
 // ==================== Codex CLI Import Types ====================

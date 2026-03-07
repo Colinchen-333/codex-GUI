@@ -184,6 +184,67 @@ pub async fn hide_hotkey_window(app_handle: tauri::AppHandle) -> Result<(), Stri
     Ok(())
 }
 
+/// Pop out a thread into a dedicated floating window.
+/// If a window for this thread already exists, focus it instead of creating a new one.
+#[tauri::command]
+pub async fn pop_out_thread(
+    app: tauri::AppHandle,
+    thread_id: String,
+) -> Result<(), String> {
+    use tauri::WebviewUrl;
+    use tauri::WebviewWindowBuilder;
+
+    // Use the first 8 characters of the thread ID for the window label
+    let label = format!("popout-{}", &thread_id[..8.min(thread_id.len())]);
+
+    // Reuse existing window if already created
+    if let Some(window) = app.get_webview_window(&label) {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    let url = format!("/popout/thread/{}", thread_id);
+    let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
+        .title("Codex Thread")
+        .inner_size(480.0, 700.0)
+        .min_inner_size(360.0, 400.0)
+        .decorations(true)
+        .always_on_top(false)
+        .resizable(true)
+        .build()
+        .map_err(|e| format!("Failed to create pop-out window: {}", e))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+        let _ = apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None);
+    }
+
+    let _ = window.show();
+    let _ = window.set_focus();
+
+    tracing::info!("Pop-out window created for thread {}", &thread_id[..8.min(thread_id.len())]);
+    Ok(())
+}
+
+/// Toggle the always-on-top state of a window by its label.
+/// Returns the new always-on-top value.
+#[tauri::command]
+pub async fn toggle_always_on_top(
+    app: tauri::AppHandle,
+    window_label: String,
+) -> Result<bool, String> {
+    let window = app
+        .get_webview_window(&window_label)
+        .ok_or_else(|| format!("Window '{}' not found", window_label))?;
+    let current = window.is_always_on_top().map_err(|e| e.to_string())?;
+    let new_val = !current;
+    window.set_always_on_top(new_val).map_err(|e| e.to_string())?;
+    tracing::debug!("Window '{}' always-on-top set to {}", window_label, new_val);
+    Ok(new_val)
+}
+
 /// Bring the main window to the front
 #[tauri::command]
 pub async fn show_main_window(app_handle: tauri::AppHandle) -> Result<(), String> {

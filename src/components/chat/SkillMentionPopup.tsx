@@ -115,7 +115,7 @@ export function SkillMentionPopup({
           >
             <Wrench size={14} className="text-primary shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <div className="font-medium text-text-1 truncate">${skill.name}</div>
+              <div className="font-medium text-text-1 truncate">{skill.name}</div>
               {skill.description && (
                 <div className="text-xs text-text-3 truncate mt-0.5">{skill.description}</div>
               )}

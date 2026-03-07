@@ -13,24 +13,40 @@ interface EnvVar {
   value: string
 }
 
-interface LocalEnvironment {
+export interface EnvironmentAction {
+  id: string
+  label: string
+  command: string
+  icon?: string
+}
+
+export interface LocalEnvironment {
   id: string
   label: string
   path: string
   envVars: EnvVar[]
+  actions: EnvironmentAction[]
 }
 
 function generateId(): string {
   return `env_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-function loadEnvironments(): LocalEnvironment[] {
+function generateActionId(): string {
+  return `act_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function loadEnvironments(): LocalEnvironment[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed as LocalEnvironment[]
+    // Backfill `actions` for environments saved before this field existed
+    return (parsed as LocalEnvironment[]).map((env) => ({
+      ...env,
+      actions: Array.isArray(env.actions) ? env.actions : [],
+    }))
   } catch {
     return []
   }
@@ -109,6 +125,98 @@ function EnvVarEditor({ vars, onChange }: EnvVarEditorProps) {
   )
 }
 
+// ── Action editor ─────────────────────────────────────────────────────────────
+
+const ICON_OPTIONS = ['play', 'terminal', 'test', 'build'] as const
+type IconOption = (typeof ICON_OPTIONS)[number]
+
+interface ActionEditorProps {
+  actions: EnvironmentAction[]
+  onChange: (actions: EnvironmentAction[]) => void
+}
+
+function ActionEditor({ actions, onChange }: ActionEditorProps) {
+  const addRow = () =>
+    onChange([...actions, { id: generateActionId(), label: '', command: '', icon: 'play' }])
+
+  const updateRow = (
+    id: string,
+    field: keyof Omit<EnvironmentAction, 'id'>,
+    value: string
+  ) => {
+    onChange(actions.map((a) => (a.id === id ? { ...a, [field]: value } : a)))
+  }
+
+  const removeRow = (id: string) => {
+    onChange(actions.filter((a) => a.id !== id))
+  }
+
+  return (
+    <div className="space-y-2">
+      {actions.map((action, i) => (
+        <div key={action.id} className="flex items-center gap-2">
+          {/* Icon picker */}
+          <select
+            value={action.icon ?? 'play'}
+            onChange={(e) => updateRow(action.id, 'icon', e.target.value)}
+            className={cn(
+              'h-7 rounded-md border border-stroke/20 bg-surface text-xs text-text-2',
+              'px-1.5 outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30'
+            )}
+            aria-label={`Action ${i + 1} icon`}
+          >
+            {ICON_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+
+          {/* Label */}
+          <Input
+            value={action.label}
+            onChange={(e) => updateRow(action.id, 'label', e.target.value)}
+            placeholder="Run Tests"
+            inputSize="sm"
+            className="w-32 shrink-0"
+            aria-label={`Action ${i + 1} label`}
+          />
+
+          {/* Command */}
+          <Input
+            value={action.command}
+            onChange={(e) => updateRow(action.id, 'command', e.target.value)}
+            placeholder="npm test"
+            inputSize="sm"
+            className="flex-1 font-mono text-xs"
+            aria-label={`Action ${i + 1} command`}
+          />
+
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={() => removeRow(action.id)}
+            aria-label={`Remove action ${action.label || i + 1}`}
+          >
+            <X size={14} />
+          </IconButton>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addRow}
+        className={cn(
+          'flex items-center gap-1.5 text-xs text-text-3 hover:text-text-1 transition-colors',
+          'rounded-sm px-1 py-0.5 -ml-1'
+        )}
+      >
+        <Plus size={12} />
+        Add action
+      </button>
+    </div>
+  )
+}
+
 // ── Environment form (add / edit) ────────────────────────────────────────────
 
 interface EnvFormProps {
@@ -121,12 +229,13 @@ function EnvironmentForm({ initial, onSave, onCancel }: EnvFormProps) {
   const [label, setLabel] = useState(initial?.label ?? '')
   const [path, setPath] = useState(initial?.path ?? '')
   const [envVars, setEnvVars] = useState<EnvVar[]>(initial?.envVars ?? [])
+  const [actions, setActions] = useState<EnvironmentAction[]>(initial?.actions ?? [])
 
   const handleSave = () => {
     const trimmedLabel = label.trim()
     const trimmedPath = path.trim()
     if (!trimmedLabel || !trimmedPath) return
-    onSave({ label: trimmedLabel, path: trimmedPath, envVars })
+    onSave({ label: trimmedLabel, path: trimmedPath, envVars, actions })
   }
 
   const isValid = label.trim().length > 0 && path.trim().length > 0
@@ -183,6 +292,17 @@ function EnvironmentForm({ initial, onSave, onCancel }: EnvFormProps) {
           <EnvVarEditor vars={envVars} onChange={setEnvVars} />
         </div>
 
+        {/* Actions section */}
+        <div className="space-y-1.5">
+          <div className="space-y-0.5">
+            <div className="text-xs text-text-3">Actions</div>
+            <div className="text-xs text-text-3/60">
+              Quick-run buttons shown in the toolbar when this environment is active.
+            </div>
+          </div>
+          <ActionEditor actions={actions} onChange={setActions} />
+        </div>
+
         <div className="flex items-center justify-end gap-2 pt-1">
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
@@ -212,9 +332,11 @@ interface EnvRowProps {
 
 function EnvironmentRow({ env, onEdit, onRemove }: EnvRowProps) {
   const varCount = env.envVars.filter((v) => v.key.trim()).length
+  const actionCount = env.actions.filter((a) => a.label.trim() && a.command.trim()).length
   const description = [
     env.path,
     varCount > 0 ? `${varCount} env var${varCount === 1 ? '' : 's'}` : null,
+    actionCount > 0 ? `${actionCount} action${actionCount === 1 ? '' : 's'}` : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -291,7 +413,7 @@ export const EnvironmentsSettings = memo(function EnvironmentsSettings() {
     <div className="space-y-6">
       <SettingsSection
         title="Local Environments"
-        description="Configure workspace roots with custom environment variables and shell settings."
+        description="Configure workspace roots with custom environment variables, shell settings, and quick-run action buttons."
       >
         <SettingsCard>
           {environments.length === 0 ? (

@@ -26,8 +26,17 @@ import { SettingsSectionPage } from './pages/settings/SettingsSectionPage'
 import { SettingsShellPage } from './pages/settings/SettingsShellPage'
 import { HotkeyWindowPage } from './pages/HotkeyWindowPage'
 import { HotkeyLayout } from './components/layout/HotkeyLayout'
+import { PopoutThreadPage } from './pages/PopoutThreadPage'
+import { PopoutLayout } from './components/layout/PopoutLayout'
 
 export const router = createBrowserRouter([
+  // Pop-out thread window — standalone floating window, native decorations, no app chrome
+  {
+    element: <PopoutLayout />,
+    children: [
+      { path: '/popout/thread/:threadId', element: <PopoutThreadPage /> },
+    ],
+  },
   // Hotkey mini-window — frameless transparent window, no app chrome
   {
     element: <HotkeyLayout />,

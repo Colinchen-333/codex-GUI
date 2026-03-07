@@ -33,6 +33,16 @@ const defaultSettings: Settings = {
   approvalPolicy: 'on-request',
   reasoningEffort: 'medium',
   reasoningSummary: 'concise',
+  fastMode: true,
+  planMode: false,
+  personality: 'friendly',
+  defaultThreadMode: 'local',
+  enterBehavior: 'enter',
+  autoContextEnabled: true,
+  agentMode: 'auto',
+  skipFullAccessConfirm: false,
+  bestOfN: 1,
+  skipBranchMismatchConfirm: false,
 }
 
 describe('useSettingsStore', () => {
@@ -94,11 +104,8 @@ describe('useSettingsStore', () => {
 describe('getThreadSettings', () => {
   it('maps settings to thread start format', () => {
     const settings: Settings = {
+      ...defaultSettings,
       model: 'o3-mini',
-      sandboxMode: 'workspace-write',
-      approvalPolicy: 'on-request',
-      reasoningEffort: 'medium',
-      reasoningSummary: 'concise',
     }
 
     const result = getThreadSettings(settings)

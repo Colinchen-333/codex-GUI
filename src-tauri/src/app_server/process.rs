@@ -194,7 +194,7 @@ impl AppServerProcess {
         Ok(process)
     }
 
-    /// Initialize the app-server with client info
+    /// Initialize the app-server with client info and capabilities
     async fn initialize(&mut self) -> Result<()> {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -206,8 +206,17 @@ impl AppServerProcess {
 
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
+        struct Capabilities {
+            experimental_api: bool,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            opt_out_notification_methods: Option<Vec<String>>,
+        }
+
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
         struct InitializeParams {
             client_info: ClientInfo,
+            capabilities: Capabilities,
         }
 
         let params = InitializeParams {
@@ -216,15 +225,16 @@ impl AppServerProcess {
                 title: "Codex Desktop".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
+            capabilities: Capabilities {
+                experimental_api: true,
+                opt_out_notification_methods: None,
+            },
         };
 
-        // Send initialize request
         let _response: JsonValue = self.send_request("initialize", params).await?;
-
-        // Send initialized notification
         self.send_notification("initialized", serde_json::json!({})).await?;
 
-        tracing::info!("App server initialized");
+        tracing::info!("App server initialized with experimental API enabled");
         Ok(())
     }
 
@@ -277,10 +287,13 @@ impl AppServerProcess {
                 let mut pending = pending_requests.lock().await;
                 if let Some(pending_req) = pending.remove(&id) {
                     let result = if let Some(error) = message.error {
-                        Err(Error::AppServer(format!(
-                            "JSON-RPC error {}: {}",
-                            error.code, error.message
-                        )))
+                        if error.code == -32001 {
+                            tracing::warn!("Server overloaded (code -32001): {}", error.message);
+                        }
+                        Err(Error::Codex {
+                            message: format!("JSON-RPC error {}: {}", error.code, error.message),
+                            info: error.data.and_then(|d| serde_json::from_value(d).ok()),
+                        })
                     } else {
                         Ok(message.result.unwrap_or(JsonValue::Null))
                     };

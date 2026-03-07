@@ -162,6 +162,69 @@ Tauri + React 桌面应用，为 Codex CLI 提供图形界面。
 - Page Integration Tests: 19 tests
   - `e2e/pages.spec.ts` (Navigation, Accessibility, Dark Mode)
 
+### 2026-03-06: Official Codex Desktop v26.305 Reverse Engineering & Alignment
+
+**Reverse Engineering (from `/Applications/Codex.app`):**
+- Extracted and analyzed `app.asar` (Electron 40, React, Tailwind CSS v4)
+- 403 unique CSS variables catalogued
+- Complete dark/light theme token maps (`.electron-dark`, `.electron-light`)
+- IPC architecture: single-channel `codex_desktop:message-from-view` / `message-for-view`
+- 26 editor integration icons extracted
+- All CSS saved to `reverse/` for reference
+
+**Design Token System Alignment (`src/index.css`):**
+- Typography: `--text-xl` 20→28px, `--text-2xl` 24→36px, added `--line-height` companions
+- Added `--font-weight-light: 300`, `--tracking-*`, `--leading-*`
+- Added `--shadow-xl`, `--blur-sm/md/lg/xl`, `--container-*` sizes
+- Added `--spacing-token-button-composer*`, `--spacing-token-safe-header-*`
+- Terminal ANSI colors updated to match official (16 colors)
+- `--thread-composer-max-width` / `--thread-content-max-width` → `none` (official default)
+
+**Animation System (Official Patterns):**
+- Hyperspeed shimmer: gradient text + `background-clip: text` + `color-mix`
+- Main surface transitions: background-color + border-radius + box-shadow
+- Window celebration effect: `.window-fx-celebration`
+- Curtain animation: `backdrop-filter: blur(12px)` + scale(1.01) raise/lower
+- Markdown fade-in: element-level `opacity: 0 → 1` with cubic-bezier
+- Dialog: `translateY(8px) scale(0.98)` → `translateY(0) scale(1)` with `--cubic-enter`
+- Toast: top-center positioning, enters from top with elastic curve
+- Loading bar: official `::after` pseudo-element with `translate(350%)` slide
+- Code syntax theme: dark + light highlight.js color schemes from official
+
+**Tailwind Config Expansion (`tailwind.config.js`):**
+- `borderRadius`: 2xs through 4xl (9 levels)
+- `fontSize`: xs through 4xl + heading-lg/md with line-height
+- `fontWeight`: light/normal/medium/semibold/bold
+- `fontFamily`: sans/mono
+- `letterSpacing`: tight/normal/wide
+- `lineHeight`: tight/normal/relaxed
+- `spacing`: toolbar/toolbar-sm/panel/row-x/row-y/sidebar
+- `maxWidth`: thread-composer/content + container-3xs through 3xl
+- `zIndex`: dropdown/sticky/modal/popover/tooltip/toast/overlay
+- `boxShadow`: xl/2xl
+- `blur`: sm/md/lg/xl
+- `transitionDuration`: fast/normal/slow/slower/relaxed
+- `transitionTimingFunction`: ease-out/ease-in-out/ease-spring/cubic-enter
+- `keyframes` + `animation`: 8 predefined animations
+
+**Component Alignment:**
+- `BaseDialog.tsx`: `z-50` → `z-modal`, `dialog-content-enter` animation
+- `Toast.tsx`: positioned top-center (official), `z-toast`
+- `LoadingBar.tsx`: rewritten to official `::after` pseudo-element pattern
+- `Markdown.tsx`: Prism → Shiki (400+ lazy-loaded language grammars)
+- CMDK: `border-radius: radius-3xl`, `backdrop-filter: blur(8px)`, `opacity: 0.75` items
+
+**New Dependencies:**
+- `shiki`: Syntax highlighting (replaces `react-syntax-highlighter`)
+
+**New Files:**
+- `src/lib/shikiHighlighter.ts`: Shiki highlighter singleton with lazy language loading
+- `reverse/official-theme-v26.305.css`: 11,609 lines formatted official CSS
+- `reverse/official-*.css`: Dialog, toast, markdown, automation dialog styles
+- `reverse/official-package.json`: Official dependency list
+- `reverse/official-preload.js`: Electron preload bridge
+- `reverse/editor-icons/`: 26 editor integration icons (PNG/SVG)
+
 ---
 
 ## Key Files
@@ -174,3 +237,111 @@ Tauri + React 桌面应用，为 Codex CLI 提供图形界面。
 | `src/components/layout/` | Layout components (Sidebar, StatusBar) |
 | `src/stores/` | Zustand stores |
 | `src/lib/api.ts` | API client |
+| `src/lib/shikiHighlighter.ts` | Shiki syntax highlighting |
+| `src/lib/editorIntegration.ts` | Open-in-editor (16 editors) |
+| `src/lib/notifications.ts` | Native macOS notifications |
+| `src/lib/globalShortcuts.ts` | System-wide keyboard shortcuts |
+| `src/hooks/useVoiceDictation.ts` | Voice dictation (Whisper API) |
+| `src/components/chat/FindInThread.tsx` | Cmd+F find-in-thread |
+| `reverse/` | Official Codex Desktop reverse engineering reference |
+
+### 2026-03-06: Feature Alignment Sprint
+
+**macOS Native Integration (Tauri Plugins):**
+- `tauri-plugin-notification`: Native macOS notifications (turn complete, approval needed)
+- `tauri-plugin-global-shortcut`: System-wide hotkeys (Cmd+Shift+;)
+- `tauri-plugin-deep-link`: `codex://` URL scheme for OAuth callbacks
+- `tauri-plugin-store`: Persistent key-value storage
+- System tray: Menu with Show/New Thread/Quit actions
+- Sidebar vibrancy scoping: Only sidebar transparent, main content opaque
+- Microphone permission: `NSMicrophoneUsageDescription` in Info.plist
+- Minimum macOS version: 10.13 → 12.0
+
+**LoginPage Fix:**
+- Replaced `setTimeout` stub with real `serverApi.startLogin()` calls
+- ChatGPT OAuth + API key flows with error handling
+- Account info refresh after login
+
+**Automation Backend (Rust + SQLite + Frontend API):**
+- New `automations` table: id, name, prompt, project_id, schedule, enabled, run_count
+- New `automation_runs` table: id, automation_id, status, started_at, result
+- 6 Tauri commands: list/create/update/delete/run_now/list_runs
+- Frontend `automationApi` in api.ts
+
+**New Frontend Features:**
+- `FindInThread.tsx`: CSS Custom Highlight API for search (Cmd+F)
+- `useVoiceDictation.ts`: MediaRecorder + Whisper API transcription
+- `editorIntegration.ts`: 16 editor integrations (VS Code, Cursor, Zed, IntelliJ, etc.)
+- `notifications.ts`: 3 notification modes (never/background/always)
+- `globalShortcuts.ts`: System-wide hotkey registration
+- Slash commands: Added `/fast`, `/plan-mode` with action targets
+
+**New Dependencies:**
+- Rust: `tauri-plugin-notification`, `tauri-plugin-global-shortcut`, `tauri-plugin-deep-link`, `tauri-plugin-store`
+- npm: `@tauri-apps/plugin-notification`, `@tauri-apps/plugin-global-shortcut`, `@tauri-apps/plugin-deep-link`, `@tauri-apps/plugin-store`
+
+### 2026-03-06: App-Server Protocol Alignment (Codex CLI Integration)
+
+**Reverse Engineering Findings:**
+- Official uses dual-transport: stdio (local) + WebSocket (remote/SSH)
+- Single JSON-RPC channel with `codex_desktop:message-from-view/for-view`
+- Separate Git worker channel (`codex_desktop:worker:git:from-view/for-view`)
+- 50+ event types from app-server (codex/event/*)
+- Initialize handshake includes `capabilities.experimentalApi`
+
+**Initialize Handshake Enhancement (`process.rs`):**
+- Added `capabilities` to `InitializeParams`: `experimentalApi: true`, `optOutNotificationMethods`
+- Upgraded error handling: `-32001` overload detection with structured `Codex` error type
+
+**New Thread Lifecycle Commands (11 new Tauri commands):**
+- `fork_thread` → `thread/fork` (branch conversation)
+- `archive_thread` → `thread/archive`
+- `unarchive_thread` → `thread/unarchive`
+- `compact_thread` → `thread/compact/start` (context compaction)
+- `read_thread` → `thread/read` (read without resume)
+- `set_thread_name` → `thread/name/set`
+- `rollback_thread` → `thread/rollback` (undo last N turns)
+- `steer_turn` → `turn/steer` (append input to running turn)
+- `cancel_login` → `account/login/cancel`
+- `list_threads_filtered` → `thread/list` with extended filters (modelProviders, sourceKinds, archived, cwd, searchTerm, sortKey)
+
+**IPC Bridge Types (`ipc_bridge.rs`):**
+- `ThreadForkParams/Response`, `ThreadArchiveParams`, `ThreadCompactParams`
+- `ThreadReadParams/Response`, `ThreadNameSetParams`, `ThreadRollbackParams`
+- `TurnSteerParams`, `ThreadListExtendedParams`
+- `UserInputExtended` with `Image { url }` and `Mention { name, path }` types
+
+**Frontend API (`api.ts`):**
+- `threadApi.fork()`, `.archive()`, `.unarchive()`, `.compact()`
+- `threadApi.read()`, `.setName()`, `.rollback()`, `.steer()`
+- `threadApi.cancelLogin()`, `.listFiltered()`
+
+**Frontend Events (`events.ts`):**
+- 10 new event handlers: `account-updated`, `account-login-completed`, `account-rateLimits-updated`, `thread-status-changed`, `thread-name-updated`, `thread-archived`, `thread-unarchived`, `skills-changed`, `model-rerouted`, `app-server-reconnected`
+
+**Protocol Coverage:**
+- Before: 6 JSON-RPC methods, 21 event types
+- After: 17 JSON-RPC methods, 31 event types
+- Remaining gap: Git worker channel (separate process), realtime audio API
+
+### 2026-03-06: UI Component Alignment Sprint
+
+**Research Findings (Official v26.305):**
+- SegmentedToggle: `role="group"` with radio buttons, secondary/ghost colors
+- Hotkey Window: Collapsible composer with neck-shaped CMDK panel
+- Celebration: `.window-fx-celebration` removes all surfaces to transparent
+- Thread diff: `content-visibility: auto; contain-intrinsic-size: auto 40vh`
+- Container queries: composer-footer (440px/300px), inbox-toolbar (260px)
+
+**New Components:**
+- `SegmentedToggle.tsx`: Official pattern with options, selectedId, size, uniform, ariaLabel
+- `SkillMentionPopup.tsx`: `$`-triggered skill picker (matching FileMentionPopup)
+- `NotificationSettings.tsx`: Notification mode (never/background/always) with SegmentedToggle
+- `ArchivedThreadsSettings.tsx`: List archived threads with unarchive action
+
+**Settings Store v4 (`stores/settings.ts`):**
+- Added `fastMode: boolean` (default: true — official default as of v0.111.0)
+- Added `planMode: boolean` (default: false)
+- Added `personality: 'friendly' | 'pragmatic' | 'none'` (default: 'friendly')
+- Added `defaultThreadMode: 'local' | 'worktree' | 'cloud'` (default: 'local')
+- Migration v3 → v4 with type guards

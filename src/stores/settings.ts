@@ -19,20 +19,45 @@ export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
 // Approval policies matching Codex CLI
 export type ApprovalPolicy = 'on-request' | 'on-failure' | 'never' | 'untrusted'
 
+export type Personality = 'friendly' | 'pragmatic' | 'none'
+export type ThreadMode = 'local' | 'worktree' | 'cloud'
+export type EnterBehavior = 'enter' | 'shift-enter'
+export type AgentMode = 'auto' | 'manual'
+
 export interface Settings {
   model: string
   sandboxMode: SandboxMode
   approvalPolicy: ApprovalPolicy
   reasoningEffort: ReasoningEffort
   reasoningSummary: ReasoningSummary
+  fastMode: boolean
+  planMode: boolean
+  personality: Personality
+  defaultThreadMode: ThreadMode
+  enterBehavior: EnterBehavior
+  autoContextEnabled: boolean
+  agentMode: AgentMode
+  skipFullAccessConfirm: boolean
+  bestOfN: number
+  skipBranchMismatchConfirm: boolean
 }
 
 const defaultSettings: Settings = {
-  model: '', // Empty means use API default
+  model: '',
   sandboxMode: 'workspace-write',
-  approvalPolicy: 'on-request', // Ask before changes
+  approvalPolicy: 'on-request',
   reasoningEffort: 'medium',
   reasoningSummary: 'concise',
+  fastMode: true,
+  planMode: false,
+  personality: 'friendly',
+  defaultThreadMode: 'local',
+  enterBehavior: 'enter',
+  autoContextEnabled: true,
+  agentMode: 'auto',
+  skipFullAccessConfirm: false,
+  bestOfN: 1,
+  skipBranchMismatchConfirm: false,
 }
 
 export interface SettingsState {
@@ -64,7 +89,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'codex-desktop-settings',
-      version: 3, // Increment when settings format changes
+      version: 6, // Increment when settings format changes
       migrate: (persistedState, version) => {
         if (!persistedState || typeof persistedState !== 'object' || !('settings' in persistedState)) {
           return { settings: defaultSettings }
@@ -102,6 +127,47 @@ export const useSettingsStore = create<SettingsState>()(
           settings.reasoningSummary =
             (normalizeReasoningSummary(settings.reasoningSummary) as Settings['reasoningSummary']) ||
             defaultSettings.reasoningSummary
+        }
+
+        if (version < 4) {
+          if (typeof settings.fastMode !== 'boolean') settings.fastMode = defaultSettings.fastMode
+          if (typeof settings.planMode !== 'boolean') settings.planMode = defaultSettings.planMode
+          if (!['friendly', 'pragmatic', 'none'].includes(settings.personality as string)) {
+            settings.personality = defaultSettings.personality
+          }
+          if (!['local', 'worktree', 'cloud'].includes(settings.defaultThreadMode as string)) {
+            settings.defaultThreadMode = defaultSettings.defaultThreadMode
+          }
+        }
+
+        if (version < 5) {
+          if (!['enter', 'shift-enter'].includes(settings.enterBehavior as string)) {
+            settings.enterBehavior = defaultSettings.enterBehavior
+          }
+          if (typeof settings.autoContextEnabled !== 'boolean') {
+            settings.autoContextEnabled = defaultSettings.autoContextEnabled
+          }
+          if (!['auto', 'manual'].includes(settings.agentMode as string)) {
+            settings.agentMode = defaultSettings.agentMode
+          }
+          if (typeof settings.skipFullAccessConfirm !== 'boolean') {
+            settings.skipFullAccessConfirm = defaultSettings.skipFullAccessConfirm
+          }
+        }
+
+        if (version < 6) {
+          // bestOfN: positive integer 1-5 (matches composer-best-of-n)
+          if (
+            typeof settings.bestOfN !== 'number' ||
+            !Number.isInteger(settings.bestOfN) ||
+            settings.bestOfN < 1 ||
+            settings.bestOfN > 5
+          ) {
+            settings.bestOfN = defaultSettings.bestOfN
+          }
+          if (typeof settings.skipBranchMismatchConfirm !== 'boolean') {
+            settings.skipBranchMismatchConfirm = defaultSettings.skipBranchMismatchConfirm
+          }
         }
 
         return { settings }

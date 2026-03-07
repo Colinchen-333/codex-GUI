@@ -78,6 +78,7 @@ export const Sidebar = React.memo(function Sidebar() {
     isSearching,
     selectSession,
     fetchSessions,
+    updateSession,
   } = useSessionsStore()
   const closeAllThreads = useThreadStore((state) => state.closeAllThreads)
   const startThread = useThreadStore((state) => state.startThread)
@@ -145,6 +146,14 @@ export const Sidebar = React.memo(function Sidebar() {
     }
     selectSession(sessionId)
   }, [closeAllThreads, selectProject, selectSession, selectedProjectId])
+
+  const handleToggleFavorite = useCallback(async (sessionId: string, current: boolean) => {
+    try {
+      await updateSession(sessionId, { isFavorite: !current })
+    } catch {
+      showToast('Failed to update pin status', 'error')
+    }
+  }, [updateSession, showToast])
 
   const handleAddProject = async () => {
     try {
@@ -418,6 +427,7 @@ export const Sidebar = React.memo(function Sidebar() {
           onSelectSession={handleSelectSession}
           onOpenProjectSettings={handleOpenProjectSettings}
           isLoading={sessionsLoading || isSearching}
+          onToggleFavorite={handleToggleFavorite}
         />
       </div>
 

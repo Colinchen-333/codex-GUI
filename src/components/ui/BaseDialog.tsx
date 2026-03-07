@@ -66,7 +66,7 @@ export function BaseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm p-4 codex-dialog-overlay"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-overlay backdrop-blur-sm p-4 dialog-overlay-enter"
       onClick={handleBackdropClick}
       role="presentation"
     >

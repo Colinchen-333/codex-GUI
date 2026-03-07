@@ -1,0 +1,22 @@
+@keyframes _fade-in_10345_1 {
+  to {
+  opacity:1
+}
+
+}
+._headingInlineCode_10345_7 ._inlineMarkdown_10345_7 {
+  font-size:inherit;
+  line-height:inherit
+}
+._markdownRoot_10345_12 ._fadeIn_10345_12,._markdownRoot_10345_12 hr,._markdownRoot_10345_12 li,._markdownRoot_10345_12 tr,._markdownRoot_10345_12 blockquote,._markdownRoot_10345_12 code,._markdownRoot_10345_12 pre {
+  opacity:0;
+  animation:_fade-in_10345_1 var(--duration,.2s) cubic-bezier(.37, .55, .86, .88) forwards
+}
+@media (prefers-reduced-motion:reduce) {
+  ._markdownRoot_10345_12 ._fadeIn_10345_12,._markdownRoot_10345_12 hr,._markdownRoot_10345_12 li,._markdownRoot_10345_12 tr,._markdownRoot_10345_12 blockquote,._markdownRoot_10345_12 code,._markdownRoot_10345_12 pre {
+  --duration:0s;
+  opacity:1
+}
+
+}
+

@@ -9,17 +9,11 @@ export function LoadingBar({ className, variant = 'primary' }: LoadingBarProps) 
   return (
     <div
       className={cn(
-        'h-1 w-full overflow-hidden rounded-full bg-surface-hover/[0.1]',
+        'loading-bar',
+        variant === 'accent' && '[&::after]:bg-primary',
         className
       )}
-    >
-      <div
-        className={cn(
-          'h-full w-1/3 rounded-full loading-bar-slide',
-          variant === 'primary' ? 'bg-primary' : 'bg-text-2'
-        )}
-      />
-    </div>
+    />
   )
 }
 
@@ -36,7 +30,7 @@ export function LoadingOverlay({ message, className }: LoadingOverlayProps) {
         className
       )}
     >
-      <div className="w-48">
+      <div className="relative w-48 h-[2px]">
         <LoadingBar />
       </div>
       {message && (

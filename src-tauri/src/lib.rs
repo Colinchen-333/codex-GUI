@@ -21,7 +21,11 @@ pub use error::{CodexErrorInfo, CodexErrorType, Error, Result};
 pub use state::AppState;
 
 use std::io;
-use tauri::{Manager, WindowEvent};
+use tauri::{
+    Emitter, Manager, WindowEvent,
+    menu::{MenuBuilder, MenuItemBuilder},
+    tray::TrayIconBuilder,
+};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 #[cfg(target_os = "macos")]
@@ -129,6 +133,10 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             let app_handle = app.handle().clone();
 
@@ -144,6 +152,42 @@ pub fn run() {
                     );
                 }
             }
+
+            // System tray
+            let show_item = MenuItemBuilder::with_id("show", "Show Codex").build(app)?;
+            let new_thread_item = MenuItemBuilder::with_id("new_thread", "New Thread").build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit Codex").build(app)?;
+            let tray_menu = MenuBuilder::new(app)
+                .item(&show_item)
+                .item(&new_thread_item)
+                .separator()
+                .item(&quit_item)
+                .build()?;
+            let _tray = TrayIconBuilder::new()
+                .menu(&tray_menu)
+                .tooltip("Codex Desktop")
+                .on_menu_event(move |app_handle, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(w) = app_handle.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "new_thread" => {
+                            if let Some(w) = app_handle.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.set_focus();
+                                let _ = w.emit("tray-new-thread", ());
+                            }
+                        }
+                        "quit" => {
+                            app_handle.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
 
             // Initialize logging (file + stdout)
             let log_guard = init_tracing(&app_handle);
@@ -230,6 +274,17 @@ pub fn run() {
             commands::thread::interrupt_turn,
             commands::thread::respond_to_approval,
             commands::thread::list_threads,
+            commands::thread::fork_thread,
+            commands::thread::archive_thread,
+            commands::thread::unarchive_thread,
+            commands::thread::compact_thread,
+            commands::thread::read_thread,
+            commands::thread::set_thread_name,
+            commands::thread::rollback_thread,
+            commands::thread::steer_turn,
+            commands::thread::cancel_login,
+            commands::thread::list_threads_filtered,
+            commands::thread::update_thread_metadata,
             // Snapshot commands
             commands::snapshots::create_snapshot,
             commands::snapshots::revert_to_snapshot,
@@ -250,6 +305,12 @@ pub fn run() {
             // Config commands
             commands::app_server::read_config,
             commands::app_server::write_config,
+            // Skills config
+            commands::app_server::write_skill_config,
+            // Feedback
+            commands::app_server::upload_feedback,
+            // Connected apps
+            commands::app_server::list_apps,
             // Account rate limits
             commands::app_server::get_account_rate_limits,
             // Allowlist commands
@@ -263,6 +324,13 @@ pub fn run() {
             commands::codex_import::search_codex_sessions,
             commands::codex_import::delete_codex_session,
             commands::codex_import::get_codex_dir,
+            // Automation commands
+            commands::automations::list_automations,
+            commands::automations::create_automation,
+            commands::automations::update_automation,
+            commands::automations::delete_automation,
+            commands::automations::run_automation_now,
+            commands::automations::list_automation_runs,
             // Terminal commands
             commands::terminal::execute_terminal_command,
             // Renderer lifecycle

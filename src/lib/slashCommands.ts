@@ -5,6 +5,8 @@ export interface SlashCommand {
   icon: string
   category: 'general' | 'tools' | 'settings' | 'workflow' | 'experimental'
   experimental?: boolean
+  action?: 'navigate' | 'toggle' | 'execute' | 'input'
+  actionTarget?: string
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
@@ -13,6 +15,25 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     description: 'Choose what model and reasoning effort to use',
     category: 'settings',
     icon: 'cpu',
+    action: 'toggle',
+    actionTarget: 'model-selector',
+  },
+  {
+    name: 'fast',
+    description: 'Toggle fast mode for quicker responses',
+    category: 'settings',
+    icon: 'zap',
+    action: 'toggle',
+    actionTarget: 'fast-mode',
+  },
+  {
+    name: 'plan-mode',
+    description: 'Toggle plan mode — model proposes before executing',
+    aliases: ['plan'],
+    category: 'workflow',
+    icon: 'list-todo',
+    action: 'toggle',
+    actionTarget: 'plan-mode',
   },
   {
     name: 'approvals',
@@ -68,6 +89,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     description: 'List configured MCP tools',
     category: 'tools',
     icon: 'plug',
+    action: 'execute',
+    actionTarget: 'show-mcp',
   },
   {
     name: 'apps',
@@ -86,19 +109,14 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     description: 'Review my current changes and find issues',
     category: 'workflow',
     icon: 'eye',
+    action: 'execute',
+    actionTarget: 'start-review',
   },
   {
     name: 'init',
     description: 'Create an AGENTS.md file with instructions for Codex',
     category: 'workflow',
     icon: 'compass',
-  },
-  {
-    name: 'plan',
-    description: 'Switch to Plan mode',
-    category: 'workflow',
-    icon: 'list-todo',
-    experimental: true,
   },
   {
     name: 'collab',
@@ -149,6 +167,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     description: 'Show current session configuration and token usage',
     category: 'general',
     icon: 'activity',
+    action: 'execute',
+    actionTarget: 'show-status',
   },
   {
     name: 'sessions',

@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Key, ExternalLink, Loader2 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { serverApi } from '../lib/api'
+import { useAccountStore } from '../stores/account'
 
 type AuthMethod = 'chatgpt' | 'apikey' | null
 
@@ -12,32 +14,43 @@ export function LoginPage() {
   const [apiKey, setApiKey] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const refreshAccountInfo = useAccountStore((s) => s.refreshAccountInfo)
 
-  const handleChatGptSignIn = () => {
+  const handleChatGptSignIn = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      await serverApi.startLogin('chatgpt')
+      await refreshAccountInfo()
       void navigate('/welcome')
-    }, 1500)
-  }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Is the Codex server running?')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [navigate, refreshAccountInfo])
 
-  const handleApiKeySubmit = () => {
+  const handleApiKeySubmit = useCallback(async () => {
     if (!apiKey.trim()) {
       setError('API key is required')
       return
     }
     if (!apiKey.startsWith('sk-')) {
-      setError('Invalid API key format')
+      setError('Invalid API key format. Key should start with sk-')
       return
     }
     setIsLoading(true)
     setError(null)
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      await serverApi.startLogin('apiKey', apiKey)
+      await refreshAccountInfo()
       void navigate('/welcome')
-    }, 1000)
-  }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid API key or server error')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [apiKey, navigate, refreshAccountInfo])
 
   const handleCancel = () => {
     setAuthMethod(null)
@@ -66,11 +79,17 @@ export function LoginPage() {
                 </p>
               </div>
 
+              {error && (
+                <div className="rounded-lg bg-status-error-muted border border-status-error/30 px-3 py-2 text-sm text-status-error">
+                  {error}
+                </div>
+              )}
+
               <div className="flex flex-col gap-3 mt-4">
                 <Button
                   variant="primary"
                   className="w-full justify-center py-2.5"
-                  onClick={() => handleChatGptSignIn()}
+                  onClick={() => void handleChatGptSignIn()}
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -109,6 +128,12 @@ export function LoginPage() {
                 </p>
               </div>
 
+              {error && (
+                <div className="rounded-lg bg-status-error-muted border border-status-error/30 px-3 py-2 text-sm text-status-error">
+                  {error}
+                </div>
+              )}
+
               <div className="mt-2">
                 <Input
                   type="password"
@@ -118,11 +143,11 @@ export function LoginPage() {
                     setApiKey(e.target.value)
                     setError(null)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleApiKeySubmit()
+                  }}
                   error={!!error}
                 />
-                {error && (
-                  <p className="mt-2 text-xs text-status-error">{error}</p>
-                )}
               </div>
 
               <a
@@ -141,7 +166,7 @@ export function LoginPage() {
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={handleApiKeySubmit}
+                  onClick={() => void handleApiKeySubmit()}
                   disabled={isLoading || !apiKey.trim()}
                 >
                   {isLoading ? (

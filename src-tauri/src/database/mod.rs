@@ -83,6 +83,31 @@ impl Database {
                 PRIMARY KEY (project_id, command_pattern)
             );
 
+            -- Automations table
+            CREATE TABLE IF NOT EXISTS automations (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                prompt TEXT NOT NULL,
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                schedule_cron TEXT,
+                schedule_timezone TEXT,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                last_run_at TEXT,
+                run_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            );
+
+            -- Automation run history
+            CREATE TABLE IF NOT EXISTS automation_runs (
+                id TEXT PRIMARY KEY,
+                automation_id TEXT NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
+                status TEXT NOT NULL DEFAULT 'running',
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                result_summary TEXT,
+                thread_id TEXT
+            );
+
             -- Indexes for common queries (non-status columns)
             CREATE INDEX IF NOT EXISTS idx_session_metadata_project
                 ON session_metadata(project_id);
@@ -90,6 +115,10 @@ impl Database {
                 ON session_metadata(last_accessed_at DESC);
             CREATE INDEX IF NOT EXISTS idx_snapshots_session
                 ON snapshots(session_id);
+            CREATE INDEX IF NOT EXISTS idx_automations_project
+                ON automations(project_id);
+            CREATE INDEX IF NOT EXISTS idx_automation_runs_automation
+                ON automation_runs(automation_id);
             "#,
         )?;
 
@@ -570,5 +599,110 @@ impl Database {
 
         tracing::info!("Database VACUUM completed successfully");
         Ok(true)
+    }
+
+    // ==================== Automations ====================
+
+    pub fn list_automations(&self) -> Result<Vec<serde_json::Value>> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, prompt, project_id, schedule_cron, schedule_timezone, \
+             enabled, last_run_at, run_count, created_at \
+             FROM automations ORDER BY created_at DESC"
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let cron: Option<String> = row.get(4)?;
+            let tz: Option<String> = row.get(5)?;
+            let schedule = cron.map(|c| serde_json::json!({ "cron": c, "timezone": tz }));
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "name": row.get::<_, String>(1)?,
+                "prompt": row.get::<_, String>(2)?,
+                "project_id": row.get::<_, String>(3)?,
+                "schedule": schedule,
+                "enabled": row.get::<_, bool>(6)?,
+                "last_run_at": row.get::<_, Option<String>>(7)?,
+                "run_count": row.get::<_, u32>(8)?,
+                "created_at": row.get::<_, String>(9)?,
+            }))
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn create_automation(&self, id: &str, name: &str, prompt: &str, project_id: &str,
+                             schedule_cron: Option<&str>, schedule_timezone: Option<&str>, now: &str) -> Result<()> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "INSERT INTO automations (id, name, prompt, project_id, schedule_cron, schedule_timezone, \
+             enabled, run_count, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, 0, ?7)",
+            params![id, name, prompt, project_id, schedule_cron, schedule_timezone, now],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_automation_field(&self, id: &str, field: &str, value: &str) -> Result<()> {
+        let conn = self.conn.lock();
+        let sql = format!("UPDATE automations SET {} = ?1 WHERE id = ?2", field);
+        conn.execute(&sql, params![value, id])?;
+        Ok(())
+    }
+
+    pub fn update_automation_enabled(&self, id: &str, enabled: bool) -> Result<()> {
+        let conn = self.conn.lock();
+        conn.execute("UPDATE automations SET enabled = ?1 WHERE id = ?2", params![enabled, id])?;
+        Ok(())
+    }
+
+    pub fn delete_automation(&self, id: &str) -> Result<()> {
+        let conn = self.conn.lock();
+        conn.execute("DELETE FROM automation_runs WHERE automation_id = ?1", params![id])?;
+        conn.execute("DELETE FROM automations WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    pub fn get_automation(&self, id: &str) -> Result<Option<(String, String)>> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare("SELECT prompt, project_id FROM automations WHERE id = ?1")?;
+        let result = stmt.query_row(params![id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        });
+        match result {
+            Ok(r) => Ok(Some(r)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn record_automation_run(&self, run_id: &str, automation_id: &str, now: &str) -> Result<()> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "INSERT INTO automation_runs (id, automation_id, status, started_at) VALUES (?1, ?2, 'running', ?3)",
+            params![run_id, automation_id, now],
+        )?;
+        conn.execute(
+            "UPDATE automations SET last_run_at = ?1, run_count = run_count + 1 WHERE id = ?2",
+            params![now, automation_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_automation_runs(&self, automation_id: &str) -> Result<Vec<serde_json::Value>> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare(
+            "SELECT id, automation_id, status, started_at, completed_at, result_summary, thread_id \
+             FROM automation_runs WHERE automation_id = ?1 ORDER BY started_at DESC LIMIT 50"
+        )?;
+        let rows = stmt.query_map(params![automation_id], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "automation_id": row.get::<_, String>(1)?,
+                "status": row.get::<_, String>(2)?,
+                "started_at": row.get::<_, String>(3)?,
+                "completed_at": row.get::<_, Option<String>>(4)?,
+                "result_summary": row.get::<_, Option<String>>(5)?,
+                "thread_id": row.get::<_, Option<String>>(6)?,
+            }))
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
     }
 }

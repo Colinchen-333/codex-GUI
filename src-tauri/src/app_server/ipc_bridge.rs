@@ -218,6 +218,10 @@ pub struct TurnStartParams {
     /// Optional model override
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+
+    /// Number of candidate responses to generate; the best is selected (composer-best-of-n setting)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub best_of_n: Option<u32>,
 }
 
 /// User input types
@@ -320,6 +324,141 @@ pub struct AccountInfo {
     pub requires_openai_auth: bool,
 }
 
+// ==================== Thread Lifecycle (fork, archive, compact, read, name, rollback) ====================
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadForkParams {
+    pub thread_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadForkResponse {
+    pub thread: ThreadInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadArchiveParams {
+    pub thread_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadCompactParams {
+    pub thread_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadReadParams {
+    pub thread_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadReadResponse {
+    pub thread: ThreadInfo,
+    #[serde(default)]
+    pub items: Vec<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub has_more: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadNameSetParams {
+    pub thread_id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadRollbackParams {
+    pub thread_id: String,
+    pub num_turns: u32,
+}
+
+// ==================== Turn Steering ====================
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnSteerParams {
+    pub thread_id: String,
+    pub input: Vec<UserInput>,
+}
+
+// ==================== Extended Thread List Filters ====================
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadListExtendedParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_providers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_kinds: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search_term: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_key: Option<String>,
+}
+
+// ==================== Thread Metadata Update ====================
+
+/// Metadata fields that can be updated on a thread
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadMetadataFields {
+    /// New title / display name for the thread
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+
+    /// Arbitrary string tags attached to the thread
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadMetadataUpdateParams {
+    pub thread_id: String,
+    pub metadata: ThreadMetadataFields,
+}
+
+// ==================== Additional Input Types ====================
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum UserInputExtended {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(rename = "localImage")]
+    LocalImage { path: String },
+    #[serde(rename = "image")]
+    Image { url: String },
+    #[serde(rename = "skill")]
+    Skill { name: String, path: String },
+    #[serde(rename = "mention")]
+    Mention { name: String, path: String },
+}
+
 /// IPC Bridge provides high-level methods for communicating with app-server
 pub struct IpcBridge;
 
@@ -332,17 +471,28 @@ impl IpcBridge {
             "listThreads" => "thread/list",
             "startTurn" => "turn/start",
             "interruptTurn" => "turn/interrupt",
+            "steerTurn" => "turn/steer",
+            "forkThread" => "thread/fork",
+            "archiveThread" => "thread/archive",
+            "unarchiveThread" => "thread/unarchive",
+            "compactThread" => "thread/compact/start",
+            "readThread" => "thread/read",
+            "setThreadName" => "thread/name/set",
+            "rollbackThread" => "thread/rollback",
             "getAccount" => "account/read",
             "login" => "account/login/start",
+            "cancelLogin" => "account/login/cancel",
             "logout" => "account/logout",
+            "updateThreadMetadata" => "thread/metadata/update",
+            "writeSkillConfig" => "skills/config/write",
+            "uploadFeedback" => "feedback/upload",
+            "listApps" => "app/list",
             _ => method,
         }
     }
 
     /// Map app-server event names to frontend event names
     pub fn map_event(event: &str) -> String {
-        // Convert JSON-RPC method notation to kebab-case event names
-        // e.g., "item/started" -> "item-started"
         event.replace('/', "-")
     }
 }

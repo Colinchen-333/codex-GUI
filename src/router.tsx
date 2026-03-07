@@ -17,6 +17,7 @@ import { SelectWorkspacePage } from './pages/SelectWorkspacePage'
 import { SkillsPage } from './pages/SkillsPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { WorktreeInitPage } from './pages/WorktreeInitPage'
+import { ThreadOverlayPage } from './pages/ThreadOverlayPage'
 import { SettingsLicensesPage } from './pages/settings/SettingsLicensesPage'
 import { SettingsSectionPage } from './pages/settings/SettingsSectionPage'
 import { SettingsShellPage } from './pages/settings/SettingsShellPage'
@@ -45,6 +46,8 @@ export const router = createBrowserRouter([
       { path: '/inbox', element: <InboxPage /> },
       { path: '/inbox/:itemId', element: <InboxItemPage /> },
       { path: '/skills', element: <SkillsPage /> },
+      { path: '/thread-overlay', element: <ThreadOverlayPage /> },
+      { path: '/thread-overlay/:conversationId', element: <ThreadOverlayPage /> },
       {
         path: '/settings',
         element: <SettingsShellPage />,

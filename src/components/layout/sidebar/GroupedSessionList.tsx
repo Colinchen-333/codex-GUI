@@ -1,11 +1,61 @@
 import { memo, useMemo, useState, useCallback, type CSSProperties } from 'react'
-import { ChevronDown, ChevronRight, Folder, MessageSquare, Settings } from 'lucide-react'
+import { ChevronDown, ChevronRight, Folder, MessageSquare, Settings, Pin, PinOff, MailOpen, ArrowRight } from 'lucide-react'
 import { List } from 'react-window'
 import { cn, formatSessionTime } from '../../../lib/utils'
 import { useProjectsStore } from '../../../stores/projects'
 import { useSessionsStore } from '../../../stores/sessions'
 import type { Session } from './SessionList'
 import { IconButton } from '../../ui/IconButton'
+import { ContextMenu, type ContextMenuItem } from '../../ui/ContextMenu'
+import { useToast } from '../../ui/Toast'
+
+const UNREAD_STORAGE_KEY = 'codex:unread-sessions'
+
+function readUnreadSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(UNREAD_STORAGE_KEY)
+    if (!raw) return new Set()
+    return new Set(JSON.parse(raw) as string[])
+  } catch {
+    return new Set()
+  }
+}
+
+function writeUnreadSet(set: Set<string>): void {
+  try {
+    localStorage.setItem(UNREAD_STORAGE_KEY, JSON.stringify([...set]))
+  } catch {
+    // localStorage unavailable — state lives in memory
+  }
+}
+
+/** Hook that manages the unread sessions set in localStorage */
+function useUnreadSessions() {
+  const [unread, setUnread] = useState<Set<string>>(() => readUnreadSet())
+
+  const markUnread = useCallback((sessionId: string) => {
+    setUnread((prev) => {
+      const next = new Set(prev)
+      next.add(sessionId)
+      writeUnreadSet(next)
+      return next
+    })
+  }, [])
+
+  const markRead = useCallback((sessionId: string) => {
+    setUnread((prev) => {
+      if (!prev.has(sessionId)) return prev
+      const next = new Set(prev)
+      next.delete(sessionId)
+      writeUnreadSet(next)
+      return next
+    })
+  }, [])
+
+  const isUnread = useCallback((sessionId: string) => unread.has(sessionId), [unread])
+
+  return { markUnread, markRead, isUnread }
+}
 
 interface GroupedSessionListProps {
   sessions: Session[]
@@ -13,6 +63,7 @@ interface GroupedSessionListProps {
   onSelectSession: (sessionId: string | null, projectId?: string) => void
   onOpenProjectSettings?: (projectId: string) => void
   isLoading: boolean
+  onToggleFavorite?: (sessionId: string, current: boolean) => void
 }
 
 interface ProjectGroup {
@@ -24,7 +75,7 @@ interface ProjectGroup {
 /** A flattened row: either a project group header or a session item */
 type FlatRow =
   | { type: 'header'; group: ProjectGroup; isExpanded: boolean }
-  | { type: 'session'; session: Session; isSelected: boolean; displayName: string; timeStr: string; isRunning: boolean }
+  | { type: 'session'; session: Session; isSelected: boolean; displayName: string; timeStr: string; isRunning: boolean; isUnread: boolean }
   | { type: 'empty'; projectId: string }
 
 const HEADER_HEIGHT = 36
@@ -40,6 +91,10 @@ interface GroupedRowCustomProps {
   onToggleProject: (projectId: string) => void
   onSelectSession: (sessionId: string | null, projectId?: string) => void
   onOpenProjectSettings?: (projectId: string) => void
+  onToggleFavorite?: (sessionId: string, current: boolean) => void
+  onMarkUnread: (sessionId: string) => void
+  onMarkRead: (sessionId: string) => void
+  onShowToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
 }
 
 function GroupedRowComponent({
@@ -49,6 +104,10 @@ function GroupedRowComponent({
   onToggleProject,
   onSelectSession,
   onOpenProjectSettings,
+  onToggleFavorite,
+  onMarkUnread,
+  onMarkRead,
+  onShowToast,
 }: {
   index: number
   style: CSSProperties
@@ -105,32 +164,69 @@ function GroupedRowComponent({
   }
 
   // session row
-  const { session, isSelected, displayName, timeStr, isRunning } = row
+  const { session, isSelected, displayName, timeStr, isRunning, isUnread } = row
+
+  const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+      icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
+      onClick: () => onToggleFavorite?.(session.sessionId, session.isFavorite),
+      disabled: !onToggleFavorite,
+    },
+    {
+      label: 'Mark as unread',
+      icon: <MailOpen size={14} />,
+      onClick: () => onMarkUnread(session.sessionId),
+    },
+    {
+      label: 'Move to local',
+      icon: <ArrowRight size={14} />,
+      onClick: () => onShowToast('Move to local — coming soon', 'info'),
+    },
+    {
+      label: 'Move to worktree',
+      icon: <ArrowRight size={14} />,
+      onClick: () => onShowToast('Move to worktree — coming soon', 'info'),
+    },
+  ]
+
   return (
     <div style={style}>
       <div className="pl-5">
-        <button
-          onClick={() => onSelectSession(session.sessionId, session.projectId)}
-          className={cn(
-            'flex w-full items-center gap-2 rounded-2xl px-2.5 py-1.5 text-left transition-colors',
-            isSelected
-              ? 'bg-surface-hover/[0.08] text-text-1'
-              : 'text-text-2 hover:bg-surface-hover/[0.06]'
-          )}
-        >
-          <span className={cn(
-            'min-w-0 flex-1 truncate text-[15px] leading-6',
-            isSelected ? 'font-semibold text-text-1' : 'font-medium'
-          )}>
-            {displayName}
-          </span>
+        <ContextMenu items={contextMenuItems}>
+          <button
+            onClick={() => {
+              onMarkRead(session.sessionId)
+              onSelectSession(session.sessionId, session.projectId)
+            }}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-2xl px-2.5 py-1.5 text-left transition-colors',
+              isSelected
+                ? 'bg-surface-hover/[0.08] text-text-1'
+                : 'text-text-2 hover:bg-surface-hover/[0.06]'
+            )}
+          >
+            {session.isFavorite && (
+              <Pin size={10} className="shrink-0 text-text-3 fill-text-3/50" strokeWidth={1.5} />
+            )}
+            {isUnread && !isSelected && (
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-label="Unread" />
+            )}
+            <span className={cn(
+              'min-w-0 flex-1 truncate text-[15px] leading-6',
+              isSelected ? 'font-semibold text-text-1' : 'font-medium',
+              isUnread && !isSelected && 'font-semibold text-text-1'
+            )}>
+              {displayName}
+            </span>
 
-          {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
+            {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
 
-          {timeStr && (
-            <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>
-          )}
-        </button>
+            {timeStr && (
+              <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>
+            )}
+          </button>
+        </ContextMenu>
       </div>
     </div>
   )
@@ -142,9 +238,12 @@ export const GroupedSessionList = memo(function GroupedSessionList({
   onSelectSession,
   onOpenProjectSettings,
   isLoading,
+  onToggleFavorite,
 }: GroupedSessionListProps) {
   const { projects } = useProjectsStore()
   const { getSessionDisplayName } = useSessionsStore()
+  const { showToast } = useToast()
+  const { markUnread, markRead, isUnread } = useUnreadSessions()
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set(projects.map((p) => p.id)))
 
   const groupedSessions = useMemo(() => {
@@ -207,13 +306,14 @@ export const GroupedSessionList = memo(function GroupedSessionList({
             const timestamp = session.lastAccessedAt || session.createdAt
             const timeStr = formatSessionTime(timestamp)
             const isRunning = session.status === 'running'
-            rows.push({ type: 'session', session, isSelected, displayName, timeStr, isRunning })
+            const unread = isUnread(session.sessionId)
+            rows.push({ type: 'session', session, isSelected, displayName, timeStr, isRunning, isUnread: unread })
           }
         }
       }
     }
     return rows
-  }, [groupedSessions, expandedProjects, selectedSessionId, getSessionDisplayName])
+  }, [groupedSessions, expandedProjects, selectedSessionId, getSessionDisplayName, isUnread])
 
   const shouldVirtualize = flatRows.length > VIRTUALIZATION_THRESHOLD
 
@@ -230,8 +330,12 @@ export const GroupedSessionList = memo(function GroupedSessionList({
       onToggleProject: toggleProject,
       onSelectSession,
       onOpenProjectSettings,
+      onToggleFavorite,
+      onMarkUnread: markUnread,
+      onMarkRead: markRead,
+      onShowToast: showToast,
     }),
-    [flatRows, toggleProject, onSelectSession, onOpenProjectSettings]
+    [flatRows, toggleProject, onSelectSession, onOpenProjectSettings, onToggleFavorite, markUnread, markRead, showToast]
   )
 
   if (isLoading) {
@@ -326,31 +430,67 @@ export const GroupedSessionList = memo(function GroupedSessionList({
                   const timestamp = session.lastAccessedAt || session.createdAt
                   const timeStr = formatSessionTime(timestamp)
                   const isRunning = session.status === 'running'
+                  const unread = isUnread(session.sessionId)
+
+                  const items: ContextMenuItem[] = [
+                    {
+                      label: session.isFavorite ? 'Unpin thread' : 'Pin thread',
+                      icon: session.isFavorite ? <PinOff size={14} /> : <Pin size={14} />,
+                      onClick: () => onToggleFavorite?.(session.sessionId, session.isFavorite),
+                      disabled: !onToggleFavorite,
+                    },
+                    {
+                      label: 'Mark as unread',
+                      icon: <MailOpen size={14} />,
+                      onClick: () => markUnread(session.sessionId),
+                    },
+                    {
+                      label: 'Move to local',
+                      icon: <ArrowRight size={14} />,
+                      onClick: () => showToast('Move to local — coming soon', 'info'),
+                    },
+                    {
+                      label: 'Move to worktree',
+                      icon: <ArrowRight size={14} />,
+                      onClick: () => showToast('Move to worktree — coming soon', 'info'),
+                    },
+                  ]
 
                   return (
-                    <button
-                      key={session.sessionId}
-                      onClick={() => onSelectSession(session.sessionId, session.projectId)}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-2xl px-2.5 py-1.5 text-left transition-colors',
-                        isSelected
-                          ? 'bg-surface-hover/[0.08] text-text-1'
-                          : 'text-text-2 hover:bg-surface-hover/[0.06]'
-                      )}
-                    >
-                      <span className={cn(
-                        'min-w-0 flex-1 truncate text-[15px] leading-6',
-                        isSelected ? 'font-semibold text-text-1' : 'font-medium'
-                      )}>
-                        {displayName}
-                      </span>
+                    <ContextMenu key={session.sessionId} items={items}>
+                      <button
+                        onClick={() => {
+                          markRead(session.sessionId)
+                          onSelectSession(session.sessionId, session.projectId)
+                        }}
+                        className={cn(
+                          'flex w-full items-center gap-2 rounded-2xl px-2.5 py-1.5 text-left transition-colors',
+                          isSelected
+                            ? 'bg-surface-hover/[0.08] text-text-1'
+                            : 'text-text-2 hover:bg-surface-hover/[0.06]'
+                        )}
+                      >
+                        {session.isFavorite && (
+                          <Pin size={10} className="shrink-0 text-text-3 fill-text-3/50" strokeWidth={1.5} />
+                        )}
+                        {unread && !isSelected && (
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-label="Unread" />
+                        )}
+                        <span className={cn(
+                          'min-w-0 flex-1 truncate text-[15px] leading-6',
+                          isSelected ? 'font-semibold text-text-1' : 'font-medium',
+                          unread && !isSelected && 'font-semibold text-text-1'
+                        )}>
+                          {displayName}
+                        </span>
 
-                      {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
+                        {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
 
-                      {timeStr && (
-                        <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>
-                      )}
-                    </button>
+                        {timeStr && (
+                          <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>
+                        )}
+                      </button>
+                    </ContextMenu>
                   )
                 })}
               </div>

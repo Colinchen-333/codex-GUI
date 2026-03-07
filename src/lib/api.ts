@@ -386,6 +386,73 @@ export interface Snapshot {
   metadataJson: string | null
 }
 
+// ==================== Thread Metadata Types ====================
+
+export interface ThreadMetadataUpdateParams {
+  /** Optional display name for the thread */
+  name?: string
+  /** Arbitrary key-value tags for the thread */
+  tags?: Record<string, string | number | boolean | null>
+  /** Whether the thread is pinned */
+  pinned?: boolean
+  /** Any other metadata fields the app-server accepts */
+  [key: string]: unknown
+}
+
+export interface ThreadMetadataUpdateResponse {
+  threadId: string
+  updatedAt: number
+}
+
+// ==================== Skill Config Types ====================
+
+export interface SkillConfigWriteParams {
+  /** Skill identifier (name or path) */
+  skillId: string
+  /** Configuration values to write for this skill */
+  config: Record<string, string | number | boolean | null>
+}
+
+// ==================== Feedback Types ====================
+
+export interface FeedbackData {
+  /** Category: "bug" | "improvement" | "other" */
+  category: string
+  /** Free-form feedback text */
+  message: string
+  /** Optional thread ID for context */
+  threadId?: string
+  /** Optional rating (1–5) */
+  rating?: number
+  /** Optional structured metadata */
+  metadata?: Record<string, unknown>
+}
+
+export interface FeedbackUploadResponse {
+  feedbackId: string
+  receivedAt: number
+}
+
+// ==================== App Integration Types ====================
+
+export interface ConnectedApp {
+  id: string
+  name: string
+  displayName: string
+  /** Editor or integration type, e.g. "vscode", "cursor", "zed" */
+  type: string
+  /** Whether the app is currently reachable */
+  isConnected: boolean
+  /** Optional path to the app executable */
+  executablePath?: string | null
+  /** App version string, if available */
+  version?: string | null
+}
+
+export interface AppListResponse {
+  data: ConnectedApp[]
+}
+
 // ==================== Project API ====================
 
 export const projectApi = {
@@ -641,6 +708,59 @@ export const threadApi = {
       requestId,
       execpolicyAmendment,
     }),
+
+  fork: (threadId: string, cwd?: string) =>
+    invoke<ThreadStartResponse>('fork_thread', { threadId, cwd }),
+
+  archive: (threadId: string) =>
+    invoke<void>('archive_thread', { threadId }),
+
+  unarchive: (threadId: string) =>
+    invoke<void>('unarchive_thread', { threadId }),
+
+  compact: (threadId: string) =>
+    invoke<void>('compact_thread', { threadId }),
+
+  read: (threadId: string, limit?: number, cursor?: string) =>
+    invoke<ThreadResumeResponse>('read_thread', { threadId, limit, cursor }),
+
+  setName: (threadId: string, name: string) =>
+    invoke<void>('set_thread_name', { threadId, name }),
+
+  rollback: (threadId: string, numTurns: number) =>
+    invoke<void>('rollback_thread', { threadId, numTurns }),
+
+  steer: (threadId: string, text: string) =>
+    invoke<void>('steer_turn', { threadId, text }),
+
+  cancelLogin: () =>
+    invoke<void>('cancel_login'),
+
+  listFiltered: (params: {
+    limit?: number
+    cursor?: string
+    modelProviders?: string[]
+    sourceKinds?: string[]
+    archived?: boolean
+    cwd?: string
+    searchTerm?: string
+    sortKey?: string
+  }) =>
+    invoke<ThreadListResponse>('list_threads_filtered', params),
+
+  /**
+   * Update arbitrary metadata on a thread (app-server `thread/metadata/update`).
+   * TODO: Requires Rust command `update_thread_metadata` in thread.rs that
+   *       proxies to `thread/metadata/update` via send_request().
+   */
+  updateMetadata: (threadId: string, metadata: ThreadMetadataUpdateParams) =>
+    // TODO: replace with invoke<ThreadMetadataUpdateResponse>('update_thread_metadata', { threadId, ...metadata })
+    //       once the Rust backend command is implemented.
+    invokeOrFallback<ThreadMetadataUpdateResponse>(
+      { threadId, updatedAt: Date.now() },
+      'update_thread_metadata',
+      { threadId, ...metadata }
+    ),
 }
 
 // ==================== Snapshot API ====================
@@ -754,6 +874,83 @@ export const configApi = {
 
   write: (key: string, value: string | number | boolean | null) =>
     invoke<void>('write_config', { key, value }),
+}
+
+// ==================== Model API ====================
+// Re-exposes serverApi.getModels() under a dedicated namespace for callers
+// that follow the official Codex naming convention (model/list).
+
+export const modelApi = {
+  /**
+   * List available models (proxies to app-server `model/list`).
+   * Results are cached for 5 minutes — use serverApi.getModels() directly
+   * when you need the same cached call from existing code.
+   */
+  list: () => serverApi.getModels(),
+}
+
+// ==================== Skills API ====================
+// Re-exposes serverApi.listSkills() and adds the missing skills/config/write.
+// TODO: Rust backend command `write_skill_config` needs to be implemented in
+//       src-tauri/src/commands/app_server.rs to proxy `skills/config/write`.
+
+export const skillsApi = {
+  /**
+   * List skills for one or more working directories (proxies to app-server
+   * `skills/list`).  For existing code, serverApi.listSkills() is equivalent.
+   */
+  list: (cwds: string[], forceReload = false, projectId?: string) =>
+    serverApi.listSkills(cwds, forceReload, projectId),
+
+  /**
+   * Write configuration for a specific skill (app-server `skills/config/write`).
+   * TODO: Requires Rust command `write_skill_config` in app_server.rs.
+   */
+  writeConfig: (skillId: string, config: Record<string, string | number | boolean | null>) =>
+    // TODO: replace with invoke<void>('write_skill_config', { skillId, config })
+    //       once the Rust backend command is implemented.
+    invokeOrFallback<void>(
+      undefined,
+      'write_skill_config',
+      { skillId, config }
+    ),
+}
+
+// ==================== Feedback API ====================
+// TODO: Rust backend command `upload_feedback` needs to be implemented in
+//       src-tauri/src/commands/app_server.rs to proxy `feedback/upload`.
+
+export const feedbackApi = {
+  /**
+   * Upload user feedback to the app-server (`feedback/upload`).
+   * TODO: Requires Rust command `upload_feedback` in app_server.rs.
+   */
+  upload: (data: FeedbackData) =>
+    // TODO: replace with invokeWithTimeout<FeedbackUploadResponse>('upload_feedback', { ...data }, 15000)
+    //       once the Rust backend command is implemented.
+    invokeOrFallback<FeedbackUploadResponse>(
+      { feedbackId: '', receivedAt: Date.now() },
+      'upload_feedback',
+      { ...data }
+    ),
+}
+
+// ==================== App Integration API ====================
+// TODO: Rust backend command `list_connected_apps` needs to be implemented in
+//       src-tauri/src/commands/app_server.rs to proxy `app/list`.
+
+export const appApi = {
+  /**
+   * List connected editor / app integrations (app-server `app/list`).
+   * TODO: Requires Rust command `list_connected_apps` in app_server.rs.
+   */
+  list: () =>
+    // TODO: replace with invoke<AppListResponse>('list_connected_apps')
+    //       once the Rust backend command is implemented.
+    invokeOrFallback<AppListResponse>(
+      { data: [] },
+      'list_connected_apps'
+    ),
 }
 
 // ==================== Allowlist API ====================
@@ -909,6 +1106,50 @@ export interface TerminalOutput {
 export const terminalApi = {
   execute: (cwd: string, command: string) =>
     invokeWithTimeout<TerminalOutput>('execute_terminal_command', { cwd, command }, 120000), // 2 minute timeout for terminal commands
+}
+
+// ==================== Automation API ====================
+
+export interface Automation {
+  id: string
+  name: string
+  prompt: string
+  project_id: string
+  schedule: { cron: string; timezone?: string } | null
+  enabled: boolean
+  last_run_at: string | null
+  run_count: number
+  created_at: string
+}
+
+export interface AutomationRun {
+  id: string
+  automation_id: string
+  status: string
+  started_at: string
+  completed_at: string | null
+  result_summary: string | null
+  thread_id: string | null
+}
+
+export const automationApi = {
+  list: () =>
+    invoke<Automation[]>('list_automations'),
+
+  create: (name: string, prompt: string, projectId: string, scheduleCron?: string, scheduleTimezone?: string) =>
+    invoke<Automation>('create_automation', { name, prompt, projectId, scheduleCron, scheduleTimezone }),
+
+  update: (id: string, updates: { name?: string; prompt?: string; scheduleCron?: string; scheduleTimezone?: string; enabled?: boolean }) =>
+    invoke<void>('update_automation', { id, ...updates }),
+
+  delete: (id: string) =>
+    invoke<void>('delete_automation', { id }),
+
+  runNow: (id: string) =>
+    invoke<AutomationRun>('run_automation_now', { id }),
+
+  listRuns: (automationId: string) =>
+    invoke<AutomationRun[]>('list_automation_runs', { automationId }),
 }
 
 // ==================== Cache Utilities (P2.2) ====================

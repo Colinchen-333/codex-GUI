@@ -43,7 +43,7 @@
     "longDescription": "Codex Desktop provides an intuitive graphical interface for the Codex CLI tool, enabling efficient code editing and project management.",
     "macOS": {
       "frameworks": [],
-      "minimumSystemVersion": "10.13"
+      "minimumSystemVersion": "12.0"
     },
     "windows": {
       "certificateThumbprint": null,
@@ -57,6 +57,11 @@
       "dialog": true,
       "pubkey": "",
       "endpoints": []
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["codex"]
+      }
     }
   }
 }

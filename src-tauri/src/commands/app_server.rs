@@ -448,6 +448,95 @@ pub async fn write_config(
     Ok(())
 }
 
+// ==================== Skills Config Write ====================
+
+/// Write configuration for a specific skill
+///
+/// Maps to the official `skills/config/write` JSON-RPC method.
+#[tauri::command]
+pub async fn write_skill_config(
+    state: State<'_, AppState>,
+    skill_id: String,
+    config: serde_json::Value,
+) -> Result<()> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let params = serde_json::json!({
+        "skillId": skill_id,
+        "config": config,
+    });
+    let _: serde_json::Value = server.send_request("skills/config/write", params).await?;
+    tracing::info!("Wrote skill config for: {}", skill_id);
+    Ok(())
+}
+
+// ==================== Feedback Upload ====================
+
+/// Upload user feedback to the Codex service
+///
+/// Maps to the official `feedback/upload` JSON-RPC method.
+#[tauri::command]
+pub async fn upload_feedback(
+    state: State<'_, AppState>,
+    feedback: String,
+    context: Option<serde_json::Value>,
+) -> Result<()> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let params = if let Some(ctx) = context {
+        serde_json::json!({ "feedback": feedback, "context": ctx })
+    } else {
+        serde_json::json!({ "feedback": feedback })
+    };
+    let _: serde_json::Value = server.send_request("feedback/upload", params).await?;
+    tracing::info!("Uploaded user feedback");
+    Ok(())
+}
+
+// ==================== App List ====================
+
+/// Information about a connected app / integration
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectedApp {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub app_type: String,
+}
+
+/// Response from `app/list`
+#[derive(Debug, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppListResponse {
+    pub apps: Vec<ConnectedApp>,
+}
+
+/// List connected apps / integrations
+///
+/// Maps to the official `app/list` JSON-RPC method.
+#[tauri::command]
+pub async fn list_apps(state: State<'_, AppState>) -> Result<AppListResponse> {
+    state.start_app_server().await?;
+    let mut server = state.app_server.write().await;
+    let server = server
+        .as_mut()
+        .ok_or_else(|| crate::Error::AppServer("App server not running".to_string()))?;
+
+    let response: AppListResponse = server
+        .send_request("app/list", serde_json::json!({}))
+        .await?;
+    Ok(response)
+}
+
 // ==================== Account Rate Limits ====================
 
 /// Get account rate limits

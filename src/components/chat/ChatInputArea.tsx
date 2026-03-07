@@ -3,7 +3,7 @@
  * Extracted from ChatView.tsx for better modularity
  */
 import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from 'react'
-import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, GitBranch, Check, MessageSquare, FileEdit, Zap, Search, Loader2 } from 'lucide-react'
+import { X, Plus, ArrowUp, Square, ChevronDown, Shield, Mic, MicOff, Paperclip, GitBranch, Check, MessageSquare, FileEdit, Zap, Search, Loader2, Bot, Hand } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useThreadStore, selectFocusedThread } from '../../stores/thread'
 import { selectFileChanges } from '../../stores/thread/selectors'
@@ -279,15 +279,21 @@ export default memo(function ChatInputArea({
         return
       }
 
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter') {
         if (showSlashCommands || showFileMention) {
           return
         }
-        e.preventDefault()
-        void handleSendWithHistory()
+        // enterBehavior: 'enter' → Enter submits, Shift+Enter adds newline (default)
+        // enterBehavior: 'shift-enter' → Shift+Enter submits, Enter adds newline
+        const shouldSubmit =
+          settings.enterBehavior === 'shift-enter' ? e.shiftKey : !e.shiftKey
+        if (shouldSubmit) {
+          e.preventDefault()
+          void handleSendWithHistory()
+        }
       }
     },
-    [showSlashCommands, showFileMention, handleSendWithHistory, handleHistoryKeyDown, toggleVoice]
+    [showSlashCommands, showFileMention, handleSendWithHistory, handleHistoryKeyDown, toggleVoice, settings.enterBehavior]
   )
 
   // Global Ctrl+M shortcut (works even when textarea is not focused)
@@ -547,7 +553,8 @@ export default memo(function ChatInputArea({
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stroke/15 px-4 py-2">
+          {/* Composer footer: model, reasoning, agent mode, enter behavior, actions */}
+          <div className="composer-footer flex flex-wrap items-center justify-between gap-3 border-t border-stroke/15 px-4 py-2">
             <div className="flex items-center gap-2">
               <input
                 type="file"
@@ -613,54 +620,120 @@ export default memo(function ChatInputArea({
 
                 {isModelMenuOpen && (
                   <div
-                    className="absolute bottom-full left-0 mb-2 w-72 max-h-80 overflow-y-auto rounded-xl border border-stroke/15 bg-surface-solid p-1.5 shadow-[var(--shadow-2)]"
+                    className="absolute bottom-full left-0 mb-2 w-72 rounded-xl border border-stroke/15 bg-surface-solid shadow-[var(--shadow-2)]"
                     role="listbox"
                     aria-label="Select model"
                   >
-                    {models.length === 0 ? (
-                      <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-text-3">
-                        <Loader2 size={14} className="animate-spin" />
-                        Loading models...
+                    {/* Reasoning effort section */}
+                    <div className="px-3 pt-2.5 pb-2 border-b border-stroke/10">
+                      <div className="text-[10px] font-semibold text-text-3 uppercase tracking-wide mb-1.5">Reasoning Effort</div>
+                      <div className="flex gap-1">
+                        {(['none', 'low', 'medium', 'high', 'xhigh'] as const).map((effort) => {
+                          const effortLabels: Record<string, string> = { none: 'None', low: 'Low', medium: 'Med', high: 'High', xhigh: 'Max' }
+                          const isActive = settings.reasoningEffort === effort
+                          return (
+                            <button
+                              key={effort}
+                              className={cn(
+                                'flex-1 rounded py-0.5 text-[11px] font-medium transition-colors',
+                                isActive
+                                  ? 'bg-primary/20 text-primary'
+                                  : 'text-text-3 hover:bg-surface-hover/[0.10] hover:text-text-2'
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                updateSetting('reasoningEffort', effort)
+                              }}
+                            >
+                              {effortLabels[effort]}
+                            </button>
+                          )
+                        })}
                       </div>
-                    ) : (
-                      models.map((model) => {
-                        const isSelected = model.id === (modelOverride || settings.model) || model.model === (modelOverride || settings.model)
-                        const isReasoning = modelSupportsReasoning(model)
-                        return (
-                          <button
-                            key={model.id}
-                            role="option"
-                            aria-selected={isSelected}
-                            className={cn(
-                              'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.12]',
-                              isSelected && 'bg-surface-hover/[0.06]'
-                            )}
-                            onClick={() => handleSelectModel(model.id)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-text-1 font-medium truncate">{model.displayName || model.model}</span>
-                                {isReasoning && (
-                                  <span className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium bg-primary/15 text-primary">
-                                    reasoning
-                                  </span>
+                    </div>
+                    {/* Model list */}
+                    <div className="max-h-64 overflow-y-auto p-1.5">
+                      {models.length === 0 ? (
+                        <div className="flex items-center justify-center gap-2 px-3 py-4 text-xs text-text-3">
+                          <Loader2 size={14} className="animate-spin" />
+                          Loading models...
+                        </div>
+                      ) : (
+                        models.map((model) => {
+                          const isSelected = model.id === (modelOverride || settings.model) || model.model === (modelOverride || settings.model)
+                          const isReasoning = modelSupportsReasoning(model)
+                          return (
+                            <button
+                              key={model.id}
+                              role="option"
+                              aria-selected={isSelected}
+                              className={cn(
+                                'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-surface-hover/[0.12]',
+                                isSelected && 'bg-surface-hover/[0.06]'
+                              )}
+                              onClick={() => handleSelectModel(model.id)}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-text-1 font-medium truncate">{model.displayName || model.model}</span>
+                                  {isReasoning && (
+                                    <span className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium bg-primary/15 text-primary">
+                                      reasoning
+                                    </span>
+                                  )}
+                                </div>
+                                {model.description && (
+                                  <p className="mt-0.5 text-xs text-text-3 truncate">{model.description}</p>
                                 )}
                               </div>
-                              {model.description && (
-                                <p className="mt-0.5 text-xs text-text-3 truncate">{model.description}</p>
-                              )}
-                            </div>
-                            {isSelected && <Check size={16} className="shrink-0 mt-0.5 text-primary" />}
-                          </button>
-                        )
-                      })
-                    )}
+                              {isSelected && <Check size={16} className="shrink-0 mt-0.5 text-primary" />}
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
+
+              {/* Enter behavior toggle — compact pill */}
+              <button
+                className="hidden sm:inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium text-text-3 transition-colors hover:bg-surface-hover/[0.08] hover:text-text-2"
+                onClick={() => updateSetting('enterBehavior', settings.enterBehavior === 'enter' ? 'shift-enter' : 'enter')}
+                title={
+                  settings.enterBehavior === 'enter'
+                    ? 'Enter sends — click to switch to Shift+Enter'
+                    : 'Shift+Enter sends — click to switch to Enter'
+                }
+                aria-label="Toggle send key behavior"
+              >
+                {settings.enterBehavior === 'enter' ? 'Enter ↵' : '⇧↵ sends'}
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Agent mode toggle */}
+              <button
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors',
+                  settings.agentMode === 'auto'
+                    ? 'text-status-success hover:bg-status-success/10'
+                    : 'text-text-3 hover:bg-surface-hover/[0.08] hover:text-text-2'
+                )}
+                onClick={() => updateSetting('agentMode', settings.agentMode === 'auto' ? 'manual' : 'auto')}
+                title={
+                  settings.agentMode === 'auto'
+                    ? 'Agent: Auto — click to switch to Manual'
+                    : 'Agent: Manual — click to switch to Auto'
+                }
+                aria-label={`Agent mode: ${settings.agentMode}. Click to toggle.`}
+              >
+                {settings.agentMode === 'auto'
+                  ? <><Bot size={12} strokeWidth={1.5} aria-hidden="true" /><span>Auto</span></>
+                  : <><Hand size={12} strokeWidth={1.5} aria-hidden="true" /><span>Manual</span></>
+                }
+              </button>
+
               <div ref={approvalMenuRef} className="relative">
                 <button
                   className={cn(

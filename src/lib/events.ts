@@ -134,6 +134,47 @@ export interface FileChangeOutputDeltaEvent {
   delta: string
 }
 
+// Tool call event (item/tool/call)
+export interface ItemToolCallEvent {
+  itemId: string
+  threadId: string
+  turnId: string
+  tool: {
+    name: string
+    arguments?: unknown
+    result?: unknown
+  }
+}
+
+// Plan delta streaming event (item/plan/delta)
+export interface ItemPlanDeltaEvent {
+  threadId: string
+  turnId: string
+  delta: string
+}
+
+// Connected apps list updated (app/list/updated)
+export interface AppListUpdatedEvent {
+  apps: Array<{
+    id: string
+    name: string
+    [key: string]: unknown
+  }>
+}
+
+// Automation runs updated
+export interface AutomationRunsUpdatedEvent {
+  automationId: string
+  runs: Array<{
+    id: string
+    status: string
+    startedAt?: number | null
+    completedAt?: number | null
+    result?: unknown
+    [key: string]: unknown
+  }>
+}
+
 // MCP tool events
 export interface McpToolCallProgressEvent {
   itemId: string
@@ -227,6 +268,10 @@ export type EventHandlers = {
   onCommandExecutionOutputDelta?: (event: CommandExecutionOutputDeltaEvent) => void
   onFileChangeOutputDelta?: (event: FileChangeOutputDeltaEvent) => void
 
+  // Tool call & plan delta (item-level granular events)
+  onItemToolCall?: (event: ItemToolCallEvent) => void
+  onItemPlanDelta?: (event: ItemPlanDeltaEvent) => void
+
   // MCP tools
   onMcpToolCallProgress?: (event: McpToolCallProgressEvent) => void
 
@@ -243,6 +288,22 @@ export type EventHandlers = {
 
   // Rate limiting
   onRateLimitExceeded?: (event: RateLimitExceededEvent) => void
+
+  // Account & server notifications (official protocol)
+  onAccountUpdated?: (event: Record<string, unknown>) => void
+  onAccountLoginCompleted?: (event: Record<string, unknown>) => void
+  onAccountRateLimitsUpdated?: (event: Record<string, unknown>) => void
+  onThreadStatusChanged?: (event: { threadId: string; status: string }) => void
+  onThreadNameUpdated?: (event: { threadId: string; name: string }) => void
+  onThreadArchived?: (event: { threadId: string }) => void
+  onThreadUnarchived?: (event: { threadId: string }) => void
+  onSkillsChanged?: (event: Record<string, unknown>) => void
+  onModelRerouted?: (event: { threadId: string; originalModel: string; routedModel: string }) => void
+  onServerReconnected?: (event: Record<string, unknown>) => void
+
+  // Apps & automations
+  onAppListUpdated?: (event: AppListUpdatedEvent) => void
+  onAutomationRunsUpdated?: (event: AutomationRunsUpdatedEvent) => void
 }
 
 // ==================== Setup Event Listeners ====================
@@ -276,6 +337,9 @@ export async function setupEventListeners(
     // Command execution + file change output
     ['item-commandExecution-outputDelta', handlers.onCommandExecutionOutputDelta],
     ['item-fileChange-outputDelta', handlers.onFileChangeOutputDelta],
+    // Tool call & plan delta
+    ['item-toolCall', handlers.onItemToolCall],
+    ['item-plan-delta', handlers.onItemPlanDelta],
     // MCP tools
     ['item-mcpToolCall-progress', handlers.onMcpToolCallProgress],
     // Token usage
@@ -288,6 +352,20 @@ export async function setupEventListeners(
     ['app-server-disconnected', handlers.onServerDisconnected],
     // Rate limiting
     ['turn-rateLimitExceeded', handlers.onRateLimitExceeded],
+    // Account & server notifications
+    ['account-updated', handlers.onAccountUpdated],
+    ['account-login-completed', handlers.onAccountLoginCompleted],
+    ['account-rateLimits-updated', handlers.onAccountRateLimitsUpdated],
+    ['thread-status-changed', handlers.onThreadStatusChanged],
+    ['thread-name-updated', handlers.onThreadNameUpdated],
+    ['thread-archived', handlers.onThreadArchived],
+    ['thread-unarchived', handlers.onThreadUnarchived],
+    ['skills-changed', handlers.onSkillsChanged],
+    ['model-rerouted', handlers.onModelRerouted],
+    ['app-server-reconnected', handlers.onServerReconnected],
+    // Apps & automations
+    ['app-list-updated', handlers.onAppListUpdated],
+    ['automation-runs-updated', handlers.onAutomationRunsUpdated],
   ]
 
   // Register all listeners in parallel for faster startup

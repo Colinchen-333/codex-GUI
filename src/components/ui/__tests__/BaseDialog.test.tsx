@@ -10,8 +10,8 @@ describe('BaseDialog', () => {
       </BaseDialog>
     )
 
-    const overlay = container.querySelector('.codex-dialog-overlay')
     const dialog = container.querySelector('.codex-dialog')
+    const overlay = container.querySelector('[role="presentation"]')
 
     expect(overlay).toBeTruthy()
     expect(dialog).toBeTruthy()

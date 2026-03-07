@@ -8,7 +8,10 @@ use tauri::State;
 use crate::app_server::ipc_bridge::{
     ApprovalDecision, ApprovalResponseResult, ThreadListParams, ThreadListResponse,
     ThreadResumeParams, ThreadResumeResponse, ThreadStartParams, ThreadStartResponse,
-    TurnInterruptParams, TurnStartParams, TurnStartResponse, UserInput, SandboxPolicy,
+    TurnInterruptParams, TurnStartParams, TurnStartResponse, TurnSteerParams, UserInput, SandboxPolicy,
+    ThreadForkParams, ThreadForkResponse, ThreadArchiveParams, ThreadCompactParams,
+    ThreadReadParams, ThreadReadResponse, ThreadNameSetParams, ThreadRollbackParams,
+    ThreadListExtendedParams, ThreadMetadataUpdateParams, ThreadMetadataFields,
 };
 use crate::database::SessionMetadata;
 use crate::state::AppState;
@@ -149,6 +152,7 @@ pub async fn send_message(
     model: Option<String>,
     approval_policy: Option<String>,
     sandbox_policy: Option<String>,
+    best_of_n: Option<u32>,
 ) -> Result<TurnStartResponse> {
     let mut input: Vec<UserInput> = vec![UserInput::Text { text }];
 
@@ -186,6 +190,7 @@ pub async fn send_message(
         approval_policy,
         sandbox_policy: parse_sandbox_policy(sandbox_policy),
         model,
+        best_of_n,
     };
 
     let mut guard = state.app_server.write().await;
@@ -282,6 +287,162 @@ pub async fn list_threads(
     let response: ThreadListResponse = server.send_request("thread/list", params).await?;
 
     Ok(response)
+}
+
+/// Fork a thread
+#[tauri::command]
+pub async fn fork_thread(
+    state: State<'_, AppState>,
+    thread_id: String,
+    cwd: Option<String>,
+) -> Result<ThreadForkResponse> {
+    state.start_app_server().await?;
+    let params = ThreadForkParams { thread_id, cwd };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    server.send_request("thread/fork", params).await
+}
+
+/// Archive a thread
+#[tauri::command]
+pub async fn archive_thread(state: State<'_, AppState>, thread_id: String) -> Result<()> {
+    let params = ThreadArchiveParams { thread_id };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: JsonValue = server.send_request("thread/archive", params).await?;
+    Ok(())
+}
+
+/// Unarchive a thread
+#[tauri::command]
+pub async fn unarchive_thread(state: State<'_, AppState>, thread_id: String) -> Result<()> {
+    let params = ThreadArchiveParams { thread_id };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: JsonValue = server.send_request("thread/unarchive", params).await?;
+    Ok(())
+}
+
+/// Compact a thread (summarize context to free up context window)
+#[tauri::command]
+pub async fn compact_thread(state: State<'_, AppState>, thread_id: String) -> Result<()> {
+    let params = ThreadCompactParams { thread_id };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: JsonValue = server.send_request("thread/compact/start", params).await?;
+    Ok(())
+}
+
+/// Read a thread without resuming it
+#[tauri::command]
+pub async fn read_thread(
+    state: State<'_, AppState>,
+    thread_id: String,
+    limit: Option<u32>,
+    cursor: Option<String>,
+) -> Result<ThreadReadResponse> {
+    state.start_app_server().await?;
+    let params = ThreadReadParams { thread_id, limit, cursor };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    server.send_request("thread/read", params).await
+}
+
+/// Set thread name
+#[tauri::command]
+pub async fn set_thread_name(
+    state: State<'_, AppState>,
+    thread_id: String,
+    name: String,
+) -> Result<()> {
+    let params = ThreadNameSetParams { thread_id, name };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: JsonValue = server.send_request("thread/name/set", params).await?;
+    Ok(())
+}
+
+/// Rollback last N turns
+#[tauri::command]
+pub async fn rollback_thread(
+    state: State<'_, AppState>,
+    thread_id: String,
+    num_turns: u32,
+) -> Result<()> {
+    let params = ThreadRollbackParams { thread_id, num_turns };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: JsonValue = server.send_request("thread/rollback", params).await?;
+    Ok(())
+}
+
+/// Steer an active turn (append input without creating a new turn)
+#[tauri::command]
+pub async fn steer_turn(
+    state: State<'_, AppState>,
+    thread_id: String,
+    text: String,
+) -> Result<()> {
+    let input = vec![UserInput::Text { text }];
+    let params = TurnSteerParams { thread_id, input };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: JsonValue = server.send_request("turn/steer", params).await?;
+    Ok(())
+}
+
+/// Cancel an in-progress login
+#[tauri::command]
+pub async fn cancel_login(state: State<'_, AppState>) -> Result<()> {
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: JsonValue = server.send_request("account/login/cancel", serde_json::json!({})).await?;
+    Ok(())
+}
+
+/// List threads with extended filters
+#[tauri::command]
+pub async fn list_threads_filtered(
+    state: State<'_, AppState>,
+    limit: Option<u32>,
+    cursor: Option<String>,
+    model_providers: Option<Vec<String>>,
+    source_kinds: Option<Vec<String>>,
+    archived: Option<bool>,
+    cwd: Option<String>,
+    search_term: Option<String>,
+    sort_key: Option<String>,
+) -> Result<ThreadListResponse> {
+    state.start_app_server().await?;
+    let params = ThreadListExtendedParams {
+        limit, cursor, model_providers, source_kinds, archived, cwd, search_term, sort_key,
+    };
+    let mut guard = state.app_server.write().await;
+    let server = guard.as_mut().ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    server.send_request("thread/list", params).await
+}
+
+/// Update thread metadata (title, tags)
+///
+/// Maps to the official `thread/metadata/update` JSON-RPC method.
+#[tauri::command]
+pub async fn update_thread_metadata(
+    state: State<'_, AppState>,
+    thread_id: String,
+    title: Option<String>,
+    tags: Option<Vec<String>>,
+) -> Result<()> {
+    let params = ThreadMetadataUpdateParams {
+        thread_id,
+        metadata: ThreadMetadataFields { title, tags },
+    };
+    let mut guard = state.app_server.write().await;
+    let server = guard
+        .as_mut()
+        .ok_or_else(|| Error::AppServer("App server not running".to_string()))?;
+    let _: serde_json::Value = server.send_request("thread/metadata/update", params).await?;
+    tracing::info!("Updated thread metadata");
+    Ok(())
 }
 
 /// Save a base64 data URL image to a temporary file and return the path

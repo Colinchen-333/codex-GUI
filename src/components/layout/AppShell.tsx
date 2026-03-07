@@ -127,7 +127,7 @@ export function AppShell() {
   }, [navigate, toast])
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div className="flex h-screen w-screen overflow-hidden bg-transparent">
       <HostNavigationListener />
       <KeyboardShortcuts />
       {sidebarCollapsed ? (
@@ -145,7 +145,7 @@ export function AppShell() {
       ) : (
         <Sidebar />
       )}
-      <div className="relative flex flex-1 flex-col overflow-hidden bg-background">
+      <div className="main-surface relative flex flex-1 flex-col overflow-hidden bg-background">
         <AsyncErrorBoundary
           onError={(error) => {
             logError(error, {

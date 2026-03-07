@@ -1,122 +1,30 @@
-import { lazy, Suspense, useState, useEffect, memo, type ComponentType, type CSSProperties, type ReactNode } from 'react'
+import { useState, useEffect, memo, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '../../lib/utils'
+import { highlightCode } from '../../lib/shikiHighlighter'
 import { logError } from '../../lib/errorUtils'
-
-type PrismHighlighter = ComponentType<{
-  style?: Record<string, CSSProperties>
-  language?: string
-  PreTag?: string
-  customStyle?: CSSProperties
-  children?: ReactNode
-}> & {
-  registerLanguage?: (languageName: string, language: unknown) => void
-  alias?: (languageName: string, aliases: string[]) => void
-}
-
-let prismLanguagesPromise: Promise<void> | null = null
-async function ensurePrismLanguages(Highlighter: PrismHighlighter) {
-  if (prismLanguagesPromise) return prismLanguagesPromise
-
-  prismLanguagesPromise = (async () => {
-    const [
-      bash,
-      diff,
-      json,
-      javascript,
-      jsx,
-      typescript,
-      tsx,
-      python,
-      rust,
-      yaml,
-      markdown,
-    ] = await Promise.all([
-      import('react-syntax-highlighter/dist/esm/languages/prism/bash').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/diff').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/json').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/javascript').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/jsx').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/typescript').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/tsx').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/python').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/rust').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/yaml').then((m) => m.default),
-      import('react-syntax-highlighter/dist/esm/languages/prism/markdown').then((m) => m.default),
-    ])
-
-    // prism-light: registerLanguage ignores the name and registers the refractor language object.
-    Highlighter.registerLanguage?.('bash', bash)
-    Highlighter.registerLanguage?.('diff', diff)
-    Highlighter.registerLanguage?.('json', json)
-    Highlighter.registerLanguage?.('javascript', javascript)
-    Highlighter.registerLanguage?.('jsx', jsx)
-    Highlighter.registerLanguage?.('typescript', typescript)
-    Highlighter.registerLanguage?.('tsx', tsx)
-    Highlighter.registerLanguage?.('python', python)
-    Highlighter.registerLanguage?.('rust', rust)
-    Highlighter.registerLanguage?.('yaml', yaml)
-    Highlighter.registerLanguage?.('markdown', markdown)
-
-    Highlighter.alias?.('bash', ['sh', 'shell', 'zsh'])
-    Highlighter.alias?.('javascript', ['js'])
-    Highlighter.alias?.('typescript', ['ts'])
-    Highlighter.alias?.('tsx', ['tsreact'])
-    Highlighter.alias?.('yaml', ['yml'])
-  })()
-
-  return prismLanguagesPromise
-}
-
-// Lazy load a "light" Prism highlighter and register only a small language set.
-// This keeps the production bundle much smaller than importing the full Prism build.
-const SyntaxHighlighter = lazy(async () => {
-  const mod = await import('react-syntax-highlighter/dist/esm/prism-light')
-  const Highlighter = mod.default as unknown as PrismHighlighter
-  await ensurePrismLanguages(Highlighter)
-  return { default: Highlighter }
-})
-
-// Lazy load theme - cached at module level
-let cachedTheme: Record<string, CSSProperties> | null = null
-const loadTheme = async () => {
-  if (cachedTheme) return cachedTheme
-  const mod = await import('react-syntax-highlighter/dist/esm/styles/prism/one-dark')
-  cachedTheme = mod.default as Record<string, CSSProperties>
-  return cachedTheme
-}
 
 interface MarkdownProps {
   content: string
   className?: string
 }
 
-// Memoized code block with lazy-loaded syntax highlighting
 const CodeBlock = memo(function CodeBlock({ language, children }: { language: string; children: string }) {
-  return (
-    <Suspense
-      fallback={
-        <pre className="rounded-lg bg-surface-hover/[0.08] border border-stroke/20 p-4 text-sm font-mono overflow-x-auto text-text-2">
-          <code>{children}</code>
-        </pre>
-      }
-    >
-      <LazyCodeBlock language={language}>{children}</LazyCodeBlock>
-    </Suspense>
-  )
-})
-
-const LazyCodeBlock = memo(function LazyCodeBlock({ language, children }: { language: string; children: string }) {
-  const [theme, setTheme] = useState<Record<string, CSSProperties> | null>(cachedTheme)
+  const [html, setHtml] = useState<string | null>(null)
+  const isDark = document.documentElement.classList.contains('dark')
 
   useEffect(() => {
-    if (!theme) {
-      void loadTheme().then(setTheme).catch((err) => logError(err, { context: 'loadSyntaxTheme', source: 'Markdown' }))
-    }
-  }, [theme])
+    let cancelled = false
+    highlightCode(children, language, isDark ? 'dark' : 'light')
+      .then((result) => {
+        if (!cancelled) setHtml(result)
+      })
+      .catch((err) => logError(err, { context: 'shikiHighlight', source: 'Markdown' }))
+    return () => { cancelled = true }
+  }, [children, language, isDark])
 
-  if (!theme) {
+  if (!html) {
     return (
       <pre className="rounded-lg bg-surface-hover/[0.08] border border-stroke/20 p-4 text-sm font-mono overflow-x-auto text-text-2">
         <code>{children}</code>
@@ -125,29 +33,17 @@ const LazyCodeBlock = memo(function LazyCodeBlock({ language, children }: { lang
   }
 
   return (
-    <SyntaxHighlighter
-      style={theme}
-      language={language}
-      PreTag="div"
-      customStyle={{
-        margin: 0,
-        borderRadius: '0 0 0.75rem 0.75rem',
-        fontSize: '0.875rem',
-        padding: '1rem',
-      }}
-    >
-      {children}
-    </SyntaxHighlighter>
+    <div
+      className="[&_pre]:!m-0 [&_pre]:!rounded-none [&_pre]:!p-4 [&_pre]:text-sm [&_pre]:leading-relaxed [&_code]:!text-[length:inherit]"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 })
 
-// Stable remarkPlugins array - defined outside component to avoid recreation
 const remarkPlugins = [remarkGfm]
 
-// Stable components object - defined outside component for zero allocation per render
-// This is more efficient than useMemo since it's truly static
 const markdownComponents = {
-  code({ className, children }: { className?: string; children?: React.ReactNode }) {
+  code({ className, children }: { className?: string; children?: ReactNode }) {
     const match = /language-(\w+)/.exec(className || '')
     const isInline = !match && !className
 
@@ -173,25 +69,21 @@ const markdownComponents = {
       </div>
     )
   },
-  pre({ children }: { children?: React.ReactNode }) {
+  pre({ children }: { children?: ReactNode }) {
     return <>{children}</>
   },
-  a({ href, children }: { href?: string; children?: React.ReactNode }) {
-    // Security: Validate URL to prevent javascript: and data: URL attacks
+  a({ href, children }: { href?: string; children?: ReactNode }) {
     const isValidUrl = (url: string | undefined): boolean => {
       if (!url) return false
       try {
         const parsed = new URL(url)
-        // Only allow safe protocols
         return ['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)
       } catch {
-        // Invalid URL or relative path - allow relative paths but not absolute dangerous ones
         return !url.startsWith('javascript:') && !url.startsWith('data:') && !url.startsWith('vbscript:')
       }
     }
 
     if (!isValidUrl(href)) {
-      // Render as plain text for invalid URLs
       return <span className="text-text-3">{children}</span>
     }
 
@@ -206,35 +98,35 @@ const markdownComponents = {
       </a>
     )
   },
-  ul({ children }: { children?: React.ReactNode }) {
+  ul({ children }: { children?: ReactNode }) {
     return <ul className="list-disc pl-5 my-3 space-y-1 marker:text-text-3">{children}</ul>
   },
-  ol({ children }: { children?: React.ReactNode }) {
+  ol({ children }: { children?: ReactNode }) {
     return <ol className="list-decimal pl-5 my-3 space-y-1 marker:text-text-3">{children}</ol>
   },
-  li({ children }: { children?: React.ReactNode }) {
+  li({ children }: { children?: ReactNode }) {
     return <li className="my-1 leading-relaxed">{children}</li>
   },
-  p({ children }: { children?: React.ReactNode }) {
+  p({ children }: { children?: ReactNode }) {
     return <p className="my-3 first:mt-0 last:mb-0 leading-relaxed text-text-1/90">{children}</p>
   },
-  h1({ children }: { children?: React.ReactNode }) {
+  h1({ children }: { children?: ReactNode }) {
     return <h1 className="text-2xl font-semibold mt-6 mb-4 tracking-tight text-text-1">{children}</h1>
   },
-  h2({ children }: { children?: React.ReactNode }) {
+  h2({ children }: { children?: ReactNode }) {
     return <h2 className="text-xl font-semibold mt-5 mb-3 tracking-tight text-text-1">{children}</h2>
   },
-  h3({ children }: { children?: React.ReactNode }) {
+  h3({ children }: { children?: ReactNode }) {
     return <h3 className="text-lg font-semibold mt-4 mb-2 tracking-tight text-text-1">{children}</h3>
   },
-  blockquote({ children }: { children?: React.ReactNode }) {
+  blockquote({ children }: { children?: ReactNode }) {
     return (
       <blockquote className="my-4 border-l-4 border-stroke/30 bg-surface-hover/[0.06] pl-4 py-2 pr-3 rounded-r-xl text-text-2 italic">
         {children}
       </blockquote>
     )
   },
-  table({ children }: { children?: React.ReactNode }) {
+  table({ children }: { children?: ReactNode }) {
     return (
       <div className="overflow-x-auto my-4 rounded-xl border border-stroke/20 shadow-[var(--shadow-1)]">
         <table className="min-w-full border-collapse">
@@ -243,14 +135,14 @@ const markdownComponents = {
       </div>
     )
   },
-  th({ children }: { children?: React.ReactNode }) {
+  th({ children }: { children?: ReactNode }) {
     return (
       <th className="bg-surface-hover/[0.08] px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-text-3 border-b border-stroke/20">
         {children}
       </th>
     )
   },
-  td({ children }: { children?: React.ReactNode }) {
+  td({ children }: { children?: ReactNode }) {
     return <td className="px-4 py-2 border-b border-stroke/20 last:border-0 text-sm">{children}</td>
   },
   hr() {
@@ -258,10 +150,9 @@ const markdownComponents = {
   },
 }
 
-// Memoized Markdown component - only re-renders when content or className changes
 export const Markdown = memo(function Markdown({ content, className }: MarkdownProps) {
   return (
-    <div className={cn('prose prose-sm dark:prose-invert max-w-none', className)}>
+    <div className={cn('markdown-root prose prose-sm dark:prose-invert max-w-none', className)}>
       <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
         {content}
       </ReactMarkdown>

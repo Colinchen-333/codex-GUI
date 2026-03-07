@@ -1,15 +1,19 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Settings, Shield, User, HardDrive, FileText, Keyboard, Info, Server, GitBranch, Sparkles } from 'lucide-react'
+import { Settings, Shield, User, HardDrive, FileText, Keyboard, Info, Server, GitBranch, Sparkles, Sliders, BarChart3, Archive, Zap } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const SETTINGS_NAV = [
-  { id: 'general', label: 'General', icon: Settings },
-  { id: 'sandbox', label: 'Sandbox', icon: Shield },
-  { id: 'mcp', label: 'MCP Servers', icon: Server },
-  { id: 'git', label: 'Git', icon: GitBranch },
-  { id: 'personalization', label: 'Personalization', icon: Sparkles },
   { id: 'account', label: 'Account', icon: User },
+  { id: 'general', label: 'General', icon: Settings },
+  { id: 'configuration', label: 'Configuration', icon: Sliders },
+  { id: 'sandbox', label: 'Sandbox', icon: Shield },
+  { id: 'git', label: 'Git', icon: GitBranch },
+  { id: 'archived-threads', label: 'Archived threads', icon: Archive },
+  { id: 'personalization', label: 'Personalization', icon: Sparkles },
+  { id: 'usage', label: 'Usage', icon: BarChart3 },
   { id: 'worktrees', label: 'Worktrees', icon: HardDrive },
+  { id: 'mcp', label: 'MCP servers', icon: Server },
+  { id: 'skills', label: 'Skills', icon: Zap },
   { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
   { id: 'about', label: 'About', icon: Info },
 ] as const

@@ -10,6 +10,14 @@
     "dialog:allow-save",
     "dialog:allow-message",
     "dialog:allow-ask",
-    "dialog:allow-confirm"
+    "dialog:allow-confirm",
+    "notification:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-unregister-all",
+    "deep-link:default",
+    "store:default",
+    "fs:default"
   ]
 }

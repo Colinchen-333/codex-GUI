@@ -4,6 +4,7 @@
 
 pub mod allowlist;
 pub mod app_server;
+pub mod automations;
 pub mod codex_import;
 pub mod lifecycle;
 pub mod projects;

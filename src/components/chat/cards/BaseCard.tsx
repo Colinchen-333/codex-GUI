@@ -25,7 +25,7 @@
  * ```
  */
 import { memo, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { formatTimestamp } from '../utils'
 import { STATUS_CONFIG, getBorderClass, type CardStatus } from './card-utils'
@@ -280,8 +280,11 @@ export const BaseCard = memo(
 
               {/* Expand/Collapse chevron */}
               {expandable && (
-                <span className="text-text-3 text-xs">
-                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <span
+                  className="text-text-3 text-xs transition-transform duration-200"
+                  style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+                >
+                  <ChevronDown size={14} />
                 </span>
               )}
             </div>
@@ -289,7 +292,7 @@ export const BaseCard = memo(
 
           {/* Content with expand/collapse animation */}
           <div
-            className="overflow-hidden transition-all duration-200 ease-in-out"
+            className="overflow-hidden transition-[max-height,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
             style={{
               maxHeight: isExpanded ? (contentHeight === 'auto' ? 'none' : contentHeight) : 0,
               opacity: isExpanded ? 1 : 0,

@@ -1,9 +1,11 @@
-import { useState, useEffect, memo, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, memo, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Copy, Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { highlightCode } from '../../lib/shikiHighlighter'
 import { logError } from '../../lib/errorUtils'
+import { copyTextToClipboard } from '../../lib/clipboard'
 
 interface MarkdownProps {
   content: string
@@ -40,6 +42,29 @@ const CodeBlock = memo(function CodeBlock({ language, children }: { language: st
   )
 })
 
+const CopyCodeButton = memo(function CopyCodeButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    const ok = await copyTextToClipboard(code)
+    if (ok) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }
+  }, [code])
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="copy-reveal absolute top-2 right-2 rounded-md p-1.5 text-text-3 hover:text-text-1 hover:bg-surface-hover/[0.12] transition-all"
+      aria-label="Copy code"
+    >
+      {copied ? <Check size={14} className="text-status-success" /> : <Copy size={14} />}
+    </button>
+  )
+})
+
 const remarkPlugins = [remarkGfm]
 
 const markdownComponents = {
@@ -59,13 +84,14 @@ const markdownComponents = {
     const code = String(children).replace(/\n$/, '')
 
     return (
-      <div className="relative rounded-xl overflow-hidden my-3 border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)]">
+      <div className="copy-reveal-parent relative rounded-xl overflow-hidden my-3 border border-stroke/20 bg-surface-solid shadow-[var(--shadow-1)]">
         {match && (
           <div className="bg-surface-hover/[0.08] px-4 py-2 text-xs font-medium text-text-3 border-b border-stroke/20 uppercase tracking-wide">
             {language}
           </div>
         )}
         <CodeBlock language={language}>{code}</CodeBlock>
+        <CopyCodeButton code={code} />
       </div>
     )
   },

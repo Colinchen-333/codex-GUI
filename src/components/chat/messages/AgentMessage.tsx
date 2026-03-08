@@ -20,19 +20,8 @@ export const AgentMessage = memo(
         <div className="w-full max-w-[860px]">
           <Markdown content={content.text} className="prose-p:my-1.5 prose-ul:my-2 prose-ol:my-2" />
           {content.isStreaming && (
-            <div className="mt-2 flex items-center gap-1.5">
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-text-2/70 animate-bounce"
-                style={{ animationDelay: '0ms' }}
-              />
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-text-2/70 animate-bounce"
-                style={{ animationDelay: '150ms' }}
-              />
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-text-2/70 animate-bounce"
-                style={{ animationDelay: '300ms' }}
-              />
+            <div className="mt-2">
+              <span className="thinking-indicator" />
             </div>
           )}
         </div>

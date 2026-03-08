@@ -496,10 +496,7 @@ export const CommandExecutionCard = memo(
         {content.commandActions && content.commandActions.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-1.5">
             {content.commandActions.map((action: string, i: number) => (
-                <span
-                  key={i}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover/[0.12] text-text-3 border border-stroke/20"
-                >
+                <span key={i} className="tag">
                   {action}
                 </span>
             ))}

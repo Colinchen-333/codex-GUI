@@ -102,16 +102,13 @@ export const WorkingStatusBar = memo(function WorkingStatusBar() {
     <div className="mb-3 px-4 py-3 rounded-2xl bg-surface-solid/70 border border-stroke/20 shadow-[var(--shadow-1)] backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {/* Spinning indicator */}
-          <span className="relative flex h-2 w-2 flex-shrink-0">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-text-2/50 opacity-60 animate-ping" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-text-2/80" />
-          </span>
+          {/* Thinking indicator dots */}
+          <span className="thinking-indicator flex-shrink-0" />
           {/* Status text with shimmer or reasoning summary */}
           {currentReasoning ? (
             <span className="text-sm text-text-3 truncate animate-breathe-text">{currentReasoning}</span>
           ) : (
-            <span className="text-sm font-medium text-text-2 animate-breathe-text">Thinking</span>
+            <span className="text-sm font-medium text-shimmer">Thinking</span>
           )}
         </div>
         {/* Right side stats */}

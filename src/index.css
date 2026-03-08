@@ -3404,7 +3404,8 @@ pre[class*=language-] {
 }
 
 .copy-reveal:focus-within,
-*:hover > .copy-reveal {
+*:hover > .copy-reveal,
+.copy-reveal-parent:hover .copy-reveal {
   opacity: 1;
 }
 

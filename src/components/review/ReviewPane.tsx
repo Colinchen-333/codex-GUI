@@ -561,7 +561,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
               icon={<Search size={12} />}
             />
           </div>
-          <div className="flex-1 overflow-y-auto py-1">
+          <div className="scroll-view flex-1 overflow-y-auto py-1">
             {flattened.map(({ node, depth }) => {
               const isDir = node.type === 'dir'
               const isExpanded = autoExpand || expandedDirs.has(node.path)

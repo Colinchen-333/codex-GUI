@@ -356,7 +356,7 @@ function SidebarPanel({
         <SessionSearch visible={true} />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="scroll-view flex-1 overflow-y-auto px-2">
         <GroupedSessionList
           sessions={filteredSessions}
           selectedSessionId={selectedSessionId}

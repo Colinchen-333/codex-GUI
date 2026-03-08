@@ -13,12 +13,12 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         className={cn(
           'w-full min-h-[80px] rounded-md border bg-surface-solid px-3 py-2',
           'text-[13px] text-text-1 placeholder:text-text-3',
-          'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]',
+          'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.12),0_0_0_1px_hsl(var(--primary)/0.3)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
           'resize-none',
           error
             ? 'border-destructive focus:border-destructive'
-            : 'border-stroke/20 focus:border-stroke/40',
+            : 'border-stroke/20 focus:border-transparent',
           className
         )}
         {...props}

@@ -59,7 +59,7 @@ export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
             role="tooltip"
             className={cn(
               'absolute z-[var(--z-tooltip)] pointer-events-none',
-              'animate-in fade-in zoom-in',
+              'popover-enter',
               sideStyles[side]
             )}
             style={{ 

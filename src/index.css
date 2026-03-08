@@ -3083,3 +3083,409 @@ pre[class*=language-] {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* ==========================================================================
+   OpenCode-inspired Component Styles
+   ========================================================================== */
+
+/* Custom ScrollView — hide native scrollbar, custom painted thumb */
+.scroll-view {
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-view__viewport {
+  overflow-y: auto;
+  scrollbar-width: none;
+  height: 100%;
+}
+
+.scroll-view__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-view__viewport[data-reverse="true"] {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.scroll-view__thumb {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 12px;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.scroll-view__thumb[data-visible="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scroll-view__thumb::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 9999px;
+  background: var(--scrollbar-slider-background);
+  backdrop-filter: blur(4px);
+  transition: background-color 150ms ease, width 150ms ease;
+}
+
+.scroll-view__thumb:hover::after,
+.scroll-view__thumb[data-dragging="true"]::after {
+  background: var(--scrollbar-slider-hover-background);
+  width: 6px;
+}
+
+/* Scroll fade masks */
+.scroll-fade-top {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 24px);
+  mask-image: linear-gradient(to bottom, transparent, black 24px);
+}
+
+.scroll-fade-bottom {
+  -webkit-mask-image: linear-gradient(to top, transparent, black 24px);
+  mask-image: linear-gradient(to top, transparent, black 24px);
+}
+
+.scroll-fade-both {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 24px, black calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 24px, black calc(100% - 24px), transparent);
+}
+
+/* Tool status active/done transition (OpenCode grid overlay pattern) */
+.tool-status-swap {
+  display: grid;
+}
+
+.tool-status-swap > * {
+  grid-area: 1 / 1;
+}
+
+.tool-status-active,
+.tool-status-done {
+  transition: opacity var(--tool-motion-fade-ms, 400ms) ease,
+              filter var(--tool-motion-fade-ms, 400ms) ease,
+              transform var(--tool-motion-fade-ms, 400ms) ease;
+}
+
+.tool-status-active[data-visible="true"],
+.tool-status-done[data-visible="true"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+}
+
+.tool-status-active[data-visible="false"],
+.tool-status-done[data-visible="false"] {
+  opacity: 0;
+  filter: blur(1px);
+  transform: translateY(0.03em);
+  pointer-events: none;
+}
+
+/* Tool count collapse animation */
+.tool-count-collapse {
+  display: grid;
+  transition: grid-template-columns 800ms cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 400ms ease,
+              filter 400ms ease;
+}
+
+.tool-count-collapse[data-expanded="true"] {
+  grid-template-columns: 1fr;
+  opacity: 1;
+  filter: blur(0);
+}
+
+.tool-count-collapse[data-expanded="false"] {
+  grid-template-columns: 0fr;
+  opacity: 0;
+  filter: blur(1px);
+}
+
+.tool-count-collapse > * {
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Collapsible slide animations (OpenCode accordion) */
+@keyframes collapsible-slide-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--collapsible-content-height); opacity: 1; }
+}
+
+@keyframes collapsible-slide-up {
+  from { height: var(--collapsible-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+.collapsible-content[data-state="open"] {
+  animation: collapsible-slide-down 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: clip;
+}
+
+.collapsible-content[data-state="closed"] {
+  animation: collapsible-slide-up 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: clip;
+}
+
+/* Session turn thinking indicator */
+.thinking-indicator {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--text-weak, hsl(var(--text-3)));
+}
+
+.thinking-indicator .thinking-enter {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition: opacity 180ms ease-out, filter 180ms ease-out, transform 180ms ease-out;
+}
+
+.thinking-indicator .thinking-exit {
+  opacity: 0;
+  filter: blur(2px);
+  transform: translateY(1px);
+  pointer-events: none;
+  transition: opacity 180ms ease-out, filter 180ms ease-out, transform 180ms ease-out;
+}
+
+/* Session turn hover metadata */
+.turn-hover-meta {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.turn-hover-meta:is(:hover, :focus-within),
+.turn-container:hover .turn-hover-meta,
+.turn-container:focus-within .turn-hover-meta {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Sticky accordion trigger (for diff sections) */
+.sticky-accordion-trigger {
+  position: sticky;
+  top: var(--sticky-accordion-top, 0px);
+  z-index: 20;
+  height: 40px;
+  background-color: var(--surface-raised, hsl(var(--surface-solid)));
+  display: flex;
+  align-items: center;
+  transition: background-color 0.15s ease;
+}
+
+.sticky-accordion-trigger:hover {
+  background-color: var(--surface-raised-hover, hsl(var(--hover) / 0.06));
+}
+
+.sticky-accordion-trigger .chevron {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sticky-accordion-trigger[data-expanded="true"] .chevron {
+  transform: rotate(0deg);
+}
+
+.sticky-accordion-trigger[data-expanded="false"] .chevron {
+  transform: rotate(-90deg);
+}
+
+/* Text shimmer effect (loading state) */
+@keyframes text-shimmer-sweep {
+  from { background-position: 100% 50%; }
+  to { background-position: 0% 50%; }
+}
+
+.text-shimmer {
+  --text-shimmer-step: 45ms;
+  --text-shimmer-duration: 2000ms;
+  --text-shimmer-spread: 5.2ch;
+  --text-shimmer-size: 600%;
+  background: linear-gradient(
+    90deg,
+    var(--text-base, hsl(var(--text-2))) 0%,
+    hsl(var(--primary)) 20%,
+    var(--text-base, hsl(var(--text-2))) 40%,
+    var(--text-base, hsl(var(--text-2))) 100%
+  );
+  background-size: var(--text-shimmer-size) 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shimmer-sweep var(--text-shimmer-duration) linear infinite;
+}
+
+/* Progress bar (indeterminate) */
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--surface-float-border, hsl(var(--stroke) / 0.2));
+  overflow: hidden;
+  background: transparent;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  transition: width 200ms ease;
+}
+
+.progress-fill[data-indeterminate="true"] {
+  width: 35% !important;
+  animation: progress-indeterminate 1.3s ease-in-out infinite;
+}
+
+/* Tag component (OpenCode pattern) */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  border: 0.5px solid var(--surface-float-border, hsl(var(--stroke) / 0.2));
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-raised, hsl(var(--surface-solid)));
+  color: var(--text-base, hsl(var(--text-2)));
+  font-size: 12px;
+  font-weight: 500;
+  height: 18px;
+  padding: 0 6px;
+  line-height: 1;
+}
+
+.tag-lg {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+/* Card inset (OpenCode card pattern) */
+.card-inset {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-inset, hsl(var(--bg)));
+  border: 1px solid var(--surface-float-border, hsl(var(--stroke) / 0.15));
+  border-radius: var(--radius-md, 6px);
+  padding: 6px 12px;
+  transition: background-color 0.15s ease;
+}
+
+.card-inset[data-variant="error"] {
+  background: hsl(var(--status-error-muted));
+  border-color: hsl(var(--status-error) / 0.3);
+}
+
+/* Copy button (hover reveal) */
+.copy-reveal {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.copy-reveal:focus-within,
+*:hover > .copy-reveal {
+  opacity: 1;
+}
+
+/* Inline input (editable text) */
+.inline-input {
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  outline: none;
+}
+
+.inline-input:focus {
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.6);
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* Diff changes bar visualization (OpenCode) */
+.diff-bar {
+  display: flex;
+  flex-direction: row;
+  gap: 1px;
+  height: 14px;
+  align-items: flex-end;
+}
+
+.diff-bar__segment {
+  width: 3px;
+  border-radius: 1px;
+  min-height: 2px;
+}
+
+.diff-bar__segment[data-type="add"] {
+  background: var(--git-added-foreground, #4ade80);
+}
+
+.diff-bar__segment[data-type="delete"] {
+  background: var(--git-deleted-foreground, #f87171);
+}
+
+.diff-bar__segment[data-type="neutral"] {
+  background: hsl(var(--text-3) / 0.3);
+}
+
+/* Avatar (OpenCode pattern) */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--surface-float-border, hsl(var(--stroke) / 0.2));
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  font-weight: 500;
+  user-select: none;
+}
+
+.avatar-sm { width: 1.25rem; height: 1.25rem; font-size: 0.75rem; }
+.avatar-md { width: 1.5rem; height: 1.5rem; font-size: 1.125rem; }
+.avatar-lg { width: 2rem; height: 2rem; font-size: 1.25rem; }
+
+/* Content visibility optimization (large lists) */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40vh;
+}
+
+/* Contain strict (paint/layout/style) */
+.contain-strict {
+  contain: strict;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer { animation: none; -webkit-text-fill-color: initial; background: none; }
+  .tool-status-active, .tool-status-done { transition-duration: 0ms; }
+  .collapsible-content[data-state="open"],
+  .collapsible-content[data-state="closed"] { animation-duration: 0ms; }
+  .thinking-indicator .thinking-enter,
+  .thinking-indicator .thinking-exit { transition-duration: 0ms; }
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown,
   ChevronRight,
@@ -23,6 +23,32 @@ import { log } from '../../lib/logger'
 import { projectApi, type GitFileStatus } from '../../lib/api'
 import { parseGitDiff, buildFileTree, flattenTree } from '../../lib/gitDiffUtils'
 import { useProjectsStore } from '../../stores/projects'
+
+// ==================== Review panel resize constants ====================
+
+const REVIEW_DEFAULT_WIDTH = 400
+const REVIEW_MIN_WIDTH = 280
+const REVIEW_MAX_WIDTH = 600
+const REVIEW_STORAGE_KEY = 'codex:review-panel-width'
+
+function loadReviewWidth(): number {
+  try {
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+    if (!raw) return REVIEW_DEFAULT_WIDTH
+    const n = Number(raw)
+    return Number.isFinite(n) && n >= REVIEW_MIN_WIDTH && n <= REVIEW_MAX_WIDTH ? n : REVIEW_DEFAULT_WIDTH
+  } catch {
+    return REVIEW_DEFAULT_WIDTH
+  }
+}
+
+function persistReviewWidth(w: number) {
+  try {
+    localStorage.setItem(REVIEW_STORAGE_KEY, String(w))
+  } catch {
+    // best-effort
+  }
+}
 
 // ==================== Types ====================
 
@@ -76,6 +102,40 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
   const { selectedProjectId, projects, gitInfo } = useProjectsStore()
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   const projectGitInfo = selectedProjectId ? gitInfo[selectedProjectId] : null
+
+  // Resizable panel width
+  const [panelWidth, setPanelWidth] = useState(loadReviewWidth)
+  const isDraggingRef = useRef(false)
+  const dragStartXRef = useRef(0)
+  const dragStartWidthRef = useRef(0)
+
+  const handleResizeDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDraggingRef.current = true
+    dragStartXRef.current = e.clientX
+    dragStartWidthRef.current = panelWidth
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return
+      // Dragging left edge: moving left increases width, moving right decreases
+      const delta = dragStartXRef.current - ev.clientX
+      const next = Math.min(REVIEW_MAX_WIDTH, Math.max(REVIEW_MIN_WIDTH, dragStartWidthRef.current + delta))
+      setPanelWidth(next)
+    }
+    const onUp = () => {
+      isDraggingRef.current = false
+      setPanelWidth((w) => {
+        persistReviewWidth(w)
+        return w
+      })
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.classList.remove('no-select')
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    document.body.classList.add('no-select')
+  }, [panelWidth])
 
   const [loadState, setLoadState] = useState<LoadState>('idle')
   const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([])
@@ -272,12 +332,47 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
     return <FileText size={14} />
   }
 
-  if (!isOpen) return null
-
   const selectedDiffStats = getDiffStats(selectedDiff)
 
   return (
-    <div className="flex h-full w-[40vw] min-w-[480px] max-w-[720px] flex-col border-l border-stroke/10 bg-surface-solid">
+    <div
+      className="relative flex h-full flex-col border-l border-stroke/10 bg-surface-solid transition-[width] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] overflow-hidden"
+      style={{ width: isOpen ? panelWidth : 0 }}
+      aria-hidden={!isOpen}
+    >
+      {/* Left-edge resize handle */}
+      {isOpen && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize review panel"
+          tabIndex={0}
+          data-component="resize-handle"
+          data-direction="horizontal"
+          className="absolute left-0 top-0 z-10 h-full w-1 cursor-col-resize bg-transparent transition-colors hover:bg-primary/30 focus-visible:bg-primary/30 outline-none"
+          onMouseDown={handleResizeDragStart}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault()
+              setPanelWidth((w) => {
+                const next = Math.min(REVIEW_MAX_WIDTH, w + 20)
+                persistReviewWidth(next)
+                return next
+              })
+            }
+            if (e.key === 'ArrowRight') {
+              e.preventDefault()
+              setPanelWidth((w) => {
+                const next = Math.max(REVIEW_MIN_WIDTH, w - 20)
+                persistReviewWidth(next)
+                return next
+              })
+            }
+          }}
+        />
+      )}
+      {/* Inner wrapper — keeps content from bleeding during width:0 close */}
+      <div className="flex h-full flex-col" style={{ width: panelWidth, minWidth: panelWidth }}>
       {/* Header */}
       <div className="flex flex-col border-b border-stroke/10">
         {/* Top row: scope toggle + actions */}
@@ -531,6 +626,7 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
             })}
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

@@ -380,6 +380,9 @@ export const Sidebar = React.memo(function Sidebar() {
   const { projects, selectedProjectId, addProject, selectProject } = useProjectsStore()
   const navigate = useNavigate()
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  // Peek panel — shown when hovering the rail while sidebar is collapsed
+  const [showPeek, setShowPeek] = useState(false)
+  const peekHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sessionFilters, setSessionFilters] = useState(() => {
     const defaults = { pinnedOnly: false, runningOnly: false, showArchived: false }
     try {
@@ -589,13 +592,50 @@ export const Sidebar = React.memo(function Sidebar() {
     })
   }, [setSidebarPanelWidth])
 
+  const handleRailMouseEnter = useCallback(() => {
+    if (!sidebarCollapsed) return
+    if (peekHideTimerRef.current) {
+      clearTimeout(peekHideTimerRef.current)
+      peekHideTimerRef.current = null
+    }
+    setShowPeek(true)
+  }, [sidebarCollapsed])
+
+  const handleRailMouseLeave = useCallback(() => {
+    if (!sidebarCollapsed) return
+    peekHideTimerRef.current = setTimeout(() => {
+      setShowPeek(false)
+      peekHideTimerRef.current = null
+    }, 80)
+  }, [sidebarCollapsed])
+
+  const handlePeekMouseEnter = useCallback(() => {
+    if (peekHideTimerRef.current) {
+      clearTimeout(peekHideTimerRef.current)
+      peekHideTimerRef.current = null
+    }
+  }, [])
+
+  const handlePeekMouseLeave = useCallback(() => {
+    peekHideTimerRef.current = setTimeout(() => {
+      setShowPeek(false)
+      peekHideTimerRef.current = null
+    }, 80)
+  }, [])
+
   return (
-    <aside className="relative flex h-full shrink-0 overflow-hidden">
-      <SidebarRail
-        onNewSession={handleNewSession}
-        onToggleCollapsed={toggleSidebarCollapsed}
-        sidebarCollapsed={sidebarCollapsed}
-      />
+    <aside className="relative flex h-full shrink-0 overflow-visible">
+      <div
+        className="contents"
+        onMouseEnter={handleRailMouseEnter}
+        onMouseLeave={handleRailMouseLeave}
+      >
+        <SidebarRail
+          onNewSession={handleNewSession}
+          onToggleCollapsed={toggleSidebarCollapsed}
+          sidebarCollapsed={sidebarCollapsed}
+        />
+      </div>
       {!sidebarCollapsed && (
         <SidebarPanel
           width={panelWidth}
@@ -614,6 +654,48 @@ export const Sidebar = React.memo(function Sidebar() {
           onAddProject={handleAddProject}
           onSetSessionFilters={setSessionFilters}
         />
+      )}
+      {/* Peek panel — floating session list when hovering collapsed rail */}
+      {sidebarCollapsed && (
+        <div
+          className={cn(
+            'absolute left-14 top-0 bottom-0 z-30 w-[240px]',
+            'pointer-events-none',
+            showPeek ? 'pointer-events-auto' : '',
+          )}
+          style={{
+            boxShadow: 'var(--shadow-sidebar-overlay, 0 8px 32px rgba(0,0,0,0.45))',
+          }}
+          onMouseEnter={handlePeekMouseEnter}
+          onMouseLeave={handlePeekMouseLeave}
+        >
+          <div
+            className={cn(
+              'h-full w-full transition-[opacity,transform] overflow-hidden',
+              showPeek
+                ? 'opacity-100 translate-x-0 duration-[180ms] ease-out'
+                : 'opacity-0 -translate-x-2 duration-[120ms] ease-in',
+            )}
+          >
+            <SidebarPanel
+              width={240}
+              onResize={() => {/* no-op in peek mode */}}
+              onResizeEnd={() => {/* no-op in peek mode */}}
+              selectedSession={selectedSession as Parameters<typeof SidebarPanel>[0]['selectedSession']}
+              displayProjectName={displayProjectName}
+              filteredSessions={filteredSessions}
+              selectedSessionId={selectedSessionId}
+              sessionsLoading={sessionsLoading}
+              isSearching={isSearching}
+              sessionFilters={sessionFilters}
+              onSelectSession={(id, pid) => { handleSelectSession(id, pid); setShowPeek(false) }}
+              onOpenProjectSettings={handleOpenProjectSettings}
+              onToggleFavorite={handleToggleFavorite}
+              onAddProject={handleAddProject}
+              onSetSessionFilters={setSessionFilters}
+            />
+          </div>
+        </div>
       )}
 
       <SidebarDialogs

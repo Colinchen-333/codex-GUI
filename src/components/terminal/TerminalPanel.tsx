@@ -16,6 +16,26 @@ interface TerminalPanelProps {
 const MIN_HEIGHT = 150
 const MAX_HEIGHT_RATIO = 0.5 // 50vh
 const DEFAULT_HEIGHT = 300
+const STORAGE_KEY = 'codex:terminal-height'
+
+function loadPersistedHeight(): number {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return DEFAULT_HEIGHT
+    const n = Number(raw)
+    return Number.isFinite(n) && n >= MIN_HEIGHT ? n : DEFAULT_HEIGHT
+  } catch {
+    return DEFAULT_HEIGHT
+  }
+}
+
+function persistHeight(h: number) {
+  try {
+    localStorage.setItem(STORAGE_KEY, String(h))
+  } catch {
+    // best-effort
+  }
+}
 
 // Get xterm theme from CSS custom properties
 function getTerminalTheme(): Record<string, string | undefined> {
@@ -52,7 +72,7 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
-  const [height, setHeight] = useState(DEFAULT_HEIGHT)
+  const [height, setHeight] = useState(loadPersistedHeight)
   const isRunningRef = useRef(false)
   const inputBufferRef = useRef('')
   const isDraggingRef = useRef(false)
@@ -248,6 +268,12 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
 
       const handleDragEnd = () => {
         isDraggingRef.current = false
+        // Persist the final height to localStorage
+        persistHeight(dragStartHeightRef.current + (dragStartYRef.current - (window.event as MouseEvent | null)?.clientY || 0))
+        setHeight((h) => {
+          persistHeight(h)
+          return h
+        })
         document.removeEventListener('mousemove', handleDragMove)
         document.removeEventListener('mouseup', handleDragEnd)
         document.body.classList.remove('no-select')
@@ -260,12 +286,18 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
     [height]
   )
 
-  if (!visible) return null
-
+  // Keep mounted but hide with CSS when not visible (preserves xterm state)
   return (
     <div
-      className="flex shrink-0 flex-col border-t border-stroke/20 panel-slide-up"
-      style={{ height }}
+      aria-hidden={!visible}
+      // @ts-expect-error — inert is a valid HTML attribute in modern browsers
+      inert={!visible ? '' : undefined}
+      className="flex shrink-0 flex-col border-t border-stroke/20 transition-[height,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
+      style={{
+        height: visible ? height : 0,
+        opacity: visible ? 1 : 0,
+        overflow: visible ? undefined : 'hidden',
+      }}
     >
       {/* Drag handle */}
       <div
@@ -273,16 +305,26 @@ export function TerminalPanel({ cwd, visible, onClose }: TerminalPanelProps) {
         aria-orientation="horizontal"
         aria-label="Resize terminal"
         tabIndex={0}
-        className="h-1 cursor-row-resize bg-transparent transition-colors hover:bg-primary/30 focus-visible:bg-primary/30 outline-none"
+        data-component="resize-handle"
+        data-direction="vertical"
+        className="h-1 cursor-row-resize bg-transparent transition-colors hover:bg-primary/30 focus-visible:bg-primary/30 outline-none shrink-0"
         onMouseDown={handleDragStart}
         onKeyDown={(e) => {
           if (e.key === 'ArrowUp') {
             e.preventDefault()
-            setHeight((h) => Math.max(MIN_HEIGHT, h + 20))
+            setHeight((h) => {
+              const next = Math.min(window.innerHeight * MAX_HEIGHT_RATIO, h + 20)
+              persistHeight(next)
+              return next
+            })
           }
           if (e.key === 'ArrowDown') {
             e.preventDefault()
-            setHeight((h) => Math.max(MIN_HEIGHT, h - 20))
+            setHeight((h) => {
+              const next = Math.max(MIN_HEIGHT, h - 20)
+              persistHeight(next)
+              return next
+            })
           }
         }}
       />

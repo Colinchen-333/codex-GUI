@@ -139,7 +139,7 @@ export function AppShell() {
       <HostNavigationListener />
       <KeyboardShortcuts />
       <Sidebar />
-      <div className="main-surface relative flex flex-1 flex-col overflow-hidden bg-background">
+      <div className="main-surface relative flex flex-1 flex-col overflow-hidden bg-background border-l border-stroke/20 rounded-tl-xl">
         <AsyncErrorBoundary
           onError={(error) => {
             logError(error, {

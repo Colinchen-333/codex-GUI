@@ -144,7 +144,7 @@ function ToastContainer() {
 
   return (
     <div
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-toast flex flex-col gap-3 pointer-events-none"
+      className="fixed bottom-12 right-8 z-toast flex flex-col gap-2 pointer-events-none max-w-[min(400px,calc(100vw-64px))]"
       role="region"
       aria-label="Notifications"
       aria-live="polite"
@@ -171,26 +171,26 @@ const TOAST_ICONS = {
 
 const TOAST_STYLES: Record<Toast['type'], { bg: string; border: string; icon: string; progress: string }> = {
   info: {
-    bg: 'bg-surface-solid/95 backdrop-blur-sm',
-    border: 'border-status-info/30',
+    bg: 'bg-[var(--surface-float)] backdrop-blur-md',
+    border: 'border-[var(--surface-float-border)]',
     icon: 'text-status-info',
     progress: 'bg-status-info',
   },
   success: {
-    bg: 'bg-surface-solid/95 backdrop-blur-sm',
-    border: 'border-status-success/30',
+    bg: 'bg-[var(--surface-float)] backdrop-blur-md',
+    border: 'border-[var(--surface-float-border)]',
     icon: 'text-status-success',
     progress: 'bg-status-success',
   },
   warning: {
-    bg: 'bg-surface-solid/95 backdrop-blur-sm',
-    border: 'border-status-warning/30',
+    bg: 'bg-[var(--surface-float)] backdrop-blur-md',
+    border: 'border-[var(--surface-float-border)]',
     icon: 'text-status-warning',
     progress: 'bg-status-warning',
   },
   error: {
-    bg: 'bg-surface-solid/95 backdrop-blur-sm',
-    border: 'border-status-error/30',
+    bg: 'bg-[var(--surface-float)] backdrop-blur-md',
+    border: 'border-[var(--surface-float-border)]',
     icon: 'text-status-error',
     progress: 'bg-status-error',
   },

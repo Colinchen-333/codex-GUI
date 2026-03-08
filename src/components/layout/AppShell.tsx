@@ -19,7 +19,6 @@ import { useSettingsStore, mergeProjectSettings, getEffectiveWorkingDirectory } 
 import { useThreadStore } from '../../stores/thread'
 import { useSessionsStore } from '../../stores/sessions'
 import { useToast } from '../ui/useToast'
-import { PanelLeftOpen } from 'lucide-react'
 import { isTauriAvailable } from '../../lib/tauri'
 import { CollaborationBar } from '../chat/CollaborationBar'
 import { loadEnvironments } from '../../pages/settings/EnvironmentsSettings'
@@ -31,8 +30,6 @@ export function AppShell() {
   const [newSessionDialogOpen, setNewSessionDialogOpen] = useState(false)
   const navigate = useNavigate()
   const commandPalette = useCommandPalette()
-  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed)
-  const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed)
   const { toast } = useToast()
   const selectedProject = useProjectsStore((state) =>
     state.selectedProjectId ? state.projects.find((p) => p.id === state.selectedProjectId) ?? null : null
@@ -141,21 +138,7 @@ export function AppShell() {
     <div className="flex h-screen w-screen overflow-hidden bg-transparent">
       <HostNavigationListener />
       <KeyboardShortcuts />
-      {sidebarCollapsed ? (
-        <div className="relative h-full w-12 shrink-0 border-r border-stroke/20 bg-surface-solid">
-          <button
-            type="button"
-            onClick={toggleSidebarCollapsed}
-            className="absolute left-1.5 top-3 inline-flex h-8 w-9 items-center justify-center rounded-md border border-stroke/20 bg-surface-solid text-text-2 transition-colors hover:bg-surface-hover/[0.06] hover:text-text-1"
-            title="Expand sidebar"
-            aria-label="Expand sidebar"
-          >
-            <PanelLeftOpen size={16} />
-          </button>
-        </div>
-      ) : (
-        <Sidebar />
-      )}
+      <Sidebar />
       <div className="main-surface relative flex flex-1 flex-col overflow-hidden bg-background">
         <AsyncErrorBoundary
           onError={(error) => {

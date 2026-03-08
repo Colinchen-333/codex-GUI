@@ -3,6 +3,32 @@ import { create } from 'zustand'
 type SidebarTab = 'projects' | 'sessions'
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'codex:sidebar-collapsed'
+const SIDEBAR_PANEL_WIDTH_KEY = 'codex:sidebar-panel-width'
+const SIDEBAR_PANEL_WIDTH_DEFAULT = 244
+const SIDEBAR_PANEL_WIDTH_MIN = 160
+const SIDEBAR_PANEL_WIDTH_MAX = 480
+
+function readSidebarPanelWidth(): number {
+  if (typeof window === 'undefined') return SIDEBAR_PANEL_WIDTH_DEFAULT
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_PANEL_WIDTH_KEY)
+    if (!raw) return SIDEBAR_PANEL_WIDTH_DEFAULT
+    const n = parseInt(raw, 10)
+    if (isNaN(n)) return SIDEBAR_PANEL_WIDTH_DEFAULT
+    return Math.min(Math.max(n, SIDEBAR_PANEL_WIDTH_MIN), SIDEBAR_PANEL_WIDTH_MAX)
+  } catch {
+    return SIDEBAR_PANEL_WIDTH_DEFAULT
+  }
+}
+
+function writeSidebarPanelWidth(width: number): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(SIDEBAR_PANEL_WIDTH_KEY, String(width))
+  } catch {
+    // Best-effort persistence.
+  }
+}
 
 function readSidebarCollapsed(): boolean {
   if (typeof window === 'undefined') return false
@@ -43,6 +69,8 @@ export interface AppState {
   sidebarCollapsed: boolean
   setSidebarCollapsed: (collapsed: boolean) => void
   toggleSidebarCollapsed: () => void
+  sidebarPanelWidth: number
+  setSidebarPanelWidth: (width: number) => void
 
   // Input focus
   shouldFocusInput: boolean
@@ -86,6 +114,12 @@ export const useAppStore = create<AppState>((set) => ({
       writeSidebarCollapsed(next)
       return { sidebarCollapsed: next }
     }),
+  sidebarPanelWidth: readSidebarPanelWidth(),
+  setSidebarPanelWidth: (width) => {
+    const clamped = Math.min(Math.max(width, SIDEBAR_PANEL_WIDTH_MIN), SIDEBAR_PANEL_WIDTH_MAX)
+    writeSidebarPanelWidth(clamped)
+    set({ sidebarPanelWidth: clamped })
+  },
 
   // Input focus
   shouldFocusInput: false,

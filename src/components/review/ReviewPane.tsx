@@ -648,6 +648,9 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                     <span className="truncate">{node.name}</span>
                   </span>
                   <span className="flex items-center gap-1.5 flex-shrink-0">
+                    {isDir && node.children && node.children.length > 0 && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-status-info" title={`${node.children.length} changed`} />
+                    )}
                     {statusBadge && (
                       <span className={cn('text-[9px] font-mono font-bold', statusBadge.color)}>
                         {statusBadge.label}

@@ -99,9 +99,9 @@ export const ErrorCard = memo(
 
           {/* Content */}
           <div className="p-4">
-            <p className={cn('text-sm leading-relaxed', 'text-text-1')}>
+            <pre className="text-sm leading-relaxed text-text-1 whitespace-pre-wrap overflow-wrap-anywhere max-h-60 overflow-y-auto scroll-view font-sans">
               {content.message}
-            </p>
+            </pre>
           </div>
         </div>
       </div>

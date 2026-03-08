@@ -2,7 +2,7 @@
  * ReasoningCard - Shows AI's thinking process (only when completed, streaming is shown in WorkingStatusBar)
  */
 import { useState } from 'react'
-import { Brain, ChevronDown, ChevronRight, Copy } from 'lucide-react'
+import { Brain, ChevronDown, Copy } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { copyTextToClipboard } from '../../../lib/clipboard'
 import { formatTimestamp, parseReasoningSummary } from '../utils'
@@ -79,8 +79,11 @@ export function ReasoningCard({ item }: MessageItemProps) {
             <span className="text-[10px] text-text-3/70">
               {formatTimestamp(item.createdAt)}
             </span>
-            <span className="text-text-3 text-xs">
-              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            <span
+              className="text-text-3 text-xs transition-transform duration-200"
+              style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+            >
+              <ChevronDown size={14} />
             </span>
           </div>
         </div>

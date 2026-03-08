@@ -83,6 +83,45 @@ function getStatusBadge(status?: GitFileStatus): { label: string; color: string 
   }
 }
 
+// ==================== DiffBars (OpenCode-style) ====================
+
+const TOTAL_BLOCKS = 5
+
+function DiffBars({ additions, deletions }: { additions: number; deletions: number }) {
+  const total = additions + deletions
+  if (total === 0) return null
+
+  let addBlocks: number
+  let delBlocks: number
+
+  if (additions > 0 && deletions === 0) {
+    addBlocks = Math.min(TOTAL_BLOCKS, Math.max(1, Math.ceil((additions / total) * TOTAL_BLOCKS)))
+    delBlocks = 0
+  } else if (deletions > 0 && additions === 0) {
+    addBlocks = 0
+    delBlocks = Math.min(TOTAL_BLOCKS, Math.max(1, Math.ceil((deletions / total) * TOTAL_BLOCKS)))
+  } else {
+    addBlocks = Math.max(1, Math.round((additions / total) * TOTAL_BLOCKS))
+    delBlocks = Math.max(1, TOTAL_BLOCKS - addBlocks)
+  }
+
+  const neutralBlocks = TOTAL_BLOCKS - addBlocks - delBlocks
+
+  return (
+    <span className="diff-bar" title={`+${additions} -${deletions}`}>
+      {Array.from({ length: addBlocks }, (_, i) => (
+        <span key={`a${i}`} className="diff-bar__segment" data-type="add" />
+      ))}
+      {Array.from({ length: neutralBlocks }, (_, i) => (
+        <span key={`n${i}`} className="diff-bar__segment" data-type="neutral" />
+      ))}
+      {Array.from({ length: delBlocks }, (_, i) => (
+        <span key={`d${i}`} className="diff-bar__segment" data-type="delete" />
+      ))}
+    </span>
+  )
+}
+
 // ==================== Scope definitions ====================
 
 const SCOPES: { value: ReviewScope; label: string }[] = [
@@ -615,9 +654,10 @@ export function ReviewPane({ isOpen, onClose, onCommit }: ReviewPaneProps) {
                       </span>
                     )}
                     {fileDiffStats && (
-                      <span className="flex items-center gap-1 text-[10px] font-mono tabular-nums">
+                      <span className="flex items-center gap-1.5 text-[10px] font-mono tabular-nums">
                         <span className="text-status-success">+{fileDiffStats.additions}</span>
                         <span className="text-status-error">-{fileDiffStats.deletions}</span>
+                        <DiffBars additions={fileDiffStats.additions} deletions={fileDiffStats.deletions} />
                       </span>
                     )}
                   </span>

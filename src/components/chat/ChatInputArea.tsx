@@ -510,6 +510,7 @@ export default memo(function ChatInputArea({
         <QueuedMessagesDisplay />
 
         <div
+          data-dock-surface="shell"
           className={cn(
             'relative rounded-2xl bg-surface-solid border border-stroke/20 transition-all duration-200 shadow-[var(--shadow-1)]',
             'hover:border-stroke/30',

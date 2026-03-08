@@ -3,7 +3,7 @@
  * Supports editing and deletion of messages
  * Memoized to prevent unnecessary re-renders when parent state changes
  */
-import { memo, useState, useRef, useEffect, useCallback } from 'react'
+import { memo, useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Pencil, Trash2, Check, X } from 'lucide-react'
 import { isUserMessageContent } from '../../../lib/typeGuards'
 import { log } from '../../../lib/logger'
@@ -141,10 +141,15 @@ export const UserMessage = memo(
       return null
     }
 
+    const timeStr = useMemo(() => {
+      const d = new Date(item.createdAt)
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }, [item.createdAt])
+
     return (
       <>
         <div
-          className="flex justify-end pl-12 animate-in slide-in-from-bottom-2 duration-150"
+          className="group/msg flex justify-end pl-12 animate-in slide-in-from-bottom-2 duration-150"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -244,6 +249,9 @@ export const UserMessage = memo(
                   )}
                 </>
               )}
+            </div>
+            <div className="mt-1 text-right opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150">
+              <span className="text-[10px] text-text-3">{timeStr}</span>
             </div>
           </div>
         </div>

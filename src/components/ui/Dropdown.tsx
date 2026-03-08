@@ -157,9 +157,9 @@ export const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
         className={cn(
           'absolute z-[var(--z-dropdown)]',
           'min-w-[8rem] overflow-hidden',
-          'rounded-lg border border-stroke/20',
-          'bg-surface-solid shadow-lg',
-          'animate-in fade-in zoom-in',
+          'rounded-lg border border-stroke/20 p-1',
+          'bg-surface-solid shadow-lg backdrop-blur-md',
+          'popover-enter',
           sidePositions[side],
           alignPositions[align][isVertical ? 'vertical' : 'horizontal'],
           className
@@ -189,8 +189,8 @@ export const DropdownItem = forwardRef<HTMLButtonElement, DropdownItemProps>(
         type="button"
         role="menuitem"
         className={cn(
-          'flex w-full items-center gap-2 px-3 py-2',
-          'text-sm text-text-1 text-left',
+          'flex w-full items-center gap-2 px-2 py-1.5 rounded-md',
+          'text-sm text-text-1 text-left cursor-default select-none',
           'transition-colors hover:bg-surface-hover/[0.08]',
           'focus:bg-surface-hover/[0.08] focus:outline-none',
           'disabled:pointer-events-none disabled:opacity-50',

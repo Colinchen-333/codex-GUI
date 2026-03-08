@@ -147,7 +147,7 @@ const markdownComponents = {
   },
   blockquote({ children }: { children?: ReactNode }) {
     return (
-      <blockquote className="my-4 border-l-4 border-stroke/30 bg-surface-hover/[0.06] pl-4 py-2 pr-3 rounded-r-xl text-text-2 italic">
+      <blockquote className="my-4 border-l-2 border-stroke/30 pl-3 py-1 text-text-2">
         {children}
       </blockquote>
     )

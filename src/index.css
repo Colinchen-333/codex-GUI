@@ -3426,6 +3426,41 @@ pre[class*=language-] {
   border-radius: var(--radius-sm, 4px);
 }
 
+/* Keybind badge (OpenCode pattern) */
+.keybind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 2px;
+  background: hsl(var(--surface-hover) / 0.08);
+  box-shadow: 0 0 0 0.5px hsl(var(--stroke) / 0.3);
+  font-family: var(--font-family-sans, inherit);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  color: hsl(var(--text-3));
+}
+
+/* Popover / dropdown enter animation (OpenCode) */
+@keyframes popover-open {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes popover-close {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.96); }
+}
+
+.popover-enter {
+  animation: popover-open 150ms ease-out;
+}
+.popover-exit {
+  animation: popover-close 150ms ease-out;
+}
+
 /* Diff changes bar visualization (OpenCode) */
 .diff-bar {
   display: flex;

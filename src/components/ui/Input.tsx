@@ -27,13 +27,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             className={cn(
               'w-full border bg-surface-solid text-text-1 placeholder:text-text-3',
-              'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]',
+              'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.12),0_0_0_1px_hsl(var(--primary)/0.3)]',
               'disabled:cursor-not-allowed disabled:opacity-50',
               sizeStyles[inputSize],
               'pl-9',
               error
                 ? 'border-destructive focus:border-destructive'
-                : 'border-stroke/20 focus:border-stroke/40',
+                : 'border-stroke/20 focus:border-transparent',
               className
             )}
             {...props}
@@ -47,12 +47,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         className={cn(
           'w-full border bg-surface-solid text-text-1 placeholder:text-text-3',
-          'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]',
+          'transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.12),0_0_0_1px_hsl(var(--primary)/0.3)]',
           'disabled:cursor-not-allowed disabled:opacity-50',
           sizeStyles[inputSize],
           error
             ? 'border-destructive focus:border-destructive'
-            : 'border-stroke/20 focus:border-stroke/40',
+            : 'border-stroke/20 focus:border-transparent',
           className
         )}
         {...props}

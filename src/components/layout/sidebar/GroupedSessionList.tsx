@@ -1,5 +1,5 @@
 import { memo, useMemo, useState, useCallback, type CSSProperties } from 'react'
-import { ChevronDown, ChevronRight, Folder, MessageSquare, Settings, Pin, PinOff, MailOpen, ArrowRight } from 'lucide-react'
+import { ChevronDown, Folder, MessageSquare, Settings, Pin, PinOff, MailOpen, ArrowRight } from 'lucide-react'
 import { List } from 'react-window'
 import { cn, formatSessionTime } from '../../../lib/utils'
 import { useProjectsStore } from '../../../stores/projects'
@@ -129,11 +129,12 @@ function GroupedRowComponent({
             onClick={() => onToggleProject(group.projectId)}
             className="flex h-9 flex-1 items-center gap-1.5 px-2.5 text-left"
           >
-            {isExpanded ? (
-              <ChevronDown size={14} className="text-text-3" />
-            ) : (
-              <ChevronRight size={14} className="text-text-3" />
-            )}
+            <span
+              className="text-text-3 transition-transform duration-200"
+              style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+            >
+              <ChevronDown size={14} />
+            </span>
             <Folder size={15} className="text-text-2" />
             <span className="flex-1 truncate text-[14px] font-semibold text-text-1">{group.projectName}</span>
             <span className="text-[11px] text-text-3">{group.sessions.length}</span>
@@ -220,7 +221,7 @@ function GroupedRowComponent({
               {displayName}
             </span>
 
-            {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
+            {isRunning && <span className="thinking-indicator shrink-0" />}
 
             {timeStr && (
               <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>
@@ -395,11 +396,12 @@ export const GroupedSessionList = memo(function GroupedSessionList({
                 onClick={() => toggleProject(group.projectId)}
                 className="flex h-9 flex-1 items-center gap-1.5 px-2.5 text-left"
               >
-                {isExpanded ? (
-                  <ChevronDown size={14} className="text-text-3" />
-                ) : (
-                  <ChevronRight size={14} className="text-text-3" />
-                )}
+                <span
+                  className="text-text-3 transition-transform duration-200"
+                  style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+                >
+                  <ChevronDown size={14} />
+                </span>
                 <Folder size={15} className="text-text-2" />
                 <span className="flex-1 truncate text-[14px] font-semibold text-text-1">{group.projectName}</span>
                 <span className="text-[11px] text-text-3">{group.sessions.length}</span>
@@ -484,7 +486,7 @@ export const GroupedSessionList = memo(function GroupedSessionList({
                           {displayName}
                         </span>
 
-                        {isRunning && <span className="h-2 w-2 shrink-0 rounded-full bg-primary animate-pulse" />}
+                        {isRunning && <span className="thinking-indicator shrink-0" />}
 
                         {timeStr && (
                           <span className="shrink-0 text-[12px] text-text-3">{timeStr}</span>

@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <img src="public/icon.png" alt="Codex Desktop Logo" width="128" height="128">
 </p>
@@ -128,7 +130,7 @@ Terminal wrappers leave orphaned processes. Protocol-native cleanup ensures:
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| Node.js | >= 22.0 | LTS recommended |
+| Node.js | >= 20.19 | LTS recommended |
 | npm / pnpm | Latest | Package manager |
 | Rust | Edition 2021 | For Tauri development |
 | Codex CLI | Latest | Backend server |
@@ -316,7 +318,7 @@ clearAllPendingRequests(): void
 
 | 要求 | 版本 | 说明 |
 |------|------|------|
-| Node.js | >= 22.0 | 推荐 LTS 版本 |
+| Node.js | >= 20.19 | 推荐 LTS 版本 |
 | npm / pnpm | 最新 | 包管理器 |
 | Rust | Edition 2021 | 用于 Tauri 开发 |
 | Codex CLI | 最新 | 后端服务器 |
